@@ -51,7 +51,7 @@ export default function CalendarScreen() {
           </View>
           <Link href="/add-event" asChild>
             <View style={styles.addBtn}>
-              <PlusIcon color={colors.surfaceScreen} size={16} />
+              <PlusIcon color={colors.surfaceScreen} size={22} />
             </View>
           </Link>
         </View>
@@ -94,7 +94,7 @@ export default function CalendarScreen() {
 
         <View>
           <Text style={styles.sectionLabel}>Prochains événements</Text>
-          <View style={{ gap: spacing[2] }}>
+          <View style={{ gap: spacing[3] }}>
             {events.map((ev) => (
               <View key={ev.id} style={styles.eventRow}>
                 <View style={[styles.eventDot, { backgroundColor: ev.color }]} />
@@ -112,64 +112,64 @@ export default function CalendarScreen() {
   );
 }
 
-const CELL_GAP = 4;
+const CELL_GAP = 6;
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.ink },
-  content: { padding: spacing[4], paddingTop: spacing[6], gap: spacing[5], paddingBottom: spacing[8] },
+  content: { padding: spacing[5], paddingTop: spacing[6], gap: spacing[6], paddingBottom: spacing[8] },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sub: { fontFamily: fontFamily.textRegular, fontSize: 13, color: colors.textDim },
-  h1: { fontFamily: fontFamily.displaySemiBold, fontSize: 22, color: colors.text, marginTop: 2 },
+  sub: { fontFamily: fontFamily.textRegular, fontSize: 16, color: colors.textDim },
+  h1: { fontFamily: fontFamily.displaySemiBold, fontSize: 30, color: colors.text, marginTop: 2 },
 
   addBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.lime,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   weekdayRow: { flexDirection: 'row', gap: CELL_GAP },
-  weekday: { flex: 1, textAlign: 'center', fontFamily: fontFamily.textBold, fontSize: 9, color: colors.textFaint, textTransform: 'uppercase' },
+  weekday: { flex: 1, textAlign: 'center', fontFamily: fontFamily.textBold, fontSize: 12, color: colors.textFaint, textTransform: 'uppercase' },
 
-  grid: { marginTop: 4, gap: CELL_GAP },
+  grid: { marginTop: 6, gap: CELL_GAP },
   gridRow: { flexDirection: 'row', gap: CELL_GAP },
   cell: {
     flex: 1,
-    aspectRatio: 0.95,
-    borderRadius: 8,
+    aspectRatio: 0.85,
+    borderRadius: 10,
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
     overflow: 'hidden',
   },
-  cellEmpty: { flex: 1, aspectRatio: 0.95 },
+  cellEmpty: { flex: 1, aspectRatio: 0.85 },
   cellToday: { backgroundColor: colors.lime },
-  cellText: { fontFamily: fontFamily.textSemiBold, fontSize: 10, color: colors.textDim },
+  cellText: { fontFamily: fontFamily.textSemiBold, fontSize: 14, color: colors.textDim },
   cellTextToday: { color: colors.surfaceScreen, fontFamily: fontFamily.textBold },
-  dot: { position: 'absolute', top: 4, right: 4, width: 4, height: 4, borderRadius: 2 },
-  bar: { position: 'absolute', left: 3, right: 3, bottom: 3, height: 3, borderRadius: 2 },
+  dot: { position: 'absolute', top: 6, right: 6, width: 5, height: 5, borderRadius: 3 },
+  bar: { position: 'absolute', left: 4, right: 4, bottom: 4, height: 4, borderRadius: 2 },
 
-  legend: { flexDirection: 'row', gap: 14, marginTop: 8 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  legendDot: { width: 7, height: 7, borderRadius: 3.5 },
-  legendText: { fontFamily: fontFamily.textRegular, fontSize: 9.5, color: colors.textDim },
+  legend: { flexDirection: 'row', gap: 18, marginTop: 10 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot: { width: 9, height: 9, borderRadius: 4.5 },
+  legendText: { fontFamily: fontFamily.textRegular, fontSize: 13, color: colors.textDim },
 
-  sectionLabel: { fontFamily: fontFamily.textBold, fontSize: 11, color: colors.textFaint, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 },
+  sectionLabel: { fontFamily: fontFamily.textBold, fontSize: 13, color: colors.textFaint, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 },
   eventRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.borderSoft,
-    borderRadius: radii.md,
-    padding: spacing[3],
+    borderRadius: radii.lg,
+    padding: spacing[4],
   },
-  eventDot: { width: 8, height: 8, borderRadius: 4 },
-  eventName: { fontFamily: fontFamily.textSemiBold, fontSize: 13, color: colors.text },
-  eventWhen: { fontFamily: fontFamily.textRegular, fontSize: 11, color: colors.textDim, marginTop: 1 },
-  diffPill: { fontFamily: fontFamily.textBold, fontSize: 11 },
+  eventDot: { width: 10, height: 10, borderRadius: 5 },
+  eventName: { fontFamily: fontFamily.textSemiBold, fontSize: 16, color: colors.text },
+  eventWhen: { fontFamily: fontFamily.textRegular, fontSize: 14, color: colors.textDim, marginTop: 2 },
+  diffPill: { fontFamily: fontFamily.textBold, fontSize: 15 },
 });

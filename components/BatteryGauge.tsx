@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, View, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { chargeGradient, colors, radii } from '@/constants/theme';
+import { chargeGradient, colors } from '@/constants/theme';
 
 type Size = 'lg' | 'sm';
 
@@ -13,17 +13,20 @@ type Props = {
   style?: ViewStyle;
 };
 
-const DIMENSIONS: Record<Size, { w: number; h: number; radius: number; nubW: number; nubH: number; inset: number }> = {
-  lg: { w: 248, h: 122, radius: 26, nubW: 16, nubH: 50, inset: 9 },
-  sm: { w: 128, h: 63, radius: 14, nubW: 9, nubH: 26, inset: 6 },
+// Classic battery-icon aspect ratio (casing only, terminal excluded).
+const ASPECT_RATIO = 248 / 122;
+
+// 'lg' is the hero size: it fills the width of its container (edge-to-edge
+// with whatever the screen already gives other full-width cards) and derives
+// its height from the aspect ratio, so it reads as genuinely large on any
+// phone instead of the fixed px that only looked right in the ~300px web
+// mockup preview. 'sm' stays a fixed compact size for inline/secondary use.
+const SIZES = {
+  lg: { radius: 28, nubW: 22, nubH: '36%' as const, inset: 10 },
+  sm: { w: 128, h: 63, radius: 14, nubW: 10, nubH: 26, inset: 6 },
 };
 
-// Physical battery object: classic icon silhouette (casing + terminal nub),
-// rendered with soft directional shading. The window fills left-to-right,
-// always revealing the same fixed charge gradient rather than recoloring it,
-// exactly like the web identity artifact.
 export function BatteryGauge({ level, size = 'lg', onPress, style }: Props) {
-  const d = DIMENSIONS[size];
   const clamped = Math.max(0, Math.min(100, level));
 
   const widthAnim = useRef(new Animated.Value(100 - clamped)).current;
@@ -38,13 +41,25 @@ export function BatteryGauge({ level, size = 'lg', onPress, style }: Props) {
   }, [clamped, widthAnim]);
 
   const handlePressIn = () => {
-    Animated.spring(pressAnim, { toValue: 0.965, useNativeDriver: true, speed: 40, bounciness: 4 }).start();
+    Animated.spring(pressAnim, { toValue: 0.97, useNativeDriver: true, speed: 40, bounciness: 4 }).start();
   };
   const handlePressOut = () => {
     Animated.spring(pressAnim, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 8 }).start();
   };
 
   const coverWidth = widthAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] });
+
+  const radius = size === 'lg' ? SIZES.lg.radius : SIZES.sm.radius;
+  const inset = size === 'lg' ? SIZES.lg.inset : SIZES.sm.inset;
+  const windowRadius = radius - 11;
+
+  // Outer container carries the size + drop shadow and is never clipped, so
+  // the terminal nub (which deliberately sits partly outside the casing)
+  // and the shadow both stay visible. The inner `body` is the only view
+  // with overflow:hidden, purely to round the gradient fill's corners —
+  // on iOS a clipped view also clips its own shadow, hence the split.
+  const outerStyle: ViewStyle =
+    size === 'lg' ? { width: '100%', aspectRatio: ASPECT_RATIO } : { width: SIZES.sm.w, height: SIZES.sm.h };
 
   return (
     <Pressable
@@ -55,17 +70,8 @@ export function BatteryGauge({ level, size = 'lg', onPress, style }: Props) {
       accessibilityLabel={`Batterie sociale : ${clamped} pourcent`}
       style={style}
     >
-      <Animated.View style={{ transform: [{ scale: pressAnim }] }}>
-        <View
-          style={[
-            styles.body,
-            {
-              width: d.w,
-              height: d.h,
-              borderRadius: d.radius,
-            },
-          ]}
-        >
+      <Animated.View style={[outerStyle, styles.outer, { transform: [{ scale: pressAnim }] }]}>
+        <View style={[styles.body, StyleSheet.absoluteFillObject, { borderRadius: radius }]}>
           <LinearGradient
             colors={['#372C54', '#1E1733', '#130D20']}
             start={{ x: 0.1, y: 0 }}
@@ -83,9 +89,12 @@ export function BatteryGauge({ level, size = 'lg', onPress, style }: Props) {
           {/* window / fill area — deliberately dominant, thin bezel only */}
           <View
             style={{
-              width: d.w - d.inset * 2,
-              height: d.h - d.inset * 2,
-              borderRadius: d.radius - 11,
+              position: 'absolute',
+              top: inset,
+              left: inset,
+              right: inset,
+              bottom: inset,
+              borderRadius: windowRadius,
               overflow: 'hidden',
               backgroundColor: colors.surfaceScreen,
             }}
@@ -115,21 +124,6 @@ export function BatteryGauge({ level, size = 'lg', onPress, style }: Props) {
             />
           </View>
 
-          {/* terminal nub */}
-          <View
-            style={{
-              position: 'absolute',
-              right: -Math.round(d.nubW * 0.85),
-              top: '50%',
-              marginTop: -d.nubH / 2,
-              width: d.nubW,
-              height: d.nubH,
-              borderTopRightRadius: 10,
-              borderBottomRightRadius: 10,
-              backgroundColor: '#3E3260',
-            }}
-          />
-
           {/* bottom rim — reads as the object's thickness */}
           <LinearGradient
             colors={['rgba(8,5,15,0)', 'rgba(8,5,15,0.7)']}
@@ -138,27 +132,55 @@ export function BatteryGauge({ level, size = 'lg', onPress, style }: Props) {
               left: 0,
               right: 0,
               bottom: 0,
-              height: Math.round(d.h * 0.13),
-              borderBottomLeftRadius: d.radius,
-              borderBottomRightRadius: d.radius,
+              height: size === 'lg' ? '14%' : Math.round(SIZES.sm.h * 0.13),
+              borderBottomLeftRadius: radius,
+              borderBottomRightRadius: radius,
             }}
             pointerEvents="none"
           />
         </View>
+
+        {/* terminal nub — sibling of `body`, sits outside its clip bounds */}
+        <View
+          style={
+            size === 'lg'
+              ? {
+                  position: 'absolute',
+                  right: -Math.round(SIZES.lg.nubW * 0.55),
+                  top: '32%',
+                  height: SIZES.lg.nubH,
+                  width: SIZES.lg.nubW,
+                  borderTopRightRadius: 12,
+                  borderBottomRightRadius: 12,
+                  backgroundColor: '#5B4A87',
+                }
+              : {
+                  position: 'absolute',
+                  right: -Math.round((SIZES.sm.nubW as number) * 0.6),
+                  top: '50%',
+                  marginTop: -(SIZES.sm.nubH as number) / 2,
+                  width: SIZES.sm.nubW,
+                  height: SIZES.sm.nubH,
+                  borderTopRightRadius: 10,
+                  borderBottomRightRadius: 10,
+                  backgroundColor: '#5B4A87',
+                }
+          }
+        />
       </Animated.View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  body: {
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
+  outer: {
     shadowColor: '#06030E',
     shadowOffset: { width: 0, height: 16 },
     shadowOpacity: 0.55,
     shadowRadius: 24,
     elevation: 10,
+  },
+  body: {
+    overflow: 'hidden',
   },
 });

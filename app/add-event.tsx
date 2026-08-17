@@ -18,7 +18,7 @@ export default function AddEventScreen() {
         <View style={styles.row}>
           <Text style={styles.h1}>Nouvel événement</Text>
           <Pressable onPress={() => router.back()} hitSlop={10}>
-            <CloseIcon color={colors.textDim} size={20} />
+            <CloseIcon color={colors.textDim} size={26} />
           </Pressable>
         </View>
 
@@ -40,7 +40,7 @@ export default function AddEventScreen() {
           <Text style={styles.sectionLabel}>Date</Text>
           <View style={styles.field}>
             <Text style={styles.fieldText}>Mardi 19 août</Text>
-            <CalendarIcon color={colors.textDim} size={16} />
+            <CalendarIcon color={colors.textDim} size={20} />
           </View>
         </View>
 
@@ -80,39 +80,39 @@ export default function AddEventScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.ink },
-  content: { padding: spacing[4], paddingTop: spacing[6], gap: spacing[6], paddingBottom: spacing[8] },
+  content: { padding: spacing[5], paddingTop: spacing[6], gap: spacing[7], paddingBottom: spacing[8] },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  h1: { fontFamily: fontFamily.displaySemiBold, fontSize: 19, color: colors.text },
+  h1: { fontFamily: fontFamily.displaySemiBold, fontSize: 24, color: colors.text },
 
-  sectionLabel: { fontFamily: fontFamily.textBold, fontSize: 11, color: colors.textFaint, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 },
+  sectionLabel: { fontFamily: fontFamily.textBold, fontSize: 13, color: colors.textFaint, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 },
 
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { borderWidth: 1, borderColor: colors.border, borderRadius: radii.pill, paddingVertical: 8, paddingHorizontal: 12 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  chip: { borderWidth: 1, borderColor: colors.border, borderRadius: radii.pill, paddingVertical: 11, paddingHorizontal: 16 },
   chipSelected: { backgroundColor: colors.violet, borderColor: colors.violet },
-  chipText: { fontFamily: fontFamily.textSemiBold, fontSize: 11, color: colors.textDim },
+  chipText: { fontFamily: fontFamily.textSemiBold, fontSize: 14, color: colors.textDim },
   chipTextSelected: { color: colors.text },
 
   field: {
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.borderSoft,
-    borderRadius: radii.sm,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    borderRadius: radii.md,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  fieldText: { fontFamily: fontFamily.textMedium, fontSize: 13, color: colors.text },
+  fieldText: { fontFamily: fontFamily.textMedium, fontSize: 16, color: colors.text },
 
-  diffValue: { fontFamily: fontFamily.textBold, fontSize: 12, color: colors.coral, marginBottom: 6 },
-  sliderTrack: { flexDirection: 'row', gap: 3, marginTop: 6, marginBottom: 8 },
-  sliderStep: { flex: 1, height: 8 },
-  sliderFill: { flex: 1, height: '100%', borderRadius: 4, backgroundColor: colors.coral },
+  diffValue: { fontFamily: fontFamily.textBold, fontSize: 15, color: colors.coral, marginBottom: 8 },
+  sliderTrack: { flexDirection: 'row', gap: 4, marginTop: 8, marginBottom: 10 },
+  sliderStep: { flex: 1, height: 14 },
+  sliderFill: { flex: 1, height: '100%', borderRadius: 6, backgroundColor: colors.coral },
   sliderFillOff: { backgroundColor: colors.borderSoft },
-  sliderLabel: { fontFamily: fontFamily.textMedium, fontSize: 10, color: colors.textFaint },
-  helper: { fontFamily: fontFamily.textRegular, fontSize: 11, color: colors.textDim, marginTop: 10, lineHeight: 16 },
+  sliderLabel: { fontFamily: fontFamily.textMedium, fontSize: 13, color: colors.textFaint },
+  helper: { fontFamily: fontFamily.textRegular, fontSize: 14, color: colors.textDim, marginTop: 12, lineHeight: 20 },
 
-  submitBtn: { borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
-  submitText: { fontFamily: fontFamily.textBold, fontSize: 13.5, color: colors.surfaceScreen },
+  submitBtn: { borderRadius: 16, paddingVertical: 18, alignItems: 'center' },
+  submitText: { fontFamily: fontFamily.textBold, fontSize: 16, color: colors.surfaceScreen },
 });

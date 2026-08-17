@@ -28,7 +28,7 @@ export default function LibraryScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.row}>
           <Text style={styles.h1}>Bibliothèque</Text>
-          <SearchIcon color={colors.textDim} size={18} />
+          <SearchIcon color={colors.textDim} size={24} />
         </View>
 
         <View style={styles.chipRow}>
@@ -39,20 +39,20 @@ export default function LibraryScreen() {
           ))}
         </View>
 
-        <View style={{ gap: spacing[2] }}>
+        <View style={{ gap: spacing[3] }}>
           {courses.map((c) => (
             <View key={c.id} style={[styles.libRow, c.status === 'locked' && styles.libRowLocked]}>
               <View style={styles.libIcon}>
-                {c.status === 'done' && <CheckIcon color={colors.violetSoft} size={14} />}
-                {c.status === 'progress' && <BoltIcon color={colors.violetSoft} size={14} />}
-                {c.status === 'locked' && <LockIcon color={colors.violetSoft} size={14} />}
+                {c.status === 'done' && <CheckIcon color={colors.violetSoft} size={18} />}
+                {c.status === 'progress' && <BoltIcon color={colors.violetSoft} size={18} />}
+                {c.status === 'locked' && <LockIcon color={colors.violetSoft} size={18} />}
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.libName}>{c.name}</Text>
                 <Text style={styles.libMeta}>{c.meta}</Text>
               </View>
-              {c.status === 'done' && <Text style={{ color: colors.lime, fontFamily: fontFamily.textBold, fontSize: 12 }}>✓</Text>}
-              {c.status === 'progress' && <Text style={{ color: colors.coral, fontFamily: fontFamily.textBold, fontSize: 11 }}>{c.progress}</Text>}
+              {c.status === 'done' && <Text style={{ color: colors.lime, fontFamily: fontFamily.textBold, fontSize: 16 }}>✓</Text>}
+              {c.status === 'progress' && <Text style={{ color: colors.coral, fontFamily: fontFamily.textBold, fontSize: 14 }}>{c.progress}</Text>}
             </View>
           ))}
         </View>
@@ -63,7 +63,7 @@ export default function LibraryScreen() {
               <Text style={styles.upgradeTitle}>Débloque les 10 cours</Text>
               <Text style={styles.upgradeSub}>À partir de ~5€/mois</Text>
             </View>
-            <ChevronRightIcon color={colors.surfaceScreen} size={16} />
+            <ChevronRightIcon color={colors.surfaceScreen} size={20} />
           </LinearGradient>
         </Pressable>
       </ScrollView>
@@ -73,32 +73,32 @@ export default function LibraryScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.ink },
-  content: { padding: spacing[4], paddingTop: spacing[6], gap: spacing[5], paddingBottom: spacing[8] },
+  content: { padding: spacing[5], paddingTop: spacing[6], gap: spacing[6], paddingBottom: spacing[8] },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  h1: { fontFamily: fontFamily.displaySemiBold, fontSize: 22, color: colors.text },
+  h1: { fontFamily: fontFamily.displaySemiBold, fontSize: 30, color: colors.text },
 
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { borderWidth: 1, borderColor: colors.border, borderRadius: radii.pill, paddingVertical: 8, paddingHorizontal: 12 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  chip: { borderWidth: 1, borderColor: colors.border, borderRadius: radii.pill, paddingVertical: 10, paddingHorizontal: 16 },
   chipSelected: { backgroundColor: colors.violet, borderColor: colors.violet },
-  chipText: { fontFamily: fontFamily.textSemiBold, fontSize: 11, color: colors.textDim },
+  chipText: { fontFamily: fontFamily.textSemiBold, fontSize: 14, color: colors.textDim },
   chipTextSelected: { color: colors.text },
 
   libRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 14,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.borderSoft,
-    borderRadius: radii.md,
-    padding: spacing[3],
+    borderRadius: radii.lg,
+    padding: spacing[4],
   },
   libRowLocked: { opacity: 0.55 },
-  libIcon: { width: 30, height: 30, borderRadius: 9, backgroundColor: colors.surfaceRaised, alignItems: 'center', justifyContent: 'center' },
-  libName: { fontFamily: fontFamily.textSemiBold, fontSize: 12.5, color: colors.text },
-  libMeta: { fontFamily: fontFamily.textRegular, fontSize: 10.5, color: colors.textDim, marginTop: 1 },
+  libIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: colors.surfaceRaised, alignItems: 'center', justifyContent: 'center' },
+  libName: { fontFamily: fontFamily.textSemiBold, fontSize: 16, color: colors.text },
+  libMeta: { fontFamily: fontFamily.textRegular, fontSize: 13, color: colors.textDim, marginTop: 2 },
 
-  upgradeBanner: { borderRadius: 14, padding: spacing[3], flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  upgradeTitle: { fontFamily: fontFamily.textBold, fontSize: 12.5, color: colors.surfaceScreen },
-  upgradeSub: { fontFamily: fontFamily.textRegular, fontSize: 10.5, color: colors.surfaceScreen, opacity: 0.75, marginTop: 1 },
+  upgradeBanner: { borderRadius: 18, padding: spacing[4], flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  upgradeTitle: { fontFamily: fontFamily.textBold, fontSize: 16, color: colors.surfaceScreen },
+  upgradeSub: { fontFamily: fontFamily.textRegular, fontSize: 13, color: colors.surfaceScreen, opacity: 0.75, marginTop: 2 },
 });
