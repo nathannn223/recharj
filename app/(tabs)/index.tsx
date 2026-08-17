@@ -24,7 +24,7 @@ export default function DashboardScreen() {
         </View>
 
         <View style={styles.batteryWrap}>
-          <BatteryGauge level={64} size="lg" />
+          <BatteryGauge level={64} size="lg" style={styles.battery} />
           <View style={styles.batteryReadout}>
             <Text style={styles.batteryPct}>64%</Text>
             <Text style={styles.batteryLbl}>Batterie sociale</Text>
@@ -112,6 +112,7 @@ const styles = StyleSheet.create({
   h1: { fontFamily: fontFamily.displaySemiBold, fontSize: 30, color: colors.text, marginTop: 2 },
 
   batteryWrap: { gap: spacing[3] },
+  battery: { width: '90%', alignSelf: 'center' },
   batteryReadout: { alignItems: 'center', gap: 4 },
   batteryPct: { fontFamily: fontFamily.displayBold, fontSize: 44, color: colors.text },
   batteryLbl: { fontFamily: fontFamily.textSemiBold, fontSize: 14, color: colors.textDim, textTransform: 'uppercase', letterSpacing: 1.4 },
