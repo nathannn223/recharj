@@ -66,6 +66,27 @@ export default function AuthScreen() {
     // routes into app/onboarding.tsx on its own — nothing else to do here.
   };
 
+  // Dev-only: generates a fresh, guaranteed-unique test account and runs it
+  // through the exact same signUp() path as a real user — Supabase still
+  // requires a unique email per account, this just removes the tedium of
+  // typing one by hand every time. Never rendered in production (__DEV__).
+  const devQuickSignUp = async () => {
+    const testEmail = `dev+${Date.now()}@recharj.dev`;
+    const testPassword = 'DevTest123!';
+    setFirstName('Dev');
+    setScore(5);
+    setPainIndex(0);
+    setEmail(testEmail);
+    setPassword(testPassword);
+    setError(null);
+    setSubmitting(true);
+    await savePendingOnboarding({ firstName: 'Dev', baselineScore: 5, painType: PAIN_TYPES[0].label });
+    const { error: signUpError, hasSession } = await signUp(testEmail, testPassword);
+    setSubmitting(false);
+    if (signUpError) setError(signUpError);
+    else if (!hasSession) setStep(STEP.CHECK_EMAIL);
+  };
+
   const submitSignIn = async () => {
     setError(null);
     if (!email || !password) {
@@ -223,6 +244,12 @@ export default function AuthScreen() {
           )}
         </View>
 
+        {__DEV__ && (
+          <Pressable onPress={devQuickSignUp} disabled={submitting} style={styles.devBtn}>
+            <Text style={styles.devBtnText}>⚡ DEV — Compte de test instantané</Text>
+          </Pressable>
+        )}
+
         <View style={styles.footer}>
           {step === STEP.HOOK ? (
             <Pressable onPress={() => setMode('signin')} style={styles.skipBtn} hitSlop={10}>
@@ -375,4 +402,16 @@ const styles = StyleSheet.create({
   switchMode: { alignItems: 'center', marginTop: spacing[1] },
   switchModeText: { fontFamily: fontFamily.textRegular, fontSize: 13, color: colors.textFaint },
   switchModeLink: { color: colors.textDim, fontFamily: fontFamily.textSemiBold, textDecorationLine: 'underline' },
+
+  devBtn: {
+    alignSelf: 'center',
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.critical,
+    borderRadius: radii.pill,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    marginBottom: spacing[2],
+  },
+  devBtnText: { fontFamily: fontFamily.textSemiBold, fontSize: 12, color: colors.critical },
 });

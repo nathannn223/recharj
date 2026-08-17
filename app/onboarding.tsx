@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, fontFamily, spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
@@ -62,6 +62,11 @@ export default function OnboardingTransitionScreen() {
     <View style={styles.screen}>
       <ActivityIndicator color={colors.violetSoft} />
       <Text style={styles.status}>{status}</Text>
+      {__DEV__ && (
+        <Pressable onPress={() => markSeen().then(() => router.replace('/(tabs)'))} style={styles.devBtn}>
+          <Text style={styles.devBtnText}>⚡ DEV — Passer, aller au tableau de bord</Text>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -69,4 +74,14 @@ export default function OnboardingTransitionScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.ink, alignItems: 'center', justifyContent: 'center', gap: spacing[3] },
   status: { fontFamily: fontFamily.textMedium, fontSize: 14, color: colors.textDim },
+  devBtn: {
+    marginTop: spacing[5],
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.critical,
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+  },
+  devBtnText: { fontFamily: fontFamily.textSemiBold, fontSize: 12, color: colors.critical },
 });

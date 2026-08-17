@@ -14,6 +14,15 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   const [seen, setSeen] = useState<boolean | null>(null);
 
   useEffect(() => {
+    // Dev builds always re-show onboarding on reload instead of reading the
+    // persisted flag, so it can be iterated on without clearing storage or
+    // recreating an account each time. markSeen() still works normally
+    // within a session (e.g. the dev skip button) — this only overrides
+    // what happens on a fresh mount. Never runs in production (__DEV__).
+    if (__DEV__) {
+      setSeen(false);
+      return;
+    }
     AsyncStorage.getItem(KEY).then((value) => setSeen(value === 'true'));
   }, []);
 
