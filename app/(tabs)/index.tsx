@@ -132,7 +132,7 @@ export default function DashboardScreen() {
         </View>
 
         {hasDifficultEvent && (
-          <Link href="/course/2" asChild>
+          <Link href="/(tabs)/library" asChild>
             <View style={styles.recCard}>
               <View style={styles.recBadge}>
                 <BoltIcon color={colors.surfaceScreen} size={20} />

@@ -83,6 +83,7 @@ function RootNavigator() {
         <Stack.Screen name="add-event" options={{ presentation: 'modal' }} />
         <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
         <Stack.Screen name="course/[id]" />
+        <Stack.Screen name="source/[id]" options={{ presentation: 'modal' }} />
       </Stack.Protected>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="(auth)" />

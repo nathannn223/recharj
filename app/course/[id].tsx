@@ -1,61 +1,102 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Link, router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { BoltIcon, CheckIcon, ChevronLeftIcon } from '@/components/icons/Icon';
+import { DiagnosticSlider } from '@/components/engagement/DiagnosticSlider';
+import { DiagnosticSliderDouble } from '@/components/engagement/DiagnosticSliderDouble';
+import { FreePlan } from '@/components/engagement/FreePlan';
+import { GuidedResponse } from '@/components/engagement/GuidedResponse';
+import { McqNuanced } from '@/components/engagement/McqNuanced';
+import { PredictThenCompare } from '@/components/engagement/PredictThenCompare';
+import { BoltIcon, ChevronLeftIcon, ChevronRightIcon } from '@/components/icons/Icon';
 import { chargeGradient, colors, fontFamily, radii, spacing } from '@/constants/theme';
+import { canAccessCourse, personalizeCardOrder, type CourseRow, type SourceRow } from '@/lib/courses';
+import { useAuth } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
 
-// Placeholder content for the first launch course, structured exactly per
-// the brief's 4-step format. Once contenu-cours-mvp.md is ready this will
-// come from Supabase (courses.content) keyed by the `id` route param
-// instead of being hardcoded here.
-const COURSE = {
-  title: 'Gérer un silence gênant',
-  hook: "Tu es à une pause café. La conversation s'arrête net. Tu sens le silence s'installer et tu ne sais pas quoi dire.",
-  diagnostic: {
-    question: 'Face à un silence, qu\'est-ce qui te met le plus mal à l\'aise ?',
-    options: [
-      'La peur du jugement',
-      'La peur de dire une bêtise',
-      "L'impression de devoir combler à tout prix",
-      'Autre chose',
-    ],
-  },
-  cards: [
-    {
-      title: "Le silence n'est pas un échec",
-      body: "C'est souvent un espace que l'autre remplira lui-même si tu lui laisses deux secondes de plus que d'habitude.",
-    },
-    {
-      title: 'Respire avant de parler',
-      body: "Une respiration consciente casse l'envie de combler le vide par réflexe, et te laisse une seconde pour choisir tes mots.",
-    },
-    {
-      title: 'Une question vaut mieux qu\'une blague',
-      body: 'Rebondir avec une question ouverte relance la conversation sans mettre la pression sur ton humour.',
-    },
-  ],
-  exercise: {
-    prompt: "Ton collègue vient de raconter une blague qui tombe à plat. Le silence s'installe. Que fais-tu ?",
-    choices: [
-      { text: 'Tu ris pour combler le vide', correct: false },
-      { text: 'Tu rebondis avec une question ouverte', correct: true },
-      { text: 'Tu regardes ton téléphone', correct: false },
-    ],
-    feedback: "Bonne réponse — rebondir montre que tu écoutes, sans forcer l'humour.",
-  },
-};
-
-const STEP_COUNT = 4;
+const STEP_COUNT = 4; // hook, diagnostic, cards, exercise
 
 export default function CourseScreen() {
-  useLocalSearchParams<{ id: string }>();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { session } = useAuth();
+
+  const [course, setCourse] = useState<CourseRow | null>(null);
+  const [sources, setSources] = useState<Map<string, SourceRow>>(new Map());
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [step, setStep] = useState(0);
   const [cardIndex, setCardIndex] = useState(0);
-  const [diagnosticChoice, setDiagnosticChoice] = useState<number | null>(null);
-  const [exerciseChoice, setExerciseChoice] = useState<number | null>(null);
+  const [sliderValue, setSliderValue] = useState<number | null>(null);
+  const [sliderDoubleValue, setSliderDoubleValue] = useState<[number | null, number | null]>([null, null]);
+  const [exerciseComplete, setExerciseComplete] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+
+      const { data: profile } = await supabase.from('profiles').select('subscription_tier').single();
+      const { data: courseRow, error: courseError } = await supabase.from('courses').select('*').eq('id', id).single();
+
+      if (cancelled) return;
+      if (courseError || !courseRow) {
+        setError(courseError?.message ?? 'Cours introuvable.');
+        setLoading(false);
+        return;
+      }
+      const typedCourse = courseRow as CourseRow;
+
+      if (!profile || !canAccessCourse(typedCourse, profile.subscription_tier)) {
+        router.replace('/paywall');
+        return;
+      }
+
+      const sourceIds = Array.from(
+        new Set(typedCourse.content.cards.map((c) => c.sourceId).filter((v): v is string => v !== null))
+      );
+      const { data: sourceRows } = sourceIds.length
+        ? await supabase.from('sources').select('id, short_label').in('id', sourceIds)
+        : { data: [] as Pick<SourceRow, 'id' | 'short_label'>[] };
+
+      if (cancelled) return;
+      setCourse(typedCourse);
+      setSources(new Map((sourceRows ?? []).map((s) => [s.id, s as SourceRow])));
+      setLoading(false);
+
+      // Mark the course as started, unless it's already been completed before.
+      if (session) {
+        const { data: progress } = await supabase
+          .from('course_progress')
+          .select('status')
+          .eq('course_id', id)
+          .maybeSingle();
+        if (progress?.status !== 'completed') {
+          await supabase
+            .from('course_progress')
+            .upsert({ user_id: session.user.id, course_id: id, status: 'in_progress', current_step: 0 });
+        }
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, session]);
+
+  const orderedCards = useMemo(() => {
+    if (!course) return [];
+    return personalizeCardOrder(course.content, sliderValue);
+  }, [course, sliderValue]);
+
+  const diagnosticAnswered =
+    course?.content.diagnostic.kind === 'slider-double'
+      ? sliderDoubleValue[0] !== null && sliderDoubleValue[1] !== null
+      : sliderValue !== null;
 
   const goBack = () => {
     if (step === 2 && cardIndex > 0) {
@@ -67,6 +108,33 @@ export default function CourseScreen() {
     }
   };
 
+  const finishCourse = async () => {
+    if (session && course) {
+      await supabase
+        .from('course_progress')
+        .upsert({ user_id: session.user.id, course_id: course.id, status: 'completed', current_step: STEP_COUNT - 1 });
+    }
+    router.back();
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.screen, styles.centered]}>
+        <ActivityIndicator color={colors.violetSoft} />
+      </View>
+    );
+  }
+
+  if (error || !course) {
+    return (
+      <View style={[styles.screen, styles.centered]}>
+        <Text style={styles.errorText}>{error ?? 'Cours introuvable.'}</Text>
+      </View>
+    );
+  }
+
+  const { content } = course;
+
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -75,7 +143,7 @@ export default function CourseScreen() {
             <ChevronLeftIcon color={colors.textDim} size={24} />
           </Pressable>
           <Text style={styles.courseTitle} numberOfLines={1}>
-            {COURSE.title}
+            {course.title}
           </Text>
           <View style={styles.stepDots}>
             {Array.from({ length: STEP_COUNT }, (_, i) => (
@@ -90,71 +158,42 @@ export default function CourseScreen() {
               <BoltIcon color={colors.surfaceScreen} size={20} />
             </View>
             <Text style={styles.eyebrow}>Mise en situation</Text>
-            <Text style={styles.cardTitle}>{COURSE.hook}</Text>
+            <Text style={styles.cardTitle}>{content.hook}</Text>
           </View>
         )}
 
-        {step === 1 && (
-          <View>
-            <Text style={styles.question}>{COURSE.diagnostic.question}</Text>
-            <View style={{ gap: spacing[3], marginTop: spacing[4] }}>
-              {COURSE.diagnostic.options.map((opt, i) => {
-                const selected = diagnosticChoice === i;
-                return (
-                  <Pressable key={i} onPress={() => setDiagnosticChoice(i)} style={[styles.choice, selected && styles.choiceSelected]}>
-                    <View style={[styles.bullet, selected && styles.bulletSelected]} />
-                    <Text style={[styles.choiceText, selected && styles.choiceTextSelected]}>{opt}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-        )}
+        {step === 1 &&
+          (content.diagnostic.kind === 'slider' ? (
+            <DiagnosticSlider format={content.diagnostic} value={sliderValue} onChange={setSliderValue} />
+          ) : (
+            <DiagnosticSliderDouble format={content.diagnostic} value={sliderDoubleValue} onChange={setSliderDoubleValue} />
+          ))}
 
-        {step === 2 && (
+        {step === 2 && orderedCards[cardIndex] && (
           <View style={styles.card}>
             <View style={styles.accentBolt}>
               <BoltIcon color={colors.surfaceScreen} size={20} />
             </View>
             <Text style={styles.eyebrow}>
-              Carte {cardIndex + 1}/{COURSE.cards.length}
+              Carte {cardIndex + 1}/{orderedCards.length}
             </Text>
-            <Text style={styles.cardTitle}>{COURSE.cards[cardIndex].title}</Text>
-            <Text style={styles.cardBody}>{COURSE.cards[cardIndex].body}</Text>
+            <Text style={styles.cardTitle}>{orderedCards[cardIndex].title}</Text>
+            <Text style={styles.cardBody}>{orderedCards[cardIndex].advice}</Text>
+            {orderedCards[cardIndex].sourceId && (
+              <Link href={`/source/${orderedCards[cardIndex].sourceId}`} asChild>
+                <Pressable style={styles.sourceLink}>
+                  <Text style={styles.sourceLinkText}>
+                    Source : {sources.get(orderedCards[cardIndex].sourceId!)?.short_label ?? '...'}
+                  </Text>
+                  <ChevronRightIcon color={colors.violetSoft} size={14} />
+                </Pressable>
+              </Link>
+            )}
           </View>
         )}
 
         {step === 3 && (
-          <View>
-            <View style={styles.quizPrompt}>
-              <Text style={styles.quizPromptText}>{COURSE.exercise.prompt}</Text>
-            </View>
-            <View style={{ gap: spacing[3], marginTop: spacing[4] }}>
-              {COURSE.exercise.choices.map((c, i) => {
-                const picked = exerciseChoice === i;
-                const revealed = exerciseChoice !== null;
-                const showCorrect = revealed && c.correct;
-                return (
-                  <Pressable
-                    key={i}
-                    disabled={revealed}
-                    onPress={() => setExerciseChoice(i)}
-                    style={[styles.choice, showCorrect && styles.choiceCorrect, picked && !c.correct && styles.choiceWrong]}
-                  >
-                    <View style={[styles.bullet, showCorrect && styles.bulletCorrect]}>
-                      {showCorrect && <CheckIcon color={colors.surfaceScreen} size={12} />}
-                    </View>
-                    <Text style={[styles.choiceText, showCorrect && styles.choiceTextSelected]}>{c.text}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            {exerciseChoice !== null && (
-              <View style={styles.feedback}>
-                <Text style={styles.feedbackText}>{COURSE.exercise.feedback}</Text>
-              </View>
-            )}
-          </View>
+          <ExerciseStep format={content.exercise} onComplete={() => setExerciseComplete(true)} />
         )}
 
         <View style={styles.navRow}>
@@ -165,12 +204,12 @@ export default function CourseScreen() {
           )}
           <Pressable
             style={{ flex: 1 }}
-            disabled={(step === 1 && diagnosticChoice === null) || (step === 3 && exerciseChoice === null)}
+            disabled={(step === 1 && !diagnosticAnswered) || (step === 3 && !exerciseComplete)}
             onPress={() => {
-              if (step === 2 && cardIndex < COURSE.cards.length - 1) {
+              if (step === 2 && cardIndex < orderedCards.length - 1) {
                 setCardIndex((i) => i + 1);
               } else if (step === 3) {
-                router.back();
+                finishCourse();
               } else {
                 setStep((s) => s + 1);
               }
@@ -182,11 +221,11 @@ export default function CourseScreen() {
               end={{ x: 1, y: 0 }}
               style={[
                 styles.btnPrimary,
-                (step === 1 && diagnosticChoice === null) || (step === 3 && exerciseChoice === null) ? styles.btnDisabled : null,
+                (step === 1 && !diagnosticAnswered) || (step === 3 && !exerciseComplete) ? styles.btnDisabled : null,
               ]}
             >
               <Text style={styles.btnPrimaryText}>
-                {step === 3 ? 'Terminer le cours' : step === 2 && cardIndex < COURSE.cards.length - 1 ? 'Suivant' : 'Continuer'}
+                {step === 3 ? 'Terminer le cours' : step === 2 && cardIndex < orderedCards.length - 1 ? 'Suivant' : 'Continuer'}
               </Text>
             </LinearGradient>
           </Pressable>
@@ -196,8 +235,25 @@ export default function CourseScreen() {
   );
 }
 
+function ExerciseStep({ format, onComplete }: { format: CourseRow['content']['exercise']; onComplete: () => void }) {
+  switch (format.kind) {
+    case 'mcq-nuanced':
+      return <McqNuanced format={format} onComplete={onComplete} />;
+    case 'predict-compare':
+      return <PredictThenCompare format={format} onComplete={onComplete} />;
+    case 'guided-response':
+      return <GuidedResponse format={format} onComplete={onComplete} />;
+    case 'free-plan':
+      return <FreePlan format={format} onComplete={onComplete} />;
+    default:
+      return null;
+  }
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.ink },
+  centered: { alignItems: 'center', justifyContent: 'center' },
+  errorText: { fontFamily: fontFamily.textMedium, fontSize: 14, color: colors.critical, padding: spacing[5], textAlign: 'center' },
   content: { padding: spacing[5], paddingTop: spacing[6], gap: spacing[6], paddingBottom: spacing[8], flexGrow: 1 },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing[3] },
   courseTitle: { flex: 1, fontFamily: fontFamily.textSemiBold, fontSize: 15, color: colors.textDim, textAlign: 'center' },
@@ -223,37 +279,8 @@ const styles = StyleSheet.create({
   cardTitle: { fontFamily: fontFamily.displaySemiBold, fontSize: 22, color: colors.text, lineHeight: 28 },
   cardBody: { fontFamily: fontFamily.textRegular, fontSize: 16, color: colors.textDim, lineHeight: 23 },
 
-  question: { fontFamily: fontFamily.displaySemiBold, fontSize: 20, color: colors.text, lineHeight: 26 },
-
-  choice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    padding: spacing[4],
-  },
-  choiceSelected: { borderColor: colors.violet, backgroundColor: 'rgba(108,79,224,0.14)' },
-  choiceCorrect: { borderColor: colors.lime, backgroundColor: 'rgba(232,255,94,0.1)' },
-  choiceWrong: { borderColor: colors.critical, opacity: 0.6 },
-  bullet: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
-  bulletSelected: { borderColor: colors.violet, backgroundColor: colors.violet },
-  bulletCorrect: { borderColor: colors.lime, backgroundColor: colors.lime },
-  choiceText: { flex: 1, fontFamily: fontFamily.textMedium, fontSize: 15, color: colors.textDim },
-  choiceTextSelected: { color: colors.text },
-
-  quizPrompt: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.borderSoft, borderRadius: radii.lg, padding: spacing[4] },
-  quizPromptText: { fontFamily: fontFamily.textMedium, fontSize: 16, color: colors.textDim, lineHeight: 23 },
-  feedback: {
-    marginTop: spacing[4],
-    backgroundColor: 'rgba(232,255,94,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(232,255,94,0.3)',
-    borderRadius: radii.md,
-    padding: spacing[3],
-  },
-  feedbackText: { fontFamily: fontFamily.textMedium, fontSize: 14, color: colors.text, lineHeight: 20 },
+  sourceLink: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing[2] },
+  sourceLinkText: { fontFamily: fontFamily.textSemiBold, fontSize: 13, color: colors.violetSoft, textDecorationLine: 'underline' },
 
   navRow: { flexDirection: 'row', gap: spacing[3], marginTop: 'auto' },
   btnGhost: { borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, paddingVertical: 16, paddingHorizontal: 22, justifyContent: 'center' },

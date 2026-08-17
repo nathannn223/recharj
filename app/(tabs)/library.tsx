@@ -1,29 +1,67 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { BoltIcon, CheckIcon, ChevronRightIcon, LockIcon, SearchIcon } from '@/components/icons/Icon';
+import { BoltIcon, CheckIcon, ChevronRightIcon, LockIcon, SearchIcon, StarIcon } from '@/components/icons/Icon';
 import { chargeGradient, colors, fontFamily, radii, spacing } from '@/constants/theme';
+import { useAuth } from '@/lib/auth';
+import { canAccessCourse, type CourseRow, type SubscriptionTier } from '@/lib/courses';
+import { supabase } from '@/lib/supabase';
 
 const FILTERS = ['Tous', 'Débuter', 'Travail', 'Famille'];
 
-type Course = {
-  id: string;
-  name: string;
-  meta: string;
-  status: 'done' | 'progress' | 'locked';
-  progress?: string;
+const TIER_LABEL: Record<SubscriptionTier, string> = {
+  free: 'Gratuit',
+  intermediate: 'Palier intermédiaire',
+  superior: 'Palier supérieur',
 };
 
-const courses: Course[] = [
-  { id: '1', name: 'Démarrer une conversation', meta: '4 min · Terminé', status: 'done' },
-  { id: '2', name: 'Gérer un silence gênant', meta: '5 min · En cours', status: 'progress', progress: '60%' },
-  { id: '3', name: "Sortir poliment d'une conversation", meta: 'Palier intermédiaire', status: 'locked' },
-  { id: '4', name: 'Récupérer son énergie après un événement', meta: 'Palier intermédiaire', status: 'locked' },
-  { id: '5', name: "Gérer l'anxiété avant un événement", meta: 'Palier intermédiaire', status: 'locked' },
-];
+type ProgressStatus = 'not_started' | 'in_progress' | 'completed';
 
 export default function LibraryScreen() {
+  const { session } = useAuth();
+  const [tier, setTier] = useState<SubscriptionTier>('free');
+  const [courses, setCourses] = useState<CourseRow[]>([]);
+  const [progress, setProgress] = useState<Map<string, ProgressStatus>>(new Map());
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+
+    async function load() {
+      const [{ data: profile }, { data: courseRows }, { data: progressRows }] = await Promise.all([
+        supabase.from('profiles').select('subscription_tier').single(),
+        supabase.from('courses').select('*').order('order_index', { ascending: true }),
+        supabase.from('course_progress').select('course_id, status'),
+      ]);
+      if (cancelled) return;
+      setTier((profile?.subscription_tier as SubscriptionTier) ?? 'free');
+      setCourses((courseRows as CourseRow[]) ?? []);
+      setProgress(new Map((progressRows ?? []).map((p) => [p.course_id as string, p.status as ProgressStatus])));
+      setLoading(false);
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [session]);
+
+  const level1 = courses.filter((c) => c.level === 1);
+  const level2ByParent = new Map(courses.filter((c) => c.level === 2).map((c) => [c.parent_course_id, c]));
+
+  const openCourse = (course: CourseRow) => {
+    if (!canAccessCourse(course, tier)) {
+      router.push('/paywall');
+    } else {
+      router.push(`/course/${course.id}`);
+    }
+  };
+
+  const anyLocked = courses.some((c) => !canAccessCourse(c, tier));
+
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -40,39 +78,96 @@ export default function LibraryScreen() {
           ))}
         </View>
 
-        <View style={{ gap: spacing[3] }}>
-          {courses.map((c) => (
-            <Pressable
-              key={c.id}
-              onPress={() => router.push(c.status === 'locked' ? '/paywall' : `/course/${c.id}`)}
-              style={[styles.libRow, c.status === 'locked' && styles.libRowLocked]}
-            >
-              <View style={styles.libIcon}>
-                {c.status === 'done' && <CheckIcon color={colors.violetSoft} size={18} />}
-                {c.status === 'progress' && <BoltIcon color={colors.violetSoft} size={18} />}
-                {c.status === 'locked' && <LockIcon color={colors.violetSoft} size={18} />}
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.libName}>{c.name}</Text>
-                <Text style={styles.libMeta}>{c.meta}</Text>
-              </View>
-              {c.status === 'done' && <Text style={{ color: colors.lime, fontFamily: fontFamily.textBold, fontSize: 16 }}>✓</Text>}
-              {c.status === 'progress' && <Text style={{ color: colors.coral, fontFamily: fontFamily.textBold, fontSize: 14 }}>{c.progress}</Text>}
-            </Pressable>
-          ))}
-        </View>
+        {loading ? (
+          <ActivityIndicator color={colors.violetSoft} style={{ marginTop: spacing[6] }} />
+        ) : (
+          <View style={{ gap: spacing[3] }}>
+            {level1.map((course) => {
+              const locked = !canAccessCourse(course, tier);
+              const status = progress.get(course.id) ?? 'not_started';
+              const level2 = level2ByParent.get(course.id);
+              const level2Locked = level2 ? !canAccessCourse(level2, tier) : false;
 
-        <Pressable onPress={() => router.push('/paywall')}>
-          <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.upgradeBanner}>
-            <View>
-              <Text style={styles.upgradeTitle}>Débloque les 10 cours</Text>
-              <Text style={styles.upgradeSub}>À partir de ~5€/mois</Text>
-            </View>
-            <ChevronRightIcon color={colors.surfaceScreen} size={20} />
-          </LinearGradient>
-        </Pressable>
+              return (
+                <View key={course.id} style={{ gap: spacing[2] }}>
+                  <CourseRowItem
+                    title={course.title}
+                    meta={locked ? TIER_LABEL[course.required_tier] : status === 'completed' ? 'Terminé' : status === 'in_progress' ? 'En cours' : '5-10 min'}
+                    locked={locked}
+                    status={status}
+                    onPress={() => openCourse(course)}
+                  />
+                  {level2 && (
+                    <View style={styles.level2Row}>
+                      <Pressable
+                        onPress={() => openCourse(level2)}
+                        style={[styles.level2Inner, level2Locked && styles.libRowLocked]}
+                      >
+                        <View style={styles.level2Icon}>
+                          <StarIcon color={colors.lime} size={13} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.level2Name}>{level2.title}</Text>
+                          <Text style={styles.level2Meta}>
+                            {level2Locked ? TIER_LABEL[level2.required_tier] : 'Approfondissement'}
+                          </Text>
+                        </View>
+                        {level2Locked && <LockIcon color={colors.violetSoft} size={14} />}
+                      </Pressable>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        {anyLocked && (
+          <Pressable onPress={() => router.push('/paywall')}>
+            <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.upgradeBanner}>
+              <View>
+                <Text style={styles.upgradeTitle}>Débloque tous les cours</Text>
+                <Text style={styles.upgradeSub}>À partir de ~5€/mois</Text>
+              </View>
+              <ChevronRightIcon color={colors.surfaceScreen} size={20} />
+            </LinearGradient>
+          </Pressable>
+        )}
       </ScrollView>
     </View>
+  );
+}
+
+function CourseRowItem({
+  title,
+  meta,
+  locked,
+  status,
+  onPress,
+}: {
+  title: string;
+  meta: string;
+  locked: boolean;
+  status: ProgressStatus;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable onPress={onPress} style={[styles.libRow, locked && styles.libRowLocked]}>
+      <View style={styles.libIcon}>
+        {locked ? (
+          <LockIcon color={colors.violetSoft} size={18} />
+        ) : status === 'completed' ? (
+          <CheckIcon color={colors.violetSoft} size={18} />
+        ) : (
+          <BoltIcon color={colors.violetSoft} size={18} />
+        )}
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.libName}>{title}</Text>
+        <Text style={styles.libMeta}>{meta}</Text>
+      </View>
+      {!locked && status === 'completed' && <Text style={{ color: colors.lime, fontFamily: fontFamily.textBold, fontSize: 16 }}>✓</Text>}
+    </Pressable>
   );
 }
 
@@ -102,6 +197,21 @@ const styles = StyleSheet.create({
   libIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: colors.surfaceRaised, alignItems: 'center', justifyContent: 'center' },
   libName: { fontFamily: fontFamily.textSemiBold, fontSize: 16, color: colors.text },
   libMeta: { fontFamily: fontFamily.textRegular, fontSize: 13, color: colors.textDim, marginTop: 2 },
+
+  level2Row: { paddingLeft: spacing[6] },
+  level2Inner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: colors.surfaceRaised,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    borderRadius: radii.md,
+    padding: spacing[3],
+  },
+  level2Icon: { width: 28, height: 28, borderRadius: 9, backgroundColor: 'rgba(232,255,94,0.14)', alignItems: 'center', justifyContent: 'center' },
+  level2Name: { fontFamily: fontFamily.textSemiBold, fontSize: 13.5, color: colors.text },
+  level2Meta: { fontFamily: fontFamily.textRegular, fontSize: 11.5, color: colors.textDim, marginTop: 1 },
 
   upgradeBanner: { borderRadius: 18, padding: spacing[4], flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   upgradeTitle: { fontFamily: fontFamily.textBold, fontSize: 16, color: colors.surfaceScreen },
