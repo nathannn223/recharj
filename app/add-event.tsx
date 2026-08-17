@@ -1,6 +1,5 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
 import { useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -8,6 +7,7 @@ import { CalendarIcon, CloseIcon } from '@/components/icons/Icon';
 import { chargeGradient, colors, fontFamily, radii, spacing } from '@/constants/theme';
 import { useEvents } from '@/hooks/useEvents';
 import { toDateKey } from '@/lib/battery';
+import { safeBack } from '@/lib/navigation';
 
 const EVENT_TYPES = ['Repas de famille', 'Travail', 'Soirée entre amis', 'Rendez-vous', 'Autre'];
 
@@ -37,7 +37,7 @@ export default function AddEventScreen() {
     if (submitError) {
       setError(submitError);
     } else {
-      router.back();
+      safeBack();
     }
   };
 
@@ -46,7 +46,7 @@ export default function AddEventScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.row}>
           <Text style={styles.h1}>Nouvel événement</Text>
-          <Pressable onPress={() => router.back()} hitSlop={10}>
+          <Pressable onPress={() => safeBack()} hitSlop={10}>
             <CloseIcon color={colors.textDim} size={26} />
           </Pressable>
         </View>

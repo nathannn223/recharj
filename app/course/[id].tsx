@@ -15,6 +15,7 @@ import { BoltIcon, ChevronLeftIcon } from '@/components/icons/Icon';
 import { chargeGradient, colors, fontFamily, radii, spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { canAccessCourse, personalizeCardOrder, type CourseRow, type SourceRow } from '@/lib/courses';
+import { safeBack } from '@/lib/navigation';
 import { supabase } from '@/lib/supabase';
 
 const STEP_COUNT = 4; // hook, diagnostic, cards, exercise
@@ -107,7 +108,7 @@ export default function CourseScreen() {
     } else if (step > 0) {
       setStep((s) => s - 1);
     } else {
-      router.back();
+      safeBack();
     }
   };
 
@@ -148,7 +149,7 @@ export default function CourseScreen() {
     return (
       <View style={styles.screen}>
         <View style={[styles.content, styles.centered, { flex: 1 }]}>
-          <CourseComplete onRate={rateCourse} onDone={() => router.back()} />
+          <CourseComplete onRate={rateCourse} onDone={() => safeBack()} />
         </View>
       </View>
     );

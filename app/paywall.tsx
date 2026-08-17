@@ -1,9 +1,9 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { CheckIcon, CloseIcon } from '@/components/icons/Icon';
 import { chargeGradient, colors, fontFamily, radii, spacing } from '@/constants/theme';
+import { safeBack } from '@/lib/navigation';
 
 type Tier = {
   id: 'free' | 'intermediate' | 'superior';
@@ -41,7 +41,7 @@ export default function PaywallScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.row}>
           <Text style={styles.h1}>Choisis ton palier</Text>
-          <Pressable onPress={() => router.back()} hitSlop={10}>
+          <Pressable onPress={() => safeBack()} hitSlop={10}>
             <CloseIcon color={colors.textDim} size={26} />
           </Pressable>
         </View>
@@ -69,7 +69,7 @@ export default function PaywallScreen() {
         </View>
 
         <View style={{ gap: spacing[3], marginTop: 'auto' }}>
-          <Pressable onPress={() => router.back()}>
+          <Pressable onPress={() => safeBack()}>
             <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.submitBtn}>
               <Text style={styles.submitText}>Continuer avec Intermédiaire</Text>
             </LinearGradient>
