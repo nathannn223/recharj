@@ -2,51 +2,55 @@ import { Link } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { PlusIcon } from '@/components/icons/Icon';
-import { colors, fontFamily, radii, spacing } from '@/constants/theme';
+import { colors, difficultyColor, fontFamily, radii, spacing } from '@/constants/theme';
+import { useEvents } from '@/hooks/useEvents';
+import { levelBand, projectBattery, startOfToday, toDateKey, type ProjectedDay } from '@/lib/battery';
+import { relativeDayLabel } from '@/lib/dates';
 
 const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
-type Day = { day: number; today?: boolean; dot?: string; bar?: string };
+const BAND_COLOR = {
+  high: colors.lime,
+  mid: colors.violetSoft,
+  low: colors.coral,
+} as const;
 
-const days: Day[] = [
-  { day: 3 }, { day: 4 }, { day: 5 }, { day: 6 }, { day: 7 }, { day: 8 }, { day: 9 },
-  { day: 10 }, { day: 11 }, { day: 12 }, { day: 13 }, { day: 14 }, { day: 15 }, { day: 16 },
-  { day: 17, today: true },
-  { day: 18 },
-  { day: 19, dot: colors.coral, bar: colors.coral },
-  { day: 20, bar: 'rgba(255,122,107,0.35)' },
-  { day: 21, dot: colors.violetSoft, bar: colors.violetSoft },
-  { day: 22, bar: 'rgba(139,114,238,0.35)' },
-  { day: 23 },
-  { day: 24 }, { day: 25 },
-  { day: 26, dot: colors.coral, bar: colors.coral },
-  { day: 27, bar: 'rgba(255,122,107,0.35)' },
-  { day: 28 }, { day: 29 }, { day: 30 },
-];
+function monthGrid(year: number, month: number): (Date | null)[][] {
+  const firstOfMonth = new Date(year, month, 1);
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstWeekday = (firstOfMonth.getDay() + 6) % 7; // Monday-first index
 
-// Chunk into weeks of 7 so each row can be laid out as its own flex row —
-// mixing flexWrap + percentage widths + gap causes RN Web to overflow the
-// 7th column onto the next line, which misaligns every date.
-const weeks: (Day | null)[][] = [];
-for (let i = 0; i < days.length; i += 7) {
-  const week: (Day | null)[] = days.slice(i, i + 7);
-  while (week.length < 7) week.push(null); // keep the last row aligned under L M M J V S D
-  weeks.push(week);
+  const cells: (Date | null)[] = new Array(firstWeekday).fill(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d));
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const weeks: (Date | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+  return weeks;
 }
 
-const events = [
-  { id: '1', name: 'Dîner de famille', when: 'Mer. 19 août', difficulty: 7, color: colors.coral },
-  { id: '2', name: 'Pot de départ collègue', when: 'Ven. 21 août', difficulty: 4, color: colors.violet },
-  { id: '3', name: "Anniversaire d'un ami", when: 'Mer. 26 août', difficulty: 6, color: colors.coral },
-];
-
 export default function CalendarScreen() {
+  const { events, loading } = useEvents();
+
+  const now = startOfToday();
+  const todayKey = toDateKey(now);
+  const weeks = monthGrid(now.getFullYear(), now.getMonth());
+  const monthTitle = now.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+
+  // Project far enough to cover every future day still visible in this month's grid.
+  const lastCell = weeks[weeks.length - 1].filter(Boolean).pop() as Date | undefined;
+  const horizonDays = lastCell ? Math.max(1, Math.round((lastCell.getTime() - now.getTime()) / 86400000) + 1) : 1;
+  const projection = projectBattery(events, horizonDays, now);
+  const levelByDate = new Map<string, ProjectedDay>(projection.map((p) => [p.date, p]));
+
+  const upcomingEvents = events.filter((e) => e.eventDate >= todayKey).slice(0, 8);
+
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.row}>
           <View>
-            <Text style={styles.sub}>Août 2026</Text>
+            <Text style={styles.sub}>{monthTitle.charAt(0).toUpperCase() + monthTitle.slice(1)}</Text>
             <Text style={styles.h1}>Calendrier</Text>
           </View>
           <Link href="/add-event" asChild>
@@ -65,18 +69,24 @@ export default function CalendarScreen() {
           <View style={styles.grid}>
             {weeks.map((week, wi) => (
               <View key={wi} style={styles.gridRow}>
-                {week.map((d, i) =>
-                  d ? (
-                    <View key={i} style={[styles.cell, d.today && styles.cellToday]}>
-                      <Text style={[styles.cellText, d.today && styles.cellTextToday]}>{d.day}</Text>
-                      {d.dot ? <View style={[styles.dot, { backgroundColor: d.dot }]} /> : null}
-                      {d.bar ? <View style={[styles.bar, { backgroundColor: d.bar }]} /> : null}
-                      {!d.dot && !d.today ? <View style={[styles.bar, { backgroundColor: 'rgba(232,255,94,0.35)' }]} /> : null}
+                {week.map((date, i) => {
+                  if (!date) return <View key={i} style={styles.cellEmpty} />;
+                  const key = toDateKey(date);
+                  const isToday = key === todayKey;
+                  const isPast = key < todayKey;
+                  const projected = levelByDate.get(key);
+                  const dayEvents = projected?.events ?? [];
+                  const primaryEvent = dayEvents[0];
+                  return (
+                    <View key={i} style={[styles.cell, isToday && styles.cellToday]}>
+                      <Text style={[styles.cellText, isToday && styles.cellTextToday]}>{date.getDate()}</Text>
+                      {primaryEvent && <View style={[styles.dot, { backgroundColor: difficultyColor(primaryEvent.difficulty) }]} />}
+                      {!isToday && !isPast && projected && (
+                        <View style={[styles.bar, { backgroundColor: BAND_COLOR[levelBand(projected.level)] }]} />
+                      )}
                     </View>
-                  ) : (
-                    <View key={i} style={styles.cellEmpty} />
-                  )
-                )}
+                  );
+                })}
               </View>
             ))}
           </View>
@@ -84,6 +94,10 @@ export default function CalendarScreen() {
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: colors.lime }]} />
               <Text style={styles.legendText}>Bonne énergie</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: colors.violetSoft }]} />
+              <Text style={styles.legendText}>Modéré</Text>
             </View>
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: colors.coral }]} />
@@ -94,15 +108,18 @@ export default function CalendarScreen() {
 
         <View>
           <Text style={styles.sectionLabel}>Prochains événements</Text>
+          {!loading && upcomingEvents.length === 0 && (
+            <Text style={styles.emptyText}>Aucun événement à venir pour l'instant.</Text>
+          )}
           <View style={{ gap: spacing[3] }}>
-            {events.map((ev) => (
+            {upcomingEvents.map((ev) => (
               <View key={ev.id} style={styles.eventRow}>
-                <View style={[styles.eventDot, { backgroundColor: ev.color }]} />
+                <View style={[styles.eventDot, { backgroundColor: difficultyColor(ev.difficulty) }]} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.eventName}>{ev.name}</Text>
-                  <Text style={styles.eventWhen}>{ev.when}</Text>
+                  <Text style={styles.eventName}>{ev.type}</Text>
+                  <Text style={styles.eventWhen}>{relativeDayLabel(ev.eventDate)}</Text>
                 </View>
-                <Text style={[styles.diffPill, { color: ev.color }]}>{ev.difficulty}/10</Text>
+                <Text style={[styles.diffPill, { color: difficultyColor(ev.difficulty) }]}>{ev.difficulty}/10</Text>
               </View>
             ))}
           </View>
@@ -152,12 +169,13 @@ const styles = StyleSheet.create({
   dot: { position: 'absolute', top: 6, right: 6, width: 5, height: 5, borderRadius: 3 },
   bar: { position: 'absolute', left: 4, right: 4, bottom: 4, height: 4, borderRadius: 2 },
 
-  legend: { flexDirection: 'row', gap: 18, marginTop: 10 },
+  legend: { flexDirection: 'row', gap: 18, marginTop: 10, flexWrap: 'wrap' },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDot: { width: 9, height: 9, borderRadius: 4.5 },
   legendText: { fontFamily: fontFamily.textRegular, fontSize: 13, color: colors.textDim },
 
   sectionLabel: { fontFamily: fontFamily.textBold, fontSize: 13, color: colors.textFaint, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 },
+  emptyText: { fontFamily: fontFamily.textRegular, fontSize: 14, color: colors.textFaint, marginBottom: spacing[2] },
   eventRow: {
     flexDirection: 'row',
     alignItems: 'center',

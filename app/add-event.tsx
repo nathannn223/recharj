@@ -1,16 +1,45 @@
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { CalendarIcon, CloseIcon } from '@/components/icons/Icon';
 import { chargeGradient, colors, fontFamily, radii, spacing } from '@/constants/theme';
+import { useEvents } from '@/hooks/useEvents';
+import { toDateKey } from '@/lib/battery';
 
 const EVENT_TYPES = ['Repas de famille', 'Travail', 'Soirée entre amis', 'Rendez-vous', 'Autre'];
 
+function formatFrenchDate(date: Date): string {
+  const formatted = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+}
+
 export default function AddEventScreen() {
+  const { addEvent } = useEvents();
   const [selectedType, setSelectedType] = useState(EVENT_TYPES[0]);
+  const [date, setDate] = useState(new Date());
+  const [showPicker, setShowPicker] = useState(false);
   const [difficulty, setDifficulty] = useState(7);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async () => {
+    setError(null);
+    setSubmitting(true);
+    const { error: submitError } = await addEvent({
+      type: selectedType,
+      eventDate: toDateKey(date),
+      difficulty,
+    });
+    setSubmitting(false);
+    if (submitError) {
+      setError(submitError);
+    } else {
+      router.back();
+    }
+  };
 
   return (
     <View style={styles.screen}>
@@ -38,10 +67,22 @@ export default function AddEventScreen() {
 
         <View>
           <Text style={styles.sectionLabel}>Date</Text>
-          <View style={styles.field}>
-            <Text style={styles.fieldText}>Mardi 19 août</Text>
+          <Pressable style={styles.field} onPress={() => setShowPicker((v) => !v)}>
+            <Text style={styles.fieldText}>{formatFrenchDate(date)}</Text>
             <CalendarIcon color={colors.textDim} size={20} />
-          </View>
+          </Pressable>
+          {showPicker && (
+            <DateTimePicker
+              value={date}
+              mode="date"
+              display="default"
+              minimumDate={new Date()}
+              onChange={(event, selectedDate) => {
+                setShowPicker(Platform.OS === 'ios');
+                if (event.type === 'set' && selectedDate) setDate(selectedDate);
+              }}
+            />
+          )}
         </View>
 
         <View>
@@ -63,14 +104,16 @@ export default function AddEventScreen() {
           <Text style={styles.helper}>On te proposera un cours adapté si le niveau dépasse 6.</Text>
         </View>
 
-        <Pressable onPress={() => router.back()}>
+        {error && <Text style={styles.error}>{error}</Text>}
+
+        <Pressable onPress={submit} disabled={submitting}>
           <LinearGradient
             colors={chargeGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
-            style={styles.submitBtn}
+            style={[styles.submitBtn, submitting && { opacity: 0.6 }]}
           >
-            <Text style={styles.submitText}>Ajouter à mon calendrier</Text>
+            <Text style={styles.submitText}>{submitting ? 'Ajout en cours…' : 'Ajouter à mon calendrier'}</Text>
           </LinearGradient>
         </Pressable>
       </ScrollView>
@@ -112,6 +155,8 @@ const styles = StyleSheet.create({
   sliderFillOff: { backgroundColor: colors.borderSoft },
   sliderLabel: { fontFamily: fontFamily.textMedium, fontSize: 13, color: colors.textFaint },
   helper: { fontFamily: fontFamily.textRegular, fontSize: 14, color: colors.textDim, marginTop: 12, lineHeight: 20 },
+
+  error: { fontFamily: fontFamily.textMedium, fontSize: 13, color: colors.critical },
 
   submitBtn: { borderRadius: 16, paddingVertical: 18, alignItems: 'center' },
   submitText: { fontFamily: fontFamily.textBold, fontSize: 16, color: colors.surfaceScreen },

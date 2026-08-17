@@ -5,28 +5,62 @@ import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Path, Polyline,
 import { BatteryGauge } from '@/components/BatteryGauge';
 import { BoltIcon, ChevronRightIcon, SettingsIcon } from '@/components/icons/Icon';
 import { colors, difficultyColor, fontFamily, radii, spacing } from '@/constants/theme';
+import { useEvents } from '@/hooks/useEvents';
+import { addDays, projectBattery, startOfToday, toDateKey } from '@/lib/battery';
+import { relativeDayLabel } from '@/lib/dates';
 
-const upcomingEvents = [
-  { id: '1', name: 'Dîner de famille', when: 'Dans 2 jours', difficulty: 7 },
-  { id: '2', name: 'Pot de départ collègue', when: 'Dans 4 jours', difficulty: 4 },
-];
+const WEEKDAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S']; // Date#getDay(): 0=dimanche
+
+const CHART_W = 260;
+const CHART_TOP = 8;
+const CHART_BOTTOM = 78;
+
+function levelToY(level: number) {
+  return CHART_TOP + ((100 - level) / 100) * (CHART_BOTTOM - CHART_TOP);
+}
 
 export default function DashboardScreen() {
+  const { events, loading } = useEvents();
+
+  const projection = projectBattery(events, 7);
+  const today = projection[0];
+  const todayLevel = Math.round(today?.level ?? 100);
+
+  const points = projection.map((day, i) => {
+    const x = (i / (projection.length - 1)) * CHART_W;
+    const y = levelToY(day.level);
+    return { x, y };
+  });
+  const linePoints = points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  const areaPath =
+    points.length > 0
+      ? `M${linePoints.split(' ').join(' L')} L${CHART_W},90 L0,90 Z`
+      : '';
+
+  const eventsThisWeek = projection.reduce((sum, d) => sum + d.events.length, 0);
+
+  const now = startOfToday();
+  const upcomingEvents = events
+    .filter((e) => e.eventDate >= toDateKey(now))
+    .slice(0, 3);
+
+  const hasDifficultEvent = upcomingEvents.some((e) => e.difficulty >= 7);
+
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.row}>
           <View>
-            <Text style={styles.sub}>Bonjour Camille</Text>
+            <Text style={styles.sub}>Bonjour</Text>
             <Text style={styles.h1}>Ta semaine</Text>
           </View>
           <SettingsIcon color={colors.textDim} size={24} />
         </View>
 
         <View style={styles.batteryWrap}>
-          <BatteryGauge level={64} size="lg" style={styles.battery} />
+          <BatteryGauge level={todayLevel} size="lg" style={styles.battery} />
           <View style={styles.batteryReadout}>
-            <Text style={styles.batteryPct}>64%</Text>
+            <Text style={styles.batteryPct}>{todayLevel}%</Text>
             <Text style={styles.batteryLbl}>Batterie sociale</Text>
           </View>
         </View>
@@ -34,7 +68,9 @@ export default function DashboardScreen() {
         <View style={styles.card}>
           <View style={styles.row}>
             <Text style={styles.cardHead}>Projection 7 jours</Text>
-            <Text style={[styles.cardHead, { color: colors.coral }]}>2 événements</Text>
+            <Text style={[styles.cardHead, { color: colors.coral }]}>
+              {eventsThisWeek} événement{eventsThisWeek === 1 ? '' : 's'}
+            </Text>
           </View>
           <Svg viewBox="0 0 260 90" width="100%" height={100}>
             <Defs>
@@ -43,26 +79,28 @@ export default function DashboardScreen() {
                 <Stop offset="1" stopColor={colors.violetSoft} stopOpacity={0} />
               </SvgLinearGradient>
             </Defs>
-            <Path
-              d="M0,26 L37,18 L74,54 L111,64 L148,38 L185,23 L222,13 L260,20 L260,90 L0,90 Z"
-              fill="url(#area)"
-            />
+            {areaPath ? <Path d={areaPath} fill="url(#area)" /> : null}
             <Polyline
-              points="0,26 37,18 74,54 111,64 148,38 185,23 222,13 260,20"
+              points={linePoints}
               fill="none"
               stroke={colors.coral}
               strokeWidth={3}
               strokeLinecap="round"
               strokeLinejoin="round"
             />
-            <Circle cx={111} cy={64} r={5} fill={colors.surfaceScreen} stroke={colors.lime} strokeWidth={2.5} />
+            {points[0] && (
+              <Circle cx={points[0].x} cy={points[0].y} r={5} fill={colors.surfaceScreen} stroke={colors.lime} strokeWidth={2.5} />
+            )}
           </Svg>
           <View style={styles.chartDays}>
-            {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, i) => (
-              <Text key={i} style={[styles.chartDay, i === 3 && { color: colors.lime, fontFamily: fontFamily.textBold }]}>
-                {d}
-              </Text>
-            ))}
+            {projection.map((day, i) => {
+              const d = addDays(now, i);
+              return (
+                <Text key={day.date} style={[styles.chartDay, i === 0 && { color: colors.lime, fontFamily: fontFamily.textBold }]}>
+                  {WEEKDAY_LETTERS[d.getDay()]}
+                </Text>
+              );
+            })}
           </View>
         </View>
 
@@ -76,13 +114,16 @@ export default function DashboardScreen() {
               </View>
             </Link>
           </View>
+          {!loading && upcomingEvents.length === 0 && (
+            <Text style={styles.emptyText}>Aucun événement à venir. Ajoute-en un depuis le calendrier.</Text>
+          )}
           <View style={{ gap: spacing[3] }}>
             {upcomingEvents.map((ev) => (
               <View key={ev.id} style={styles.eventRow}>
                 <View style={[styles.eventDot, { backgroundColor: difficultyColor(ev.difficulty) }]} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.eventName}>{ev.name}</Text>
-                  <Text style={styles.eventWhen}>{ev.when}</Text>
+                  <Text style={styles.eventName}>{ev.type}</Text>
+                  <Text style={styles.eventWhen}>{relativeDayLabel(ev.eventDate)}</Text>
                 </View>
                 <Text style={[styles.diffPill, { color: difficultyColor(ev.difficulty) }]}>{ev.difficulty}/10</Text>
               </View>
@@ -90,15 +131,19 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        <View style={styles.recCard}>
-          <View style={styles.recBadge}>
-            <BoltIcon color={colors.surfaceScreen} size={20} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.recTitle}>Repas &amp; réunions de famille</Text>
-            <Text style={styles.recNote}>Recommandé pour ton dîner de mardi</Text>
-          </View>
-        </View>
+        {hasDifficultEvent && (
+          <Link href="/course/2" asChild>
+            <View style={styles.recCard}>
+              <View style={styles.recBadge}>
+                <BoltIcon color={colors.surfaceScreen} size={20} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.recTitle}>Un cours pour t'y préparer</Text>
+                <Text style={styles.recNote}>Un de tes événements est marqué comme exigeant</Text>
+              </View>
+            </View>
+          </Link>
+        )}
       </ScrollView>
     </View>
   );
@@ -133,6 +178,7 @@ const styles = StyleSheet.create({
   seeAll: { marginBottom: 10 },
   seeAllInner: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   seeAllText: { fontFamily: fontFamily.textBold, fontSize: 13, color: colors.textDim },
+  emptyText: { fontFamily: fontFamily.textRegular, fontSize: 14, color: colors.textFaint, marginBottom: spacing[2] },
 
   eventRow: {
     flexDirection: 'row',
