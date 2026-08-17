@@ -7,7 +7,9 @@ type AuthContextValue = {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (email: string, password: string) => Promise<{ error: string | null }>;
+  // `hasSession` is false when Supabase requires email confirmation before
+  // issuing a session — callers use it to show a "check your email" state.
+  signUp: (email: string, password: string) => Promise<{ error: string | null; hasSession: boolean }>;
   signOut: () => Promise<void>;
 };
 
@@ -36,8 +38,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp: AuthContextValue['signUp'] = async (email, password) => {
-    const { error } = await supabase.auth.signUp({ email, password });
-    return { error: error ? error.message : null };
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    return { error: error ? error.message : null, hasSession: !!data.session };
   };
 
   const signOut = async () => {

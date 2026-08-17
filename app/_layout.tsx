@@ -87,15 +87,21 @@ function RootNavigator() {
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Protected guard={!!session && seen === true}>
-        <Stack.Screen name="(tabs)" />
+      {/* Available to any signed-in user regardless of onboarding-seen state,
+          so the redirect from app/onboarding.tsx into a course never races
+          against the seen flag settling. */}
+      <Stack.Protected guard={!!session}>
         <Stack.Screen name="add-event" options={{ presentation: 'modal' }} />
         <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
         <Stack.Screen name="course/[id]" />
         <Stack.Screen name="source/[id]" options={{ presentation: 'modal' }} />
-      </Stack.Protected>
-      <Stack.Protected guard={!!session && seen === false}>
-        <Stack.Screen name="onboarding" />
+
+        <Stack.Protected guard={seen === true}>
+          <Stack.Screen name="(tabs)" />
+        </Stack.Protected>
+        <Stack.Protected guard={seen === false}>
+          <Stack.Screen name="onboarding" />
+        </Stack.Protected>
       </Stack.Protected>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="(auth)" />
