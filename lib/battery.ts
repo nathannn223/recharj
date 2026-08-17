@@ -7,23 +7,23 @@ export type SocialEvent = {
 
 // Recharj's projection model.
 //
-// A day is either a "streak day" (no events, or only events below the
-// épreuve threshold) or an "épreuve day" (an event marked >= EPREUVE_THRESHOLD).
+// Every event falls into one of four difficulty bands, each with a
+// distinct effect on that day:
+//   1-3  negligible — no effect at all, same as no event.
+//   4-5  mild       — doesn't push the level backward, just dampens
+//                     that day's recovery, proportional to difficulty.
+//   6-7  moderate   — does push the level backward, but at a reduced
+//                     rate compared to the high band.
+//   8-10 high       — pushes the level backward at the full rate.
 //
-// - Épreuve day: the battery regresses immediately, proportional to the
-//   difficulty of every épreuve that day (they stack), and the recovery
-//   streak resets to zero.
-// - Streak day: the streak length increases, and the day's recovery is
-//   BASE_RECOVERY * STREAK_MULTIPLIER^(streak-1) — i.e. it compounds the
-//   longer you go without an épreuve. This is what makes a very low
-//   battery take more consecutive good days to reach 100: the first
-//   streak days only recover a little, and the gain accelerates from
-//   there. A mild event that day (present but under the épreuve
-//   threshold) never breaks the streak or pushes the level backward — it
-//   only dampens that day's recovery, in proportion to its own
-//   difficulty, and only if it's actually notable (> NEGLIGIBLE_THRESHOLD).
-//   A near-effortless event (<= NEGLIGIBLE_THRESHOLD, e.g. a difficulty-2
-//   coffee run) is treated the same as no event at all: full recovery.
+// Any day where the level moves backward (moderate or high) resets the
+// recovery streak to zero, since it's no longer a day building toward
+// recovery. A "streak day" (negligible/mild only, or nothing at all) grows
+// the streak, and that day's recovery is
+// BASE_RECOVERY * STREAK_MULTIPLIER^(streak-1) — i.e. it compounds the
+// longer you go without a setback. This is what makes a very low battery
+// take more consecutive good days to reach 100: the first streak days
+// only recover a little, and the gain accelerates from there.
 //
 // There is no live check-in in the MVP, so the model always assumes
 // yesterday was fully charged (100) and simulates forward from there;
@@ -31,9 +31,11 @@ export type SocialEvent = {
 // big battery reads.
 const BASE_RECOVERY = 6;
 const STREAK_MULTIPLIER = 1.5;
-const EPREUVE_THRESHOLD = 8;
+const HIGH_THRESHOLD = 8;
+const MODERATE_THRESHOLD = 6;
 const NEGLIGIBLE_THRESHOLD = 3;
-const DRAIN_PER_DIFFICULTY_POINT = 6;
+const HIGH_DRAIN_PER_POINT = 6;
+const MODERATE_DRAIN_PER_POINT = 3;
 const BASELINE = 100;
 
 // Local-calendar-day key, deliberately not toISOString() (which converts to
@@ -79,11 +81,14 @@ export function projectBattery(events: SocialEvent[], days: number, fromDate: Da
   for (let i = 0; i < days; i++) {
     const date = toDateKey(addDays(fromDate, i));
     const dayEvents = eventsByDay.get(date) ?? [];
-    const epreuves = dayEvents.filter((e) => e.difficulty >= EPREUVE_THRESHOLD);
-    const milds = dayEvents.filter((e) => e.difficulty < EPREUVE_THRESHOLD);
+    const high = dayEvents.filter((e) => e.difficulty >= HIGH_THRESHOLD);
+    const moderate = dayEvents.filter((e) => e.difficulty >= MODERATE_THRESHOLD && e.difficulty < HIGH_THRESHOLD);
+    const milds = dayEvents.filter((e) => e.difficulty < MODERATE_THRESHOLD);
 
-    if (epreuves.length > 0) {
-      const drain = epreuves.reduce((sum, e) => sum + e.difficulty * DRAIN_PER_DIFFICULTY_POINT, 0);
+    if (high.length > 0 || moderate.length > 0) {
+      const drain =
+        high.reduce((sum, e) => sum + e.difficulty * HIGH_DRAIN_PER_POINT, 0) +
+        moderate.reduce((sum, e) => sum + e.difficulty * MODERATE_DRAIN_PER_POINT, 0);
       level = Math.max(0, level - drain);
       streak = 0;
     } else {
