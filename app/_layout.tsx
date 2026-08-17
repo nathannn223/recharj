@@ -87,21 +87,25 @@ function RootNavigator() {
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      {/* Available to any signed-in user regardless of onboarding-seen state,
-          so the redirect from app/onboarding.tsx into a course never races
-          against the seen flag settling. */}
       <Stack.Protected guard={!!session}>
-        <Stack.Screen name="add-event" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="course/[id]" />
-        <Stack.Screen name="source/[id]" options={{ presentation: 'modal' }} />
-
+        {/* Declared first so Expo Router treats one of these as the default
+            route for "/" — otherwise the first Stack.Screen anywhere in this
+            group wins that role, which was silently landing everyone on
+            add-event (a modal with no back history, hence "stuck"). */}
         <Stack.Protected guard={seen === true}>
           <Stack.Screen name="(tabs)" />
         </Stack.Protected>
         <Stack.Protected guard={seen === false}>
           <Stack.Screen name="onboarding" />
         </Stack.Protected>
+
+        {/* Available to any signed-in user regardless of onboarding-seen
+            state, so the redirect from app/onboarding.tsx into a course
+            never races against the seen flag settling. */}
+        <Stack.Screen name="add-event" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="course/[id]" />
+        <Stack.Screen name="source/[id]" options={{ presentation: 'modal' }} />
       </Stack.Protected>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="(auth)" />
