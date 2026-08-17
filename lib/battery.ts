@@ -5,14 +5,30 @@ export type SocialEvent = {
   difficulty: number; // 1-10
 };
 
-// Recharj's projection model: the battery recovers a fixed amount on any
-// day with no events (fully-rested baseline), and each event on a given
-// day drains it proportionally to how difficult the user marked it —
-// several events on the same day stack. There is no live check-in in the
-// MVP, so the model always assumes yesterday was fully charged (100) and
-// simulates forward from there; "today" (day 0) is the first computed
-// value and is what the Dashboard's big battery reads.
-const RECOVERY_PER_DAY = 14;
+// Recharj's projection model.
+//
+// A day is either a "streak day" (no events, or only events below the
+// épreuve threshold) or an "épreuve day" (an event marked >= EPREUVE_THRESHOLD).
+//
+// - Épreuve day: the battery regresses immediately, proportional to the
+//   difficulty of every épreuve that day (they stack), and the recovery
+//   streak resets to zero.
+// - Streak day: the streak length increases, and the day's recovery is
+//   BASE_RECOVERY * STREAK_MULTIPLIER^(streak-1) — i.e. it compounds the
+//   longer you go without an épreuve. This is what makes a very low
+//   battery take more consecutive good days to reach 100: the first
+//   streak days only recover a little, and the gain accelerates from
+//   there. A mild event that day (present but under the threshold) doesn't
+//   break the streak or push the level backward, it just dampens that
+//   day's recovery in proportion to its own difficulty.
+//
+// There is no live check-in in the MVP, so the model always assumes
+// yesterday was fully charged (100) and simulates forward from there;
+// "today" (day 0) is the first computed value and is what the Dashboard's
+// big battery reads.
+const BASE_RECOVERY = 6;
+const STREAK_MULTIPLIER = 1.5;
+const EPREUVE_THRESHOLD = 8;
 const DRAIN_PER_DIFFICULTY_POINT = 6;
 const BASELINE = 100;
 
@@ -55,11 +71,25 @@ export function projectBattery(events: SocialEvent[], days: number, fromDate: Da
 
   const result: ProjectedDay[] = [];
   let level = BASELINE;
+  let streak = 0;
   for (let i = 0; i < days; i++) {
     const date = toDateKey(addDays(fromDate, i));
     const dayEvents = eventsByDay.get(date) ?? [];
-    const drain = dayEvents.reduce((sum, e) => sum + e.difficulty * DRAIN_PER_DIFFICULTY_POINT, 0);
-    level = Math.max(0, Math.min(100, level + RECOVERY_PER_DAY - drain));
+    const epreuves = dayEvents.filter((e) => e.difficulty >= EPREUVE_THRESHOLD);
+    const milds = dayEvents.filter((e) => e.difficulty < EPREUVE_THRESHOLD);
+
+    if (epreuves.length > 0) {
+      const drain = epreuves.reduce((sum, e) => sum + e.difficulty * DRAIN_PER_DIFFICULTY_POINT, 0);
+      level = Math.max(0, level - drain);
+      streak = 0;
+    } else {
+      streak += 1;
+      const scheduledRecovery = BASE_RECOVERY * STREAK_MULTIPLIER ** (streak - 1);
+      const worstMild = milds.length > 0 ? Math.max(...milds.map((e) => e.difficulty)) : 0;
+      const dampening = 1 - worstMild / 10; // a mild event slows the day's gain, never reverses it
+      level = Math.min(100, level + scheduledRecovery * dampening);
+    }
+
     result.push({ date, level, events: dayEvents });
   }
   return result;

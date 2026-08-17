@@ -27,7 +27,16 @@ interface CourseCard {
   advice: string;           // le conseil seul, rien d'autre
   sourceId: string;         // référence vers Source
 }
+
+interface Course {
+  id: string;
+  title: string;
+  level: 1 | 2;              // niveau 2 = approfondissement, réservé au palier "Supérieur"
+  parentCourseId?: string;   // si level === 2, référence vers le cours de niveau 1 qu'il approfondit
+  requiredTier: 'gratuit' | 'intermediaire' | 'superieur';
+}
 ```
+Règle de tier : tout cours `level: 2` a systématiquement `requiredTier: 'superieur'`, quel que soit le tier du cours niveau 1 parent.
 Quand `isScientific: false`, la page détail doit afficher clairement une mention du type *"Recommandation d'expert reconnu — ne s'appuie pas sur une étude académique publiée."*
 
 ### Règle de sourcing
@@ -53,6 +62,19 @@ Tableau récapitulatif :
 | 8 | Se faire des amis à l'âge adulte | Curseur | Réponse libre + planification |
 | 9 | Gérer les petites conversations au travail | Curseur | Prédis-puis-compare |
 | 10 | Poser une limite sociale sans culpabiliser | Curseur | Prédis-puis-compare (méthode DESC) |
+| 11 | Rejoindre un groupe déjà en pleine conversation | Curseur | QCM nuancé |
+| 12 | Écouter pour de vrai | Curseur | Prédis-puis-compare |
+| 13 | Le rejet social, ça fait vraiment mal | Curseur | Réponse guidée |
+| 14 | Réseauter sans se forcer | Curseur | Réponse libre + planification |
+| 15 | Faire un compliment sincère sans que ce soit bizarre | Curseur | Prédis-puis-compare |
+
+Modules niveau 2 (réservés au palier Supérieur) :
+
+| Rattaché à | Titre du niveau 2 | Diagnostic | Exercice |
+|---|---|---|---|
+| Cours 1 | Faire monter une conversation | Curseur | Prédis-puis-compare |
+| Cours 5 | Après l'événement : arrêter les ruminations | Curseur | Réponse guidée (faits vs interprétation) |
+| Cours 8 | Entretenir une amitié dans la durée | Curseur | Réponse libre + planification |
 
 ### Durée
 Chaque cours vise **5 à 10 minutes** : ~30-45s d'accroche, ~1 min de diagnostic, ~4 min de cartes (5-6 cartes), ~2-3 min d'exercice.
@@ -317,8 +339,211 @@ c) Ignorer complètement et changer de visage
 
 ---
 
+## Modules niveau 2 (palier Supérieur exclusivement)
+
+### Niveau 2 du Cours 1 — Faire monter une conversation
+
+**Accroche.** La conversation dure depuis dix minutes. Météo, boulot, week-end. Tu sens qu'elle pourrait aller plus loin, mais une question un peu plus personnelle te semble risquée — comme si tu allais mettre l'autre mal à l'aise. Une étude sur plus de 1800 personnes a testé exactement cette peur, en confrontant des inconnus à des questions bien plus profondes que la météo.
+
+**Diagnostic (curseur).** *"À quel point as-tu peur qu'une question plus personnelle mette l'autre mal à l'aise ?"* (1 Pas du tout → 10 Énormément).
+
+**Cartes**
+1. *Ton estimation est fausse, dans le bon sens.* Dans 12 expériences menées sur plus de 1800 participants, les conversations profondes entre inconnus se sont systématiquement révélées moins gênantes, plus connectantes et plus agréables que ce que les deux parties avaient prédit avant de commencer.
+   → Source : Kardas, Kumar & Epley (2022)
+2. *Monte d'un cran, pas de dix.* Pas besoin de sauter directement à une question intime — une question légèrement plus personnelle que la moyenne ("Qu'est-ce qui te motive dans ce que tu fais ?" plutôt que "Tu bosses où ?") suffit à faire basculer une conversation vers plus de connexion.
+   → Source : Kardas, Kumar & Epley (2022)
+3. *Partage à la même profondeur.* Dans l'étude, les échanges les plus connectants étaient réciproques : après avoir posé une question plus personnelle, partage aussi quelque chose d'un niveau de profondeur comparable sur toi-même.
+   → Source : Kardas, Kumar & Epley (2022)
+4. *Récap.* Tu surestimes largement la gêne que provoque une question plus personnelle ; monte d'un cran progressivement ; partage à la même profondeur que ce que tu demandes.
+
+**Exercice (prédis-puis-compare).** *"Pense à une personne que tu connais un peu (collègue, connaissance) avec qui tu aimerais approfondir la conversation. Quelle question, légèrement plus personnelle que d'habitude, pourrais-tu lui poser ?"* (réponse libre) → révélation d'exemples de questions "d'un cran plus profondes" → comparaison.
+
+**Sources détaillées**
+- Kardas, M., Kumar, A., & Epley, N. (2022). *Overly Shallow?: Miscalibrated Expectations Create a Barrier to Deeper Conversation.* Journal of Personality and Social Psychology, 122(3). — https://pubmed.ncbi.nlm.nih.gov/34591541/
+
+---
+
+### Niveau 2 du Cours 5 — Après l'événement : arrêter les ruminations
+
+**Accroche.** L'événement est terminé depuis des heures, mais toi, tu es encore dedans — tu repasses en boucle cette phrase que tu as mal formulée, ce silence bizarre, ce regard que tu as peut-être mal interprété. Ce phénomène a un nom précis en recherche clinique, et il a été mesuré : plus tu rumines, plus ton souvenir de l'événement se déforme dans le sens négatif.
+
+**Diagnostic (curseur).** *"Après un événement social, à quel point repasses-tu mentalement ce qui s'est dit ou ce que tu aurais dû dire ?"* (1 Pas du tout → 10 En boucle pendant des heures).
+
+**Cartes**
+1. *Ça s'appelle le "post-event processing".* C'est un phénomène mesuré et corrélé à l'anxiété sociale : des souvenirs récurrents et intrusifs de l'événement, qui interfèrent avec la concentration et poussent à éviter des situations similaires.
+   → Source : Rachman, Gruter-Andrew & Shafran (2000)
+2. *Le souvenir se déforme pendant que tu rumines.* Ce n'est pas un rejeu neutre : plus tu repasses l'événement, plus ton souvenir se biaise vers les détails négatifs, même si l'événement s'est objectivement bien passé. La rumination fabrique le souvenir qu'elle prétend analyser.
+   → Source : Rachman, Gruter-Andrew & Shafran (2000)
+3. *Fixe une fenêtre, pas un accès illimité.* Autorise-toi 10 minutes, à un moment précis de la journée, pour repenser à l'événement — puis stoppe consciemment en dehors de cette fenêtre. Contenir la rumination dans un créneau limité réduit son emprise sur le reste de la journée.
+   → Source : recommandation pratique issue des techniques de gestion des ruminations en TCC (non issue d'une étude isolée)
+4. *Sépare les faits de l'histoire que tu te racontes.* "J'ai dit un truc bizarre" est une interprétation, pas un fait. Écris ce qui s'est objectivement passé, puis à côté ce que tu en déduis sur toi — les deux colonnes sont rarement aussi liées que ta rumination le laisse penser.
+   → Source : Clark & Wells (1995)
+5. *Récap.* Le post-event processing est un phénomène identifié et mesurable ; la rumination déforme le souvenir plus qu'elle ne l'analyse ; limite-la à une fenêtre de temps ; sépare les faits des interprétations.
+
+**Exercice (réponse guidée, faits vs interprétation).** *"Pense à un événement social récent qui te trotte encore en tête. Colonne 1 : ce qui s'est objectivement passé, factuellement. Colonne 2 : ce que tu en déduis sur toi."* → l'appli met les deux colonnes côte à côte pour que l'écart soit visible.
+
+**Sources détaillées**
+- Rachman, S., Gruter-Andrew, J., & Shafran, R. (2000). *Post-Event Processing in Social Anxiety.* Behaviour Research and Therapy, 38(6), 611-617. — https://pubmed.ncbi.nlm.nih.gov/10846809/
+- Clark, D. M., & Wells, A. (1995). *A Cognitive Model of Social Phobia.* (déjà citée au cours 5, niveau 1) — https://www.psychologytools.com/resource/cognitive-behavioral-model-of-social-phobia-clark-wells-1995
+
+---
+
+### Niveau 2 du Cours 8 — Entretenir une amitié dans la durée
+
+**Accroche.** Tu as mis des dizaines d'heures à devenir vraiment proche de quelqu'un. Et puis la vie prend le dessus, les semaines passent sans nouvelles, et le lien s'effiloche sans qu'aucune dispute n'ait eu lieu. Une étude longitudinale sur 18 mois a suivi exactement ce phénomène — et la bonne nouvelle, c'est qu'il obéit à des règles précises, pas au hasard.
+
+**Diagnostic (curseur).** *"Combien de tes amis proches as-tu contactés ce mois-ci ?"* (échelle 0 → tous).
+
+**Cartes**
+1. *L'amitié se dégrade sans contact, contrairement à la famille.* Une étude longitudinale sur 18 mois montre que les liens familiaux résistent au manque de contact, mais que les amitiés, elles, se dégradent mesurablement sans entretien actif régulier.
+   → Source : Roberts & Dunbar (2015)
+2. *Le rythme dépend de la proximité du cercle.* Plus une amitié est proche, plus elle demande de fréquence : contact quasi quotidien pour le cercle le plus intime, hebdomadaire pour les amis proches, mensuel pour les cercles plus larges.
+   → Source : Roberts & Dunbar (2015)
+3. *Pas le même levier pour tout le monde.* La même étude observe une différence : le déclin est surtout évité par la fréquence des échanges (se parler) d'un côté, et par les activités partagées de l'autre — identifie lequel fonctionne le mieux avec chaque ami plutôt que d'appliquer la même recette à tous.
+   → Source : Roberts & Dunbar (2015)
+4. *Programme-le, ne le laisse pas au hasard.* Puisque la dégradation est passive (elle arrive sans qu'il y ait de conflit), la seule protection efficace est active : planifier le contact à l'avance plutôt que de compter sur l'envie spontanée.
+   → Source : Roberts & Dunbar (2015)
+5. *Récap.* Une amitié demande un entretien actif, contrairement à la famille ; adapte la fréquence à la proximité du lien ; identifie si c'est la conversation ou l'activité partagée qui compte le plus pour chaque ami ; planifie plutôt que d'attendre l'envie.
+
+**Exercice (réponse libre + planification).** *"Liste 3 amis proches. Pour chacun, quand les as-tu contactés pour la dernière fois ?"* → l'appli propose de programmer le prochain contact comme événement récurrent (lien direct avec la fonctionnalité batterie sociale).
+
+**Sources détaillées**
+- Roberts, S. G. B., & Dunbar, R. I. M. (2015). *Managing Relationship Decay: Network, Gender, and Contextual Effects.* Human Nature, 26, 426-450. — https://link.springer.com/article/10.1007/s12110-015-9242-7
+
+---
+
+## Nouveaux cours niveau 1
+
+## Cours 11 — Rejoindre un groupe déjà en pleine conversation
+
+**Accroche.** Tu arrives à une soirée. Un petit groupe discute déjà en cercle, animé, personne ne te voit. Tu restes planté à côté, sans savoir comment t'insérer sans avoir l'air d'interrompre. Ce moment précis a été étudié en détail par les chercheurs qui analysent comment les groupes s'organisent physiquement dans l'espace pendant une conversation.
+
+**Diagnostic (curseur).** *"À quel point te sens-tu à l'aise pour rejoindre un groupe déjà en pleine conversation ?"* (1 Terrifié → 10 Aucun souci).
+
+**Cartes**
+1. *Le cercle "ouvert" est une vraie invitation.* Les groupes en conversation forment naturellement des arrangements spatiaux étudiés en sciences sociales : un cercle légèrement ouvert (pas complètement fermé) est une configuration reconnue comme une invitation implicite à s'approcher — ce n'est pas un hasard si certains groupes te "laissent de la place" et d'autres non.
+   → Source : Kendon (1990)
+2. *Positionne-toi avant de parler.* Approche-toi de l'ouverture du cercle, établis un contact visuel bref, hoche légèrement la tête — laisse le groupe t'intégrer visuellement avant de dire quoi que ce soit. Le positionnement précède la prise de parole.
+   → Source : Kendon (1990)
+3. *Écoute 10 secondes avant d'intervenir.* Capter le sujet en cours évite l'entrée "à l'aveugle" qui casse la dynamique — une fois le sujet identifié, ton entrée paraît naturelle plutôt que plaquée.
+   → Source : recommandation pratique (non scientifique)
+4. *Entre avec une question, pas une déclaration.* Une question ouverte liée à ce qui vient d'être dit ("Attends, comment vous en êtes arrivés là ?") s'intègre plus naturellement qu'une remarque sans lien, et donne immédiatement la parole à quelqu'un du groupe.
+   → Source : Huang, Yeomans, Brooks, Minson & Gino (2017) — déjà citée au cours 1
+5. *Récap.* Repère un cercle ouvert plutôt que fermé, positionne-toi avant de parler, écoute quelques secondes pour capter le sujet, entre avec une question plutôt qu'une déclaration.
+
+**Exercice (QCM nuancé).** *Situation : tu repères un groupe de 4 personnes en cercle légèrement ouvert lors d'un événement. Laquelle de ces approches est la plus efficace ?*
+a) S'approcher de l'ouverture, écouter quelques secondes, puis poser une question liée au sujet en cours
+b) S'approcher et se présenter directement à tout le groupe avant qu'ils aient fini leur phrase
+c) Attendre un silence total du groupe avant d'oser s'approcher
+→ Feedback : (a) respecte à la fois le positionnement spatial et le fil de la conversation ; (b) casse la dynamique en cours ; (c) risque de ne jamais arriver, un silence total étant rare dans un groupe animé.
+
+**Sources détaillées**
+- Kendon, A. (1990). *Conducting Interaction: Patterns of Behavior in Focused Encounters.* Cambridge University Press. — https://www.researchgate.net/figure/Kendons-F-formation-system_fig1_261181296
+- Huang, K., Yeomans, M., Brooks, A. W., Minson, J., & Gino, F. (2017). *It Doesn't Hurt to Ask.* (déjà citée au cours 1) — https://www.hbs.edu/ris/Publication%20Files/17-125_e5dbd393-51e1-46b5-9e18-1b6b9d2a2d43.pdf
+
+---
+
+## Cours 12 — Écouter pour de vrai
+
+**Accroche.** Un ami te raconte sa journée. Tu hoches la tête, mais une partie de toi est déjà en train de préparer ce que tu vas répondre. Tu n'écoutes qu'à moitié — et lui aussi, probablement, le sent. Plusieurs études en laboratoire ont mesuré ce qui change, chez la personne qui parle, quand elle se sent vraiment écoutée.
+
+**Diagnostic (curseur).** *"À quel point penses-tu déjà à ta réponse pendant que l'autre parle ?"* (1 Jamais → 10 Presque toujours).
+
+**Cartes**
+1. *Écouter change l'autre, pas juste toi.* Une écoute de haute qualité — empathique, attentive, non-jugeante — réduit mesurablement l'anxiété sociale et la défensivité de la personne qui parle, à travers plusieurs expériences contrôlées en laboratoire.
+   → Source : Itzchakov, Kluger & Castro (2017)
+2. *Les 3 ingrédients d'une bonne écoute.* Les chercheurs identifient trois composantes déterminantes : l'empathie, l'attention réelle, et l'absence de jugement. Retirer un seul des trois suffit à réduire l'effet.
+   → Source : Itzchakov, Kluger & Castro (2017)
+3. *Ça te rend aussi plus appréciable, toi.* Les personnes qui se sentent bien écoutées rapportent un sentiment de connexion plus fort envers leur interlocuteur — bien écouter n'est pas un sacrifice social, c'est aussi bénéfique pour toi.
+   → Source : Itzchakov, Kluger & Castro (2017)
+4. *La technique du reflet.* Avant de répondre ou de donner ton avis, reformule brièvement ce que tu viens d'entendre ("si je comprends bien, tu es surtout frustré par...") — ça force une écoute réelle et montre à l'autre qu'il a été entendu.
+   → Source : recommandation pratique (non scientifique)
+5. *Récap.* Une écoute de qualité réduit l'anxiété de celui qui parle, repose sur 3 ingrédients précis (empathie, attention, non-jugement), et te rend toi-même plus appréciable.
+
+**Exercice (prédis-puis-compare).** *"Un ami te partage un problème. Qu'est-ce que tu dirais juste après qu'il ait fini de parler ?"* (réponse libre) → révélation d'un exemple utilisant la technique du reflet → comparaison.
+
+**Sources détaillées**
+- Itzchakov, G., Kluger, A. N., & Castro, D. R. (2017). *I Am Aware of My Inconsistencies but Can Tolerate Them: The Effect of High-Quality Listening on Speakers' Attitude Ambivalence.* Personality and Social Psychology Bulletin. — https://journals.sagepub.com/doi/10.1177/0146167216675339
+
+---
+
+## Cours 13 — Le rejet social, ça fait vraiment mal
+
+**Accroche.** On t'a ignoré dans une conversation de groupe, ou pire, exclu d'un truc auquel tout le monde a été invité sauf toi. La blessure te semble disproportionnée par rapport à "juste" un rejet social — comme si tu réagissais trop fort. Une étude en imagerie cérébrale a montré que ta réaction n'a rien d'exagéré : ton cerveau traite littéralement ça comme une douleur physique.
+
+**Diagnostic (curseur).** *"À quel point la peur d'être ignoré ou rejeté t'empêche-t-elle d'aller vers les autres ?"* (1 Pas du tout → 10 Ça me bloque complètement).
+
+**Cartes**
+1. *Ton cerveau ne fait pas la différence.* Une étude en IRMf a montré que l'exclusion sociale active le cortex cingulaire antérieur — la même zone cérébrale impliquée dans la douleur physique — et que cette activation est corrélée à la détresse ressentie.
+   → Source : Eisenberger, Lieberman & Williams (2003)
+2. *Donc ta réaction n'est pas "exagérée".* Puisque c'est une douleur neurologiquement réelle, ressentir une réaction forte face au rejet n'est pas un signe d'hypersensibilité — c'est le fonctionnement normal d'un cerveau humain. Ça enlève une couche de honte inutile ajoutée à la douleur initiale.
+   → Source : Eisenberger, Lieberman & Williams (2003)
+3. *La douleur sociale est un signal, pas une sentence.* Les chercheurs décrivent cette douleur comme une alarme — elle signale une rupture de lien à réparer, pas une preuve que tu ne mérites pas d'appartenir quelque part.
+   → Source : Eisenberger, Lieberman & Williams (2003)
+4. *Reprends contact plutôt que d'éviter.* Éviter systématiquement toute situation où un nouveau rejet pourrait survenir entretient la douleur sur le long terme ; un petit pas de reconnexion, même minime, est plus protecteur que l'évitement complet.
+   → Source : principe d'exposition, cohérent avec Clark & Wells (1995) déjà cité au cours 5
+5. *Récap.* Le rejet active un vrai circuit de douleur cérébrale ; ta réaction n'est pas exagérée ; c'est un signal à traiter, pas une sentence ; reconnecte-toi plutôt que d'éviter.
+
+**Exercice (réponse guidée).** *"Repense à un moment récent où tu t'es senti ignoré ou exclu. Écris la phrase que tu t'es dite sur toi-même à ce moment-là."* → puis : *"Réécris-la en tenant compte du fait que c'est une douleur réelle, pas une preuve que tu as fait quelque chose de mal."*
+
+**Sources détaillées**
+- Eisenberger, N. I., Lieberman, M. D., & Williams, K. D. (2003). *Does Rejection Hurt? An fMRI Study of Social Exclusion.* Science, 302(5643), 290-292. — https://www.science.org/doi/10.1126/science.1089134
+
+---
+
+## Cours 14 — Réseauter sans se forcer
+
+**Accroche.** Un événement professionnel dans deux jours. Rien que d'y penser, tu sens déjà la fatigue : sourire poliment, faire semblant que tout ça sert à quelque chose, échanger des cartes de visite avec des gens que tu ne reverras jamais. Sauf qu'une étude fondatrice en sociologie, restée l'une des plus citées de son domaine, montre exactement le contraire : ce sont ces liens légers qui comptent le plus.
+
+**Diagnostic (curseur).** *"À quel point le réseautage professionnel te semble-t-il artificiel ou inutile ?"* (1 Pas du tout → 10 Complètement).
+
+**Cartes**
+1. *Ce sont les liens faibles qui ouvrent des portes.* Une étude devenue une référence en sociologie a interrogé des centaines de personnes sur la façon dont elles avaient trouvé leur emploi : leurs connaissances éloignées et occasionnelles se sont révélées statistiquement plus utiles que leurs proches pour accéder à de nouvelles opportunités.
+   → Source : Granovetter (1973)
+2. *Pourquoi ça marche : l'info ne se répète pas.* Tes proches connaissent déjà ce que tu sais. Tes connaissances éloignées, elles, évoluent dans des cercles différents — elles t'apportent des informations que ton entourage proche ne peut pas te donner.
+   → Source : Granovetter (1973)
+3. *Vise 1 lien, pas 20.* Puisque la valeur vient des liens légers eux-mêmes, pas de leur nombre ni de leur intensité, l'objectif réaliste d'un événement n'est pas "réseauter avec tout le monde" mais repartir avec une seule connexion légère mais réelle.
+   → Source : recommandation pratique, cohérente avec Granovetter (1973)
+4. *Le suivi compte plus que la soirée.* Un lien faible se maintient avec un minimum de contact périodique (un message tous les quelques mois suffit) — pas besoin d'intensité ni de fréquence pour qu'il reste utile.
+   → Source : recommandation pratique (non scientifique)
+5. *Récap.* Les liens faibles sont statistiquement plus utiles que les liens forts pour les opportunités ; vise une seule connexion réelle par événement plutôt que la quantité ; entretiens-la avec un contact minimal mais régulier.
+
+**Exercice (réponse libre + planification).** *"Choisis une personne rencontrée récemment lors d'un événement pro. Quel message court pourrais-tu lui envoyer cette semaine pour garder le contact ?"* (réponse libre) → exemples de messages de suivi courts et naturels.
+
+**Sources détaillées**
+- Granovetter, M. S. (1973). *The Strength of Weak Ties.* American Journal of Sociology, 78(6), 1360-1380. — https://www.cs.cmu.edu/~jure/pub/papers/granovetter73ties.pdf
+
+---
+
+## Cours 15 — Faire un compliment sincère sans que ce soit bizarre
+
+**Accroche.** Tu penses un vrai compliment à quelqu'un — sa façon de présenter les choses, un choix qu'il a fait, un détail que tu apprécies chez lui. Et tu le gardes pour toi, en imaginant que ça sonnerait faux ou gênant. Neuf expériences menées sur ce réflexe exact montrent que tu te trompes, systématiquement, dans le même sens.
+
+**Diagnostic (curseur).** *"À quel point retiens-tu des compliments sincères par peur que ce soit gênant ?"* (1 Jamais → 10 Presque toujours).
+
+**Cartes**
+1. *Tu sous-estimes l'effet, dans les deux sens.* Sur neuf expériences, les personnes qui faisaient un compliment sous-estimaient systématiquement à quel point il rendrait l'autre heureux, tout en surestimant à quel point ce serait gênant. Les deux erreurs vont dans le même sens : celui qui te retient d'agir.
+   → Source : Zhao & Epley (2021)
+2. *Ça ne s'use pas.* Contrairement à l'intuition, répéter des compliments sincères à la même personne ne les rend pas moins sincères ni moins appréciés à ses yeux — l'effet ne s'épuise pas avec la répétition.
+   → Source : Zhao & Epley (2021/2022)
+3. *Sois précis, pas générique.* Un compliment spécifique ("ta façon d'expliquer ce point était hyper claire") est perçu comme plus sincère et a plus d'impact qu'un compliment vague ("t'es sympa").
+   → Source : recommandation pratique, cohérente avec Zhao & Epley
+4. *Dis-le sur le moment.* Plus tu attends, plus l'occasion se referme et plus ton hésitation grandit — le compliment dit dans l'instant demande moins de courage que celui préparé après coup.
+   → Source : recommandation pratique (non scientifique)
+5. *Récap.* Tu sous-estimes l'impact positif d'un compliment et surestimes sa gêne ; il ne s'use pas avec la répétition ; sois précis plutôt que vague ; dis-le sur le moment.
+
+**Exercice (prédis-puis-compare).** *"Pense à quelqu'un que tu vois régulièrement. Écris un compliment précis et sincère que tu pourrais lui faire cette semaine."* (réponse libre) → exemples de compliments spécifiques → comparaison.
+
+**Sources détaillées**
+- Zhao, X., & Epley, N. (2021). *Insufficiently Complimentary?: Underestimating the Positive Impact of Compliments Creates a Barrier to Expressing Them.* Journal of Personality and Social Psychology. — https://www.researchgate.net/publication/352138466_Insufficiently_Complimentary_Underestimating_the_Positive_Impact_of_Compliments_Creates_a_Barrier_to_Expressing_Them
+
+---
+
 ## Notes pour l'intégration
 - Toutes les URL externes ci-dessus pointent vers l'étude, l'article éditeur, ou la page officielle de l'auteur/l'institution — à vérifier une dernière fois avant mise en ligne (les liens peuvent bouger).
 - Les sources marquées "non scientifique" doivent afficher la mention correspondante sur la page détail in-app (voir schéma `isScientific` plus haut).
 - Le cours 7 a été légèrement recentré (tensions/sujets sensibles plutôt que logistique générale du repas) pour s'appuyer sur une recherche solide plutôt que d'inventer un contenu non sourcé — à valider si ça correspond toujours à l'intention du cours.
 - Le cours 5 introduit une mécanique "avant/après" (comparer la prédiction d'anxiété à la réalité post-événement) qui pourrait justifier une notification de suivi post-événement — à évaluer selon la roadmap notifications (Expo Notifications).
+- Les 3 modules niveau 2 et les 5 nouveaux cours niveau 1 (cours 11 à 15) suivent la même règle de sourcing et le même format que les 10 premiers. Tous les modules niveau 2 ont `requiredTier: 'superieur'` — à confirmer que c'est bien le comportement souhaité même pour un utilisateur qui n'a que le palier "Intermédiaire" (accès cours 1 niveau 1 débloqué, mais pas son niveau 2).
+- Pour le cours 11, le lien externe pointe vers une figure illustrant le système de Kendon plutôt que vers l'ouvrage original (livre de 1990, pas de version numérique librement accessible) — à remplacer par un lien plus direct si vous en trouvez un meilleur avant mise en prod.
+- Pour le cours 15, les sources Zhao & Epley citent deux publications proches (2021 et une version 2022) sur le même phénomène — le lien fourni pointe vers la version la plus citée, à vérifier une dernière fois avant intégration.
