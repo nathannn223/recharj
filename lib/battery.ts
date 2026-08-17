@@ -18,9 +18,12 @@ export type SocialEvent = {
 //   longer you go without an épreuve. This is what makes a very low
 //   battery take more consecutive good days to reach 100: the first
 //   streak days only recover a little, and the gain accelerates from
-//   there. A mild event that day (present but under the threshold) doesn't
-//   break the streak or push the level backward, it just dampens that
-//   day's recovery in proportion to its own difficulty.
+//   there. A mild event that day (present but under the épreuve
+//   threshold) never breaks the streak or pushes the level backward — it
+//   only dampens that day's recovery, in proportion to its own
+//   difficulty, and only if it's actually notable (> NEGLIGIBLE_THRESHOLD).
+//   A near-effortless event (<= NEGLIGIBLE_THRESHOLD, e.g. a difficulty-2
+//   coffee run) is treated the same as no event at all: full recovery.
 //
 // There is no live check-in in the MVP, so the model always assumes
 // yesterday was fully charged (100) and simulates forward from there;
@@ -29,6 +32,7 @@ export type SocialEvent = {
 const BASE_RECOVERY = 6;
 const STREAK_MULTIPLIER = 1.5;
 const EPREUVE_THRESHOLD = 8;
+const NEGLIGIBLE_THRESHOLD = 3;
 const DRAIN_PER_DIFFICULTY_POINT = 6;
 const BASELINE = 100;
 
@@ -85,8 +89,9 @@ export function projectBattery(events: SocialEvent[], days: number, fromDate: Da
     } else {
       streak += 1;
       const scheduledRecovery = BASE_RECOVERY * STREAK_MULTIPLIER ** (streak - 1);
-      const worstMild = milds.length > 0 ? Math.max(...milds.map((e) => e.difficulty)) : 0;
-      const dampening = 1 - worstMild / 10; // a mild event slows the day's gain, never reverses it
+      const notableMilds = milds.filter((e) => e.difficulty > NEGLIGIBLE_THRESHOLD);
+      const worstMild = notableMilds.length > 0 ? Math.max(...notableMilds.map((e) => e.difficulty)) : 0;
+      const dampening = 1 - worstMild / 10; // a notable-but-mild event slows the day's gain, never reverses it
       level = Math.min(100, level + scheduledRecovery * dampening);
     }
 
