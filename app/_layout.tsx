@@ -19,12 +19,9 @@ import {
 } from '@expo-google-fonts/inter';
 
 import { colors } from '@/constants/theme';
+import { AuthProvider, useAuth } from '@/lib/auth';
 
 export { ErrorBoundary } from 'expo-router';
-
-export const unstable_settings = {
-  initialRouteName: '(tabs)',
-};
 
 SplashScreen.preventAutoHideAsync();
 
@@ -42,7 +39,7 @@ const navTheme = {
 };
 
 export default function RootLayout() {
-  const [loaded] = useFonts({
+  const [fontsLoaded] = useFonts({
     SpaceGrotesk_500Medium,
     SpaceGrotesk_600SemiBold,
     SpaceGrotesk_700Bold,
@@ -52,25 +49,44 @@ export default function RootLayout() {
     Inter_700Bold,
   });
 
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
-
-  if (!loaded) {
+  if (!fontsLoaded) {
     return null;
   }
 
   return (
     <ThemeProvider value={navTheme}>
       <StatusBar style="light" />
-      <Stack screenOptions={{ headerShown: false }}>
+      <AuthProvider>
+        <RootNavigator />
+      </AuthProvider>
+    </ThemeProvider>
+  );
+}
+
+function RootNavigator() {
+  const { session, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading) {
+      SplashScreen.hideAsync();
+    }
+  }, [loading]);
+
+  if (loading) {
+    return null;
+  }
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Protected guard={!!session}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="add-event" options={{ presentation: 'modal' }} />
         <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
         <Stack.Screen name="course/[id]" />
-      </Stack>
-    </ThemeProvider>
+      </Stack.Protected>
+      <Stack.Protected guard={!session}>
+        <Stack.Screen name="(auth)" />
+      </Stack.Protected>
+    </Stack>
   );
 }
