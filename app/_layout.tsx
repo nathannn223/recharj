@@ -20,6 +20,7 @@ import {
 
 import { colors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { OnboardingProvider, useOnboarding } from '@/lib/onboarding';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -57,7 +58,9 @@ export default function RootLayout() {
     <ThemeProvider value={navTheme}>
       <StatusBar style="light" />
       <AuthProvider>
-        <RootNavigator />
+        <OnboardingProvider>
+          <RootNavigator />
+        </OnboardingProvider>
       </AuthProvider>
     </ThemeProvider>
   );
@@ -65,25 +68,34 @@ export default function RootLayout() {
 
 function RootNavigator() {
   const { session, loading } = useAuth();
+  const { seen } = useOnboarding();
+
+  // While signed in, also wait on the (fast, local) onboarding-seen read
+  // before picking a branch, so a signed-in user never flashes onboarding
+  // then instantly redirects to the tabs (or vice versa).
+  const stillResolving = loading || (!!session && seen === null);
 
   useEffect(() => {
-    if (!loading) {
+    if (!stillResolving) {
       SplashScreen.hideAsync();
     }
-  }, [loading]);
+  }, [stillResolving]);
 
-  if (loading) {
+  if (stillResolving) {
     return null;
   }
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Protected guard={!!session}>
+      <Stack.Protected guard={!!session && seen === true}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="add-event" options={{ presentation: 'modal' }} />
         <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
         <Stack.Screen name="course/[id]" />
         <Stack.Screen name="source/[id]" options={{ presentation: 'modal' }} />
+      </Stack.Protected>
+      <Stack.Protected guard={!!session && seen === false}>
+        <Stack.Screen name="onboarding" />
       </Stack.Protected>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="(auth)" />

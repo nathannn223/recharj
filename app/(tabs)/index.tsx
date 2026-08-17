@@ -1,4 +1,5 @@
 import { Link } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Path, Polyline, Stop } from 'react-native-svg';
 
@@ -8,6 +9,8 @@ import { colors, difficultyColor, fontFamily, radii, spacing } from '@/constants
 import { useEvents } from '@/hooks/useEvents';
 import { addDays, projectBattery, startOfToday, toDateKey } from '@/lib/battery';
 import { relativeDayLabel } from '@/lib/dates';
+import { tagsForEventType } from '@/lib/eventTags';
+import { supabase } from '@/lib/supabase';
 
 const WEEKDAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S']; // Date#getDay(): 0=dimanche
 
@@ -44,7 +47,33 @@ export default function DashboardScreen() {
     .filter((e) => e.eventDate >= toDateKey(now))
     .slice(0, 3);
 
-  const hasDifficultEvent = upcomingEvents.some((e) => e.difficulty >= 7);
+  const difficultEvent = upcomingEvents.find((e) => e.difficulty >= 7);
+  const [recommendedCourse, setRecommendedCourse] = useState<{ id: string; title: string } | null>(null);
+
+  useEffect(() => {
+    if (!difficultEvent) {
+      setRecommendedCourse(null);
+      return;
+    }
+    const tags = tagsForEventType(difficultEvent.type);
+    if (tags.length === 0) {
+      setRecommendedCourse(null);
+      return;
+    }
+    let cancelled = false;
+    supabase
+      .from('courses')
+      .select('id, title')
+      .overlaps('tags', tags)
+      .order('order_index', { ascending: true })
+      .limit(1)
+      .then(({ data }) => {
+        if (!cancelled) setRecommendedCourse(data?.[0] ?? null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [difficultEvent?.id]);
 
   return (
     <View style={styles.screen}>
@@ -131,15 +160,15 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {hasDifficultEvent && (
-          <Link href="/(tabs)/library" asChild>
+        {difficultEvent && (
+          <Link href={recommendedCourse ? `/course/${recommendedCourse.id}` : '/(tabs)/library'} asChild>
             <View style={styles.recCard}>
               <View style={styles.recBadge}>
                 <BoltIcon color={colors.surfaceScreen} size={20} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.recTitle}>Un cours pour t'y préparer</Text>
-                <Text style={styles.recNote}>Un de tes événements est marqué comme exigeant</Text>
+                <Text style={styles.recTitle}>{recommendedCourse ? recommendedCourse.title : "Un cours pour t'y préparer"}</Text>
+                <Text style={styles.recNote}>Recommandé pour "{difficultEvent.type}"</Text>
               </View>
             </View>
           </Link>
