@@ -1,4 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BoltIcon, CheckIcon, ChevronRightIcon, LockIcon, SearchIcon } from '@/components/icons/Icon';
@@ -41,7 +42,11 @@ export default function LibraryScreen() {
 
         <View style={{ gap: spacing[3] }}>
           {courses.map((c) => (
-            <View key={c.id} style={[styles.libRow, c.status === 'locked' && styles.libRowLocked]}>
+            <Pressable
+              key={c.id}
+              onPress={() => router.push(c.status === 'locked' ? '/paywall' : `/course/${c.id}`)}
+              style={[styles.libRow, c.status === 'locked' && styles.libRowLocked]}
+            >
               <View style={styles.libIcon}>
                 {c.status === 'done' && <CheckIcon color={colors.violetSoft} size={18} />}
                 {c.status === 'progress' && <BoltIcon color={colors.violetSoft} size={18} />}
@@ -53,11 +58,11 @@ export default function LibraryScreen() {
               </View>
               {c.status === 'done' && <Text style={{ color: colors.lime, fontFamily: fontFamily.textBold, fontSize: 16 }}>✓</Text>}
               {c.status === 'progress' && <Text style={{ color: colors.coral, fontFamily: fontFamily.textBold, fontSize: 14 }}>{c.progress}</Text>}
-            </View>
+            </Pressable>
           ))}
         </View>
 
-        <Pressable>
+        <Pressable onPress={() => router.push('/paywall')}>
           <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.upgradeBanner}>
             <View>
               <Text style={styles.upgradeTitle}>Débloque les 10 cours</Text>
