@@ -15,9 +15,19 @@
       "backgroundColor": "#0F0B1A"
     },
     "ios": {
-      "supportsTablet": true
+      "bundleIdentifier": "com.recharj.app",
+      "supportsTablet": true,
+      "privacyManifests": {
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+          }
+        ]
+      }
     },
     "android": {
+      "package": "com.recharj.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0F0B1A"

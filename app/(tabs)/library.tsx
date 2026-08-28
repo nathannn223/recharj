@@ -2,6 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BoltIcon, CheckIcon, ChevronRightIcon, LockIcon, SearchIcon, StarIcon } from '@/components/icons/Icon';
 import { chargeGradient, colors, fontFamily, radii, spacing } from '@/constants/theme';
@@ -11,10 +12,16 @@ import { supabase } from '@/lib/supabase';
 
 const FILTERS = ['Tous', 'Débuter', 'Travail', 'Famille'];
 
+const FILTER_TAGS: Record<string, string | null> = {
+  Tous: null,
+  'Débuter': 'debuter',
+  Travail: 'travail',
+  Famille: 'famille',
+};
+
 const TIER_LABEL: Record<SubscriptionTier, string> = {
   free: 'Gratuit',
-  intermediate: 'Palier intermédiaire',
-  superior: 'Palier supérieur',
+  premium: 'Premium',
 };
 
 type ProgressStatus = 'not_started' | 'in_progress' | 'completed';
@@ -22,22 +29,28 @@ type ProgressStatus = 'not_started' | 'in_progress' | 'completed';
 export default function LibraryScreen() {
   const { session } = useAuth();
   const [tier, setTier] = useState<SubscriptionTier>('free');
+  const [freeCourseId, setFreeCourseId] = useState<string | null>(null);
   const [courses, setCourses] = useState<CourseRow[]>([]);
   const [progress, setProgress] = useState<Map<string, ProgressStatus>>(new Map());
   const [loading, setLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState(FILTERS[0]);
 
   useEffect(() => {
     if (!session) return;
     let cancelled = false;
 
     async function load() {
-      const [{ data: profile }, { data: courseRows }, { data: progressRows }] = await Promise.all([
+      // free_course_id is fetched separately and treated as best-effort —
+      // see the matching comment in app/course/[id].tsx.
+      const [{ data: profile }, { data: freeCourseRow }, { data: courseRows }, { data: progressRows }] = await Promise.all([
         supabase.from('profiles').select('subscription_tier').single(),
+        supabase.from('profiles').select('free_course_id').maybeSingle(),
         supabase.from('courses').select('*').order('order_index', { ascending: true }),
         supabase.from('course_progress').select('course_id, status'),
       ]);
       if (cancelled) return;
       setTier((profile?.subscription_tier as SubscriptionTier) ?? 'free');
+      setFreeCourseId((freeCourseRow?.free_course_id as string) ?? null);
       setCourses((courseRows as CourseRow[]) ?? []);
       setProgress(new Map((progressRows ?? []).map((p) => [p.course_id as string, p.status as ProgressStatus])));
       setLoading(false);
@@ -49,44 +62,62 @@ export default function LibraryScreen() {
     };
   }, [session]);
 
-  const level1 = courses.filter((c) => c.level === 1);
+  const activeTag = FILTER_TAGS[activeFilter];
+  const level1 = courses.filter((c) => c.level === 1 && (!activeTag || c.tags.includes(activeTag)));
   const level2ByParent = new Map(courses.filter((c) => c.level === 2).map((c) => [c.parent_course_id, c]));
 
   const openCourse = (course: CourseRow) => {
-    if (!canAccessCourse(course, tier)) {
-      router.push('/paywall');
+    if (!canAccessCourse(course, tier, freeCourseId)) {
+      router.push({ pathname: '/paywall', params: { courseId: course.id } });
     } else {
       router.push(`/course/${course.id}`);
     }
   };
 
-  const anyLocked = courses.some((c) => !canAccessCourse(c, tier));
+  const anyLocked = courses.some((c) => !canAccessCourse(c, tier, freeCourseId));
 
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.row}>
           <Text style={styles.h1}>Bibliothèque</Text>
           <SearchIcon color={colors.textDim} size={24} />
         </View>
 
+        {anyLocked && (
+          <Pressable onPress={() => router.push('/paywall')}>
+            <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.upgradeBanner}>
+              <View>
+                <Text style={styles.upgradeTitle}>Débloque tous les cours</Text>
+                <Text style={styles.upgradeSub}>À partir de 2,92€/mois</Text>
+              </View>
+              <ChevronRightIcon color={colors.surfaceScreen} size={20} />
+            </LinearGradient>
+          </Pressable>
+        )}
+
         <View style={styles.chipRow}>
-          {FILTERS.map((f, i) => (
-            <View key={f} style={[styles.chip, i === 0 && styles.chipSelected]}>
-              <Text style={[styles.chipText, i === 0 && styles.chipTextSelected]}>{f}</Text>
-            </View>
-          ))}
+          {FILTERS.map((f) => {
+            const selected = f === activeFilter;
+            return (
+              <Pressable key={f} onPress={() => setActiveFilter(f)} style={[styles.chip, selected && styles.chipSelected]}>
+                <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{f}</Text>
+              </Pressable>
+            );
+          })}
         </View>
 
         {loading ? (
           <ActivityIndicator color={colors.violetSoft} style={{ marginTop: spacing[6] }} />
+        ) : level1.length === 0 ? (
+          <Text style={styles.emptyText}>Aucun cours pour ce filtre.</Text>
         ) : (
           <View style={{ gap: spacing[3] }}>
             {level1.map((course) => {
-              const locked = !canAccessCourse(course, tier);
+              const locked = !canAccessCourse(course, tier, freeCourseId);
               const status = progress.get(course.id) ?? 'not_started';
               const level2 = level2ByParent.get(course.id);
-              const level2Locked = level2 ? !canAccessCourse(level2, tier) : false;
+              const level2Locked = level2 ? !canAccessCourse(level2, tier, freeCourseId) : false;
 
               return (
                 <View key={course.id} style={{ gap: spacing[2] }}>
@@ -121,20 +152,8 @@ export default function LibraryScreen() {
             })}
           </View>
         )}
-
-        {anyLocked && (
-          <Pressable onPress={() => router.push('/paywall')}>
-            <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.upgradeBanner}>
-              <View>
-                <Text style={styles.upgradeTitle}>Débloque tous les cours</Text>
-                <Text style={styles.upgradeSub}>À partir de ~5€/mois</Text>
-              </View>
-              <ChevronRightIcon color={colors.surfaceScreen} size={20} />
-            </LinearGradient>
-          </Pressable>
-        )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -175,13 +194,15 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.ink },
   content: { padding: spacing[5], paddingTop: spacing[6], gap: spacing[6], paddingBottom: spacing[8] },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  h1: { fontFamily: fontFamily.displaySemiBold, fontSize: 30, color: colors.text },
+  h1: { fontFamily: fontFamily.displaySemiBold, fontSize: 34, color: colors.text },
 
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   chip: { borderWidth: 1, borderColor: colors.border, borderRadius: radii.pill, paddingVertical: 10, paddingHorizontal: 16 },
   chipSelected: { backgroundColor: colors.violet, borderColor: colors.violet },
   chipText: { fontFamily: fontFamily.textSemiBold, fontSize: 14, color: colors.textDim },
   chipTextSelected: { color: colors.text },
+
+  emptyText: { fontFamily: fontFamily.textRegular, fontSize: 14, color: colors.textDim },
 
   libRow: {
     flexDirection: 'row',

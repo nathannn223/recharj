@@ -11,6 +11,7 @@ type AuthContextValue = {
   // issuing a session — callers use it to show a "check your email" state.
   signUp: (email: string, password: string) => Promise<{ error: string | null; hasSession: boolean }>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<{ error: string | null }>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -46,7 +47,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
-  return <AuthContext.Provider value={{ session, loading, signIn, signUp, signOut }}>{children}</AuthContext.Provider>;
+  // Runs server-side (see supabase/functions/delete-account) because
+  // deleting an auth user requires the service_role key, which the client
+  // must never hold. Signs the session out locally afterward so the app
+  // doesn't keep referencing a user that no longer exists.
+  const deleteAccount: AuthContextValue['deleteAccount'] = async () => {
+    const { error } = await supabase.functions.invoke('delete-account');
+    if (error) return { error: error.message };
+    await supabase.auth.signOut();
+    return { error: null };
+  };
+
+  return (
+    <AuthContext.Provider value={{ session, loading, signIn, signUp, signOut, deleteAccount }}>{children}</AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

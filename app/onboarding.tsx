@@ -2,47 +2,30 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BoltIcon, BookIcon, CalendarIcon } from '@/components/icons/Icon';
+import { BatteryGauge } from '@/components/BatteryGauge';
 import { chargeGradient, colors, fontFamily, radii, spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { useOnboarding } from '@/lib/onboarding';
+import { PAIN_TYPES } from '@/lib/painTypes';
 import { readAndClearPendingOnboarding } from '@/lib/pendingOnboarding';
 import { supabase } from '@/lib/supabase';
 
-// Research note (see conversation): signup and onboarding are not the same
-// thing — signup creates the account, onboarding has to actually show what
-// the product does. A silent auto-redirect straight into a course (the
-// previous version of this screen) skipped that entirely. But a forced
-// multi-step tour is worse — 78% of users abandon those, and tours past
-// ~5 steps lose most of what's left. So: exactly one screen, 3 highlights
-// max, and the user taps through on their own rather than being redirected.
-type Highlight = { icon: React.ReactNode; title: string; body: string };
-
-const HIGHLIGHTS: Highlight[] = [
-  {
-    icon: <BoltIcon color={colors.surfaceScreen} size={20} />,
-    title: 'Ta batterie sociale',
-    body: 'Une jauge qui monte et descend selon tes événements — tu vois venir la fatigue avant qu\'elle arrive.',
-  },
-  {
-    icon: <CalendarIcon color={colors.surfaceScreen} size={20} />,
-    title: 'Une projection sur tes événements',
-    body: "Ajoute un événement et sa difficulté, Recharj calcule l'impact sur les jours suivants.",
-  },
-  {
-    icon: <BookIcon color={colors.surfaceScreen} size={20} />,
-    title: 'Des cours en cartes à retourner',
-    body: 'Chaque carte cache un conseil sourcé par de vraies études — touche-la pour la retourner.',
-  },
-];
-
+// Signup and onboarding are not the same thing. Signup creates the account;
+// onboarding has to show what the product does. The quiz already put the
+// flip card mechanic and the battery fill in the user's hands before
+// signup, so this screen closes the loop it opened there: it recaps the
+// answers the user gave and sends them straight into the course that
+// targets their specific pain point.
 export default function OnboardingWelcomeScreen() {
   const { session } = useAuth();
   const { markSeen } = useOnboarding();
 
   const [preparing, setPreparing] = useState(true);
   const [firstName, setFirstName] = useState('');
+  const [score, setScore] = useState<number | null>(null);
+  const [painType, setPainType] = useState('');
   const [freeCourseId, setFreeCourseId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -51,27 +34,63 @@ export default function OnboardingWelcomeScreen() {
 
     async function prepare() {
       const pending = await readAndClearPendingOnboarding();
+      let matchedCourseId: string | null = null;
+
       if (pending && !cancelled) {
         setFirstName(pending.firstName);
+        setScore(pending.baselineScore);
+        setPainType(pending.painType);
+
+        // The free course this user gets is the one matching the pain point
+        // they picked in the quiz, not a single fixed course for everyone.
+        const painDef = PAIN_TYPES.find((p) => p.label === pending.painType);
+        if (painDef) {
+          const { data: matched } = await supabase
+            .from('courses')
+            .select('id')
+            .contains('tags', painDef.tags)
+            .order('order_index', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+          matchedCourseId = matched?.id ?? null;
+        }
+
         await supabase
           .from('profiles')
           .update({
             first_name: pending.firstName || null,
             baseline_comfort_score: pending.baselineScore,
             primary_pain_type: pending.painType || null,
+            obstacles: pending.obstacles.length > 0 ? pending.obstacles : null,
+            event_frequency: pending.eventFrequency || null,
+            recharge_method: pending.rechargeMethod || null,
+            anticipation_style: pending.anticipationStyle || null,
+            free_course_id: matchedCourseId,
           })
           .eq('id', session!.user.id);
       }
 
-      const { data: freeCourse } = await supabase
-        .from('courses')
-        .select('id')
-        .eq('free_tier_included', true)
-        .limit(1)
-        .maybeSingle();
+      let resolvedFreeCourseId = matchedCourseId;
+      if (!resolvedFreeCourseId) {
+        const { data: existingProfile } = await supabase
+          .from('profiles')
+          .select('free_course_id')
+          .eq('id', session!.user.id)
+          .maybeSingle();
+        resolvedFreeCourseId = existingProfile?.free_course_id ?? null;
+      }
+      if (!resolvedFreeCourseId) {
+        const { data: fallbackCourse } = await supabase
+          .from('courses')
+          .select('id')
+          .eq('free_tier_included', true)
+          .limit(1)
+          .maybeSingle();
+        resolvedFreeCourseId = fallbackCourse?.id ?? null;
+      }
 
       if (cancelled) return;
-      setFreeCourseId(freeCourse?.id ?? null);
+      setFreeCourseId(resolvedFreeCourseId);
       setPreparing(false);
     }
 
@@ -89,76 +108,68 @@ export default function OnboardingWelcomeScreen() {
     router.replace(freeCourseId ? `/course/${freeCourseId}` : '/(tabs)');
   };
 
+  const skip = async () => {
+    await markSeen();
+    router.replace('/(tabs)');
+  };
+
   if (preparing) {
     return (
-      <View style={[styles.screen, styles.centered]}>
+      <SafeAreaView style={[styles.screen, styles.centered]} edges={['top']}>
         <ActivityIndicator color={colors.violetSoft} />
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['top']}>
       <View style={styles.content}>
         <View style={styles.hero}>
-          <Text style={styles.title}>{firstName ? `Bienvenue, ${firstName} !` : 'Bienvenue !'}</Text>
-          <Text style={styles.subtitle}>Voici comment Recharj va t'aider, en trois choses simples :</Text>
+          <Text style={styles.title}>
+            {firstName ? `Bienvenue, ${firstName}.` : 'Bienvenue.'} Recharj est calibré pour t'aider au maximum.
+          </Text>
         </View>
 
-        <View style={styles.list}>
-          {HIGHLIGHTS.map((h) => (
-            <View key={h.title} style={styles.row}>
-              <View style={styles.iconBadge}>{h.icon}</View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.rowTitle}>{h.title}</Text>
-                <Text style={styles.rowBody}>{h.body}</Text>
-              </View>
-            </View>
-          ))}
+        <View style={styles.gaugeWrap}>
+          <BatteryGauge level={score !== null ? score * 10 : 50} size="lg" />
         </View>
 
-        <Pressable onPress={start}>
-          <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.startBtn}>
-            <Text style={styles.startBtnText}>Commencer mon premier cours</Text>
-          </LinearGradient>
-        </Pressable>
+        <Text style={styles.recap}>
+          {score !== null && painType
+            ? `Tu pars de ${score}/10, et ${painType.toLowerCase()} te coûte le plus d'énergie. Ton premier cours attaque directement ce point.`
+            : 'Ton premier cours attend juste en dessous.'}
+        </Text>
 
-        {__DEV__ && (
-          <Pressable onPress={() => markSeen().then(() => router.replace('/(tabs)'))} style={styles.devBtn}>
-            <Text style={styles.devBtnText}>⚡ DEV — Passer, aller au tableau de bord</Text>
+        <View style={{ gap: spacing[3] }}>
+          <Pressable onPress={start}>
+            <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.startBtn}>
+              <Text style={styles.startBtnText}>Accéder à mon premier cours</Text>
+            </LinearGradient>
           </Pressable>
-        )}
+
+          <Pressable onPress={skip} style={styles.skipBtn}>
+            <Text style={styles.skipText}>Ignorer</Text>
+          </Pressable>
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.ink },
   centered: { alignItems: 'center', justifyContent: 'center' },
-  content: { flex: 1, padding: spacing[6], paddingTop: spacing[8], justifyContent: 'center', gap: spacing[7] },
+  content: { flex: 1, padding: spacing[6], paddingTop: spacing[8], justifyContent: 'center', gap: spacing[6] },
 
   hero: { gap: spacing[2] },
-  title: { fontFamily: fontFamily.displayBold, fontSize: 28, color: colors.text, lineHeight: 34 },
-  subtitle: { fontFamily: fontFamily.textRegular, fontSize: 16, color: colors.textDim, lineHeight: 22 },
+  title: { fontFamily: fontFamily.displayBold, fontSize: 30, color: colors.text, lineHeight: 36 },
 
-  list: { gap: spacing[5] },
-  row: { flexDirection: 'row', gap: spacing[3], alignItems: 'flex-start' },
-  iconBadge: { width: 40, height: 40, borderRadius: 12, backgroundColor: colors.lime, alignItems: 'center', justifyContent: 'center' },
-  rowTitle: { fontFamily: fontFamily.displaySemiBold, fontSize: 16, color: colors.text },
-  rowBody: { fontFamily: fontFamily.textRegular, fontSize: 14, color: colors.textDim, marginTop: 2, lineHeight: 20 },
+  gaugeWrap: { paddingHorizontal: spacing[2] },
+  recap: { fontFamily: fontFamily.textRegular, fontSize: 16, color: colors.textDim, lineHeight: 23 },
 
   startBtn: { borderRadius: radii.md, paddingVertical: 17, alignItems: 'center' },
   startBtnText: { fontFamily: fontFamily.textBold, fontSize: 16, color: colors.surfaceScreen },
 
-  devBtn: {
-    alignSelf: 'center',
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: colors.critical,
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-  },
-  devBtnText: { fontFamily: fontFamily.textSemiBold, fontSize: 12, color: colors.critical },
+  skipBtn: { alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 6 },
+  skipText: { fontFamily: fontFamily.textSemiBold, fontSize: 14, color: colors.textFaint },
 });

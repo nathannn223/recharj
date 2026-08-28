@@ -6,6 +6,10 @@ export type PendingOnboarding = {
   firstName: string;
   baselineScore: number;
   painType: string;
+  obstacles: string[];
+  eventFrequency: string;
+  rechargeMethod: string;
+  anticipationStyle: string;
 };
 
 // Bridges the pre-signup quiz (no session yet) to the moment a session

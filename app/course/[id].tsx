@@ -2,6 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CourseComplete } from '@/components/course/CourseComplete';
 import { FlipCard } from '@/components/course/FlipCard';
@@ -43,7 +44,7 @@ export default function CourseScreen() {
       setLoading(true);
       setError(null);
 
-      const { data: profile } = await supabase.from('profiles').select('subscription_tier').single();
+      const { data: tierRow } = await supabase.from('profiles').select('subscription_tier').single();
       const { data: courseRow, error: courseError } = await supabase.from('courses').select('*').eq('id', id).single();
 
       if (cancelled) return;
@@ -54,8 +55,15 @@ export default function CourseScreen() {
       }
       const typedCourse = courseRow as CourseRow;
 
-      if (!profile || !canAccessCourse(typedCourse, profile.subscription_tier)) {
-        router.replace('/paywall');
+      // Fetched separately and treated as best-effort: this column is a
+      // recent addition, and a user whose account predates it (or whose
+      // Supabase project is missing the migration) should still be able to
+      // access whichever course is genuinely free_tier_included — that
+      // check must not depend on this one succeeding.
+      const { data: freeCourseRow } = await supabase.from('profiles').select('free_course_id').maybeSingle();
+
+      if (!tierRow || !canAccessCourse(typedCourse, tierRow.subscription_tier, freeCourseRow?.free_course_id ?? null)) {
+        router.replace({ pathname: '/paywall', params: { courseId: id } });
         return;
       }
 
@@ -147,16 +155,16 @@ export default function CourseScreen() {
 
   if (finished) {
     return (
-      <View style={styles.screen}>
+      <SafeAreaView style={styles.screen} edges={['top']}>
         <View style={[styles.content, styles.centered, { flex: 1 }]}>
           <CourseComplete onRate={rateCourse} onDone={() => safeBack()} />
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.row}>
           <Pressable onPress={goBack} hitSlop={10}>
@@ -251,7 +259,7 @@ export default function CourseScreen() {
           </Pressable>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -276,7 +284,7 @@ const styles = StyleSheet.create({
   errorText: { fontFamily: fontFamily.textMedium, fontSize: 14, color: colors.critical, padding: spacing[5], textAlign: 'center' },
   content: { padding: spacing[5], paddingTop: spacing[6], gap: spacing[6], paddingBottom: spacing[8], flexGrow: 1 },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing[3] },
-  courseTitle: { flex: 1, fontFamily: fontFamily.textSemiBold, fontSize: 15, color: colors.textDim, textAlign: 'center' },
+  courseTitle: { flex: 1, fontFamily: fontFamily.textSemiBold, fontSize: 16, color: colors.textDim, textAlign: 'center' },
 
   stepDots: { flexDirection: 'row', gap: 6 },
   stepDot: { width: 20, height: 5, borderRadius: 3, backgroundColor: colors.border },
@@ -300,8 +308,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   accentBolt: { width: 44, height: 44, borderRadius: 14, backgroundColor: colors.lime, alignItems: 'center', justifyContent: 'center' },
-  eyebrow: { fontFamily: fontFamily.textBold, fontSize: 12, color: colors.coral, textTransform: 'uppercase', letterSpacing: 0.8 },
-  cardTitle: { fontFamily: fontFamily.displaySemiBold, fontSize: 24, color: colors.text, lineHeight: 30 },
+  eyebrow: { fontFamily: fontFamily.textBold, fontSize: 13, color: colors.coral, textTransform: 'uppercase', letterSpacing: 0.8 },
+  cardTitle: { fontFamily: fontFamily.displaySemiBold, fontSize: 27, color: colors.text, lineHeight: 34 },
 
   navRow: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[6] },
   btnGhost: { borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, paddingVertical: 16, paddingHorizontal: 22, justifyContent: 'center' },

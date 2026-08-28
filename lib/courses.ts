@@ -1,6 +1,6 @@
-export type SubscriptionTier = 'free' | 'intermediate' | 'superior';
+export type SubscriptionTier = 'free' | 'premium';
 
-const TIER_ORDER: Record<SubscriptionTier, number> = { free: 0, intermediate: 1, superior: 2 };
+const TIER_ORDER: Record<SubscriptionTier, number> = { free: 0, premium: 1 };
 
 export type EngagementFormat =
   | { kind: 'slider'; question: string; min: number; max: number; minLabel: string; maxLabel: string }
@@ -67,16 +67,21 @@ export type SourceRow = {
 
 /**
  * Whether `tier` unlocks `course`. A free-tier-included course is always
- * accessible; otherwise `tier` must meet or exceed the course's
- * `required_tier` on the free < intermediate < superior order. Level-2
- * courses need nothing beyond that (no parent-completion requirement —
- * confirmed product decision, see consignes-implementation-cours.md).
+ * accessible, as is the single course granted to this specific user during
+ * onboarding (profiles.free_course_id, matched to their stated pain point).
+ * Otherwise `tier` must meet or exceed the course's `required_tier` on the
+ * free < premium order — one paid product, billed monthly or annually, not
+ * separate feature tiers. Level-2 courses need nothing beyond that (no
+ * parent-completion requirement — confirmed product decision, see
+ * consignes-implementation-cours.md).
  */
 export function canAccessCourse(
-  course: Pick<CourseRow, 'free_tier_included' | 'required_tier'>,
-  tier: SubscriptionTier
+  course: Pick<CourseRow, 'id' | 'free_tier_included' | 'required_tier'>,
+  tier: SubscriptionTier,
+  grantedFreeCourseId?: string | null
 ): boolean {
   if (course.free_tier_included) return true;
+  if (grantedFreeCourseId && course.id === grantedFreeCourseId) return true;
   return TIER_ORDER[tier] >= TIER_ORDER[course.required_tier];
 }
 

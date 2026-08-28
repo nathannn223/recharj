@@ -1,7 +1,7 @@
 // One-shot generator for supabase/seed/002_courses.sql.
 // Course content is defined here as plain JS objects (so embedded quotes
 // need no manual SQL escaping), then serialized to INSERT statements.
-// Re-read the generated SQL before running it — per
+// Re-read the generated SQL before running it, per
 // consignes-implementation-cours.md's own recommendation for this step.
 
 import { writeFileSync } from 'node:fs';
@@ -15,7 +15,7 @@ const courses = [
     order_index: 1, tags: ['conversation', 'debuter'], free_tier_included: true,
     level: 1, parent_course_id: null, required_tier: 'free',
     content: {
-      hook: "Tu es à une soirée. Tu vois un petit groupe qui rigole près du buffet. Ton cerveau te souffle : \"Ils ont l'air occupés, n'y va pas.\" Ton corps se fige. Cette scène, presque tous les introvertis la connaissent. Ce que ton cerveau vient de te dire est scientifiquement prévisible — et une étude a montré qu'il se trompe, systématiquement.",
+      hook: "Tu es à une soirée. Tu vois un petit groupe qui rigole près du buffet. Ton cerveau te souffle : \"Ils ont l'air occupés, n'y va pas.\" Ton corps se fige. Cette scène, presque tous les introvertis la connaissent. Ce que ton cerveau vient de te dire est scientifiquement prévisible. Une étude a montré qu'il se trompe à tous les coups.",
       diagnostic: { kind: 'slider', question: "À quel point te sens-tu à l'aise pour aborder une personne que tu ne connais pas ?", min: 1, max: 10, minLabel: 'Terrifié', maxLabel: 'Aucun souci' },
       cards: [
         { title: "L'écart de sympathie", advice: "La personne en face de toi a presque toujours mieux vécu l'échange que ce que tu imagines après coup.", sourceId: S(1) },
@@ -30,7 +30,7 @@ const courses = [
         prompt: "File d'attente pour un café, 10 secondes avant ton tour. Qu'est-ce que tu dirais ?",
         examples: [
           "\"Ce café a l'air hyper populaire, tu viens souvent ?\" (commentaire de contexte)",
-          '"Vous bossez dans le coin ?" (FORD — occupation)',
+          '"Vous bossez dans le coin ?" (FORD, occupation)',
           '"Qu\'est-ce que vous recommandez ici ?" (question ouverte)',
         ],
       },
@@ -40,15 +40,15 @@ const courses = [
   {
     id: C(2), slug: 'gerer-silence-genant', title: 'Gérer un silence gênant',
     order_index: 2, tags: ['conversation'], free_tier_included: false,
-    level: 1, parent_course_id: null, required_tier: 'intermediate',
+    level: 1, parent_course_id: null, required_tier: 'premium',
     content: {
-      hook: "Tu es en tête-à-tête, la conversation ralentit, puis s'arrête. Trois secondes passent. Ton cœur s'accélère, tu cherches désespérément une phrase, n'importe laquelle. Ce malaise a une explication précise : des chercheurs ont mesuré, au dixième de seconde près, à quel moment un silence commence à faire mal — et pourquoi.",
+      hook: "Tu es en tête-à-tête, la conversation ralentit, puis s'arrête. Trois secondes passent. Ton cœur s'accélère, tu cherches désespérément une phrase, n'importe laquelle. Ce malaise a une explication précise : des chercheurs ont mesuré, au dixième de seconde près, à quel moment un silence commence à faire mal, et pourquoi.",
       diagnostic: { kind: 'slider', question: 'À quel point un silence de quelques secondes dans une conversation te met-il mal à l\'aise ?', min: 1, max: 10, minLabel: 'Pas du tout', maxLabel: 'Panique totale' },
       cards: [
-        { title: 'Le silence menace un besoin précis, pas ton ego', advice: "Un silence de quelques secondes entre inconnus active une inquiétude sociale spécifique — le besoin d'appartenance — pas un jugement réel sur toi. Le comprendre suffit souvent à baisser la panique.", sourceId: S(5) },
+        { title: 'Le silence menace un besoin précis, pas ton ego', advice: "Un silence de quelques secondes entre inconnus active une inquiétude sociale spécifique, le besoin d'appartenance, pas un jugement réel sur toi. Le comprendre suffit souvent à baisser la panique.", sourceId: S(5) },
         { title: "Le seuil, c'est environ 4 secondes", advice: 'En dessous, un silence passe totalement inaperçu. Compter mentalement "un, deux, trois" avant de réagir t\'évite de combler un vide qui, pour l\'autre, n\'existait pas encore.', sourceId: S(5) },
-        { title: 'La relance par "callback"', advice: 'Reviens sur un détail mentionné 2 minutes plus tôt ("Tu disais tout à l\'heure que...") — c\'est la relance la plus naturelle, elle ne sort pas de nulle part.', sourceId: S(2) },
-        { title: "Un silence n'est pas toujours à combler", advice: "Une fois la relation installée, le silence cesse d'être perçu négativement — il peut même devenir un signe de confort mutuel. Ce n'est donc pas ta compétence sociale qui est en jeu avec un inconnu, c'est juste le stade de la relation.", sourceId: S(6) },
+        { title: 'La relance par "callback"', advice: 'Reviens sur un détail mentionné 2 minutes plus tôt ("Tu disais tout à l\'heure que...") : c\'est la relance la plus naturelle, elle ne sort pas de nulle part.', sourceId: S(2) },
+        { title: "Un silence n'est pas toujours à combler", advice: "Une fois la relation installée, le silence cesse d'être perçu négativement. Il peut même devenir un signe de confort mutuel : le stade de la relation explique cette gêne avec un inconnu, pas ta compétence sociale.", sourceId: S(6) },
         { title: 'Récap', advice: 'Le silence menace un besoin précis (pas ta valeur), le seuil de gêne réel est plus court que tu crois compenser, le callback est ta relance la plus fiable.', sourceId: null },
       ],
       exercise: {
@@ -66,22 +66,22 @@ const courses = [
   {
     id: C(3), slug: 'sortir-conversation', title: "Sortir poliment d'une conversation",
     order_index: 3, tags: ['conversation'], free_tier_included: false,
-    level: 1, parent_course_id: null, required_tier: 'intermediate',
+    level: 1, parent_course_id: null, required_tier: 'premium',
     content: {
       hook: 'Ça fait dix minutes que tu cherches une porte de sortie polie, sans la trouver. Tu culpabilises à l\'idée de "vexer" l\'autre en partant. Une étude a suivi des milliers de conversations réelles pour répondre à une question simple : qui, vraiment, a envie que ça s\'arrête ?',
       diagnostic: { kind: 'slider', question: 'À quel point te sens-tu coupable quand tu veux mettre fin à une conversation ?', min: 1, max: 10, minLabel: 'Pas du tout', maxLabel: 'Énormément' },
       cards: [
-        { title: 'Tu n\'es presque jamais seul à vouloir partir', advice: 'Dans une étude sur des milliers de conversations, les deux personnes se sont mises d\'accord sur le bon moment pour arrêter dans moins de 2% des cas — et près d\'une conversation sur trois s\'arrête trop tard aux yeux d\'au moins une des deux personnes.', sourceId: S(7) },
-        { title: 'Personne ne suit ça d\'aussi près que toi', advice: 'Le problème identifié par les chercheurs, c\'est que chacun garde secrète son envie de partir — ce n\'est donc pas que l\'autre "compte" tes signaux de sortie, c\'est qu\'il ne les cherche probablement même pas.', sourceId: S(7) },
+        { title: 'Tu n\'es presque jamais seul à vouloir partir', advice: 'Dans une étude sur des milliers de conversations, les deux personnes se sont mises d\'accord sur le bon moment pour arrêter dans moins de 2% des cas. Et près d\'une conversation sur trois s\'arrête trop tard aux yeux d\'au moins une des deux personnes.', sourceId: S(7) },
+        { title: 'Personne ne suit ça d\'aussi près que toi', advice: 'Les chercheurs l\'ont observé : chacun garde secrète son envie de partir. L\'autre ne "compte" pas tes signaux de sortie, il ne les cherche probablement même pas.', sourceId: S(7) },
         { title: 'La sortie en 3 temps', advice: 'Une observation ("Il faut que j\'y aille"), une raison courte sans sur-justification, une phrase chaleureuse ("Ravi d\'avoir discuté !"). Pas besoin de plus.', sourceId: S(8) },
-        { title: 'Le mythe de la sortie parfaite', advice: 'Il n\'y a pas de moment "juste" universel — la recherche montre que ce moment n\'existe même pas objectivement, chacun le perçoit différemment. Viser une sortie "correcte" plutôt que "parfaite" suffit.', sourceId: S(7) },
+        { title: 'Le mythe de la sortie parfaite', advice: 'Il n\'y a pas de moment "juste" universel. La recherche montre que ce moment n\'existe même pas objectivement, chacun le perçoit différemment. Viser une sortie "correcte" plutôt que "parfaite" suffit.', sourceId: S(7) },
         { title: 'Récap', advice: 'Statistiquement, l\'autre a probablement aussi envie que ça se termine ; une sortie en 3 temps suffit ; il n\'y a pas de "bon moment" objectif à chercher.', sourceId: null },
       ],
       exercise: {
         kind: 'predict-compare',
         prompt: 'Tu es coincé dans une conversation depuis 15 minutes lors d\'un afterwork, tu dois partir dans 5 minutes. Qu\'est-ce que tu dirais pour sortir poliment ?',
         examples: [
-          '"Il faut que j\'y aille, j\'ai un truc tôt demain — ravi d\'avoir discuté avec toi !"',
+          '"Il faut que j\'y aille, j\'ai un truc tôt demain. Ravi d\'avoir discuté avec toi !"',
           '"Je vais aller saluer d\'autres personnes avant de partir, à bientôt !"',
           '"Ça a été un plaisir de papoter, je file mais on se recroise vite."',
         ],
@@ -91,13 +91,13 @@ const courses = [
   {
     id: C(4), slug: 'recuperer-energie', title: 'Récupérer son énergie après un événement social',
     order_index: 4, tags: ['recuperation', 'energie'], free_tier_included: false,
-    level: 1, parent_course_id: null, required_tier: 'intermediate',
+    level: 1, parent_course_id: null, required_tier: 'premium',
     content: {
-      hook: 'L\'événement est fini depuis une heure. Tu es rentré, la porte est fermée, et pourtant tu te sens vidé, presque groggy, incapable d\'enchaîner sur autre chose. Ce n\'est pas de la fatigue "dans ta tête" — c\'est mesurable dans ton système nerveux, et il existe une méthode précise pour le récupérer plus vite.',
+      hook: 'L\'événement est fini depuis une heure. Tu es rentré, la porte est fermée, et pourtant tu te sens vidé, presque groggy, incapable d\'enchaîner sur autre chose. Cette fatigue n\'a rien de mental : elle se mesure dans ton système nerveux, et une méthode précise existe pour la récupérer plus vite.',
       diagnostic: { kind: 'slider', question: 'Sur une échelle de 1 à 10, à quel point te sens-tu épuisé socialement en ce moment ?', min: 1, max: 10, minLabel: 'Pas du tout', maxLabel: 'Complètement vidé' },
       cards: [
         { title: 'Ton système nerveux, pas ton caractère', advice: 'Les personnes introverties partent d\'un niveau d\'éveil cérébral déjà plus élevé au repos ; un événement social les fait donc franchir plus vite leur seuil optimal, ce qui déclenche la fatigue. C\'est physiologique, pas un manque de volonté.', sourceId: S(9) },
-        { title: 'La "niche restauratrice"', advice: 'Après avoir agi "hors de son tempérament naturel" (sourire, faire la conversation, rester stimulé), le cerveau a besoin d\'un espace qui correspond à sa nature de base pour récupérer — silence, stimulation réduite, seul.', sourceId: S(10) },
+        { title: 'La "niche restauratrice"', advice: 'Après avoir agi "hors de son tempérament naturel" (sourire, faire la conversation, rester stimulé), le cerveau a besoin d\'un espace qui correspond à sa nature de base pour récupérer : silence, stimulation réduite, seul.', sourceId: S(10) },
         { title: 'Négocie ta récupération à l\'avance', advice: 'Prévenir ton entourage ("j\'ai besoin d\'une heure seul en rentrant") avant même l\'événement, plutôt que de te justifier après coup, réduit la culpabilité et protège vraiment ce temps.', sourceId: S(10) },
         { title: 'Recharge active, pas juste passive', advice: 'Toute "pause" ne recharge pas de la même façon : une activité à faible stimulation sensorielle (silence, nature, lecture) recharge mieux qu\'une activité qui continue de solliciter l\'attention (réseaux sociaux, série captivante).', sourceId: S(9) },
         { title: 'Récap', advice: 'La fatigue post-événement est physiologique, pas un défaut ; ta niche restauratrice doit être planifiée, pas improvisée ; toutes les pauses ne se valent pas.', sourceId: null },
@@ -116,12 +116,12 @@ const courses = [
   {
     id: C(5), slug: 'gerer-anxiete-avant-evenement', title: "Gérer l'anxiété avant un événement",
     order_index: 5, tags: ['anxiete'], free_tier_included: false,
-    level: 1, parent_course_id: null, required_tier: 'intermediate',
+    level: 1, parent_course_id: null, required_tier: 'premium',
     content: {
-      hook: 'L\'événement est dans trois jours. Tu y penses déjà en boucle : et si je ne trouve rien à dire, et si c\'est gênant, et si... L\'anxiété que tu ressens là, maintenant, avant même que rien ne se soit passé, a un nom précis en psychologie clinique — et c\'est souvent elle, pas l\'événement lui-même, qui fait le plus de dégâts.',
+      hook: 'L\'événement est dans trois jours. Tu y penses déjà en boucle : et si je ne trouve rien à dire, et si c\'est gênant, et si... L\'anxiété que tu ressens là, maintenant, avant même que rien ne se soit passé, a un nom précis en psychologie clinique. C\'est souvent elle, pas l\'événement lui-même, qui fait le plus de dégâts.',
       diagnostic: { kind: 'slider-double', questions: ['Sur 10, à quel point es-tu anxieux à l\'idée de cet événement, là, maintenant ?', 'D\'après toi, sur 10, à quel point l\'événement se passera-t-il mal réellement ?'] },
       cards: [
-        { title: 'Le vrai coupable : la rumination "avant"', advice: 'Le modèle de référence en thérapie cognitivo-comportementale de l\'anxiété sociale identifie la rumination anticipatoire — repasser en boucle des scénarios négatifs avant l\'événement — comme un moteur central qui entretient l\'anxiété, indépendamment de ce qui se passe réellement.', sourceId: S(11) },
+        { title: 'Le vrai coupable : la rumination "avant"', advice: 'Le modèle de référence en thérapie cognitivo-comportementale de l\'anxiété sociale identifie la rumination anticipatoire (repasser en boucle des scénarios négatifs avant l\'événement) comme un moteur central qui entretient l\'anxiété, indépendamment de ce qui se passe réellement.', sourceId: S(11) },
         { title: 'Repérer la pensée automatique', advice: '"Je vais être gênant", "personne ne voudra me parler" : ce sont des prédictions, pas des faits. Les nommer comme telles ("c\'est une pensée, pas une certitude") réduit déjà leur emprise.', sourceId: S(11) },
         { title: 'Arrête de "t\'entraîner" en boucle', advice: 'Le même modèle identifie les comportements de sécurité (répéter mentalement ce que tu vas dire, éviter le regard, sur-préparer) comme des stratégies qui, paradoxalement, entretiennent l\'anxiété au lieu de la réduire.', sourceId: S(11) },
         { title: 'Compare après coup', advice: 'Note ta prédiction avant l\'événement, puis reviens dessus après : l\'écart entre ce que tu craignais et ce qui s\'est vraiment passé est souvent l\'argument le plus convaincant contre l\'anxiété anticipatoire, plus que n\'importe quel conseil.', sourceId: S(11) },
@@ -137,14 +137,14 @@ const courses = [
   {
     id: C(6), slug: 'repondre-blanc-mental', title: 'Répondre lors d\'un blanc mental',
     order_index: 6, tags: ['conversation'], free_tier_included: false,
-    level: 1, parent_course_id: null, required_tier: 'intermediate',
+    level: 1, parent_course_id: null, required_tier: 'premium',
     content: {
-      hook: 'Quelqu\'un vient de te poser une question. Et là, rien. Ta tête est vide, les secondes s\'étirent, tu sens la panique monter. Bonne nouvelle : la capacité à répondre "à chaud" sans texte préparé, c\'est une compétence spécifique — et elle s\'entraîne, avec des méthodes qui ont été testées.',
+      hook: 'Quelqu\'un vient de te poser une question. Et là, rien. Ta tête est vide, les secondes s\'étirent, tu sens la panique monter. Bonne nouvelle : répondre "à chaud" sans texte préparé est une compétence spécifique, et elle s\'entraîne avec des méthodes déjà testées.',
       diagnostic: { kind: 'slider', question: 'À quel point la peur du blanc mental t\'empêche-t-elle de te lancer dans une conversation ?', min: 1, max: 10, minLabel: 'Pas du tout', maxLabel: 'Ça me bloque complètement' },
       cards: [
         { title: 'Vise "assez bien", pas "parfait"', advice: 'Chercher la réponse idéale sature ta charge mentale et bloque encore plus. Viser une réponse "suffisante" libère de l\'espace cognitif pour parler, tout simplement.', sourceId: S(12) },
-        { title: 'L\'improvisation, ça s\'entraîne (et ça marche), avec preuves', advice: 'Une expérience contrôlée a montré que des personnes formées à l\'improvisation théâtrale — même sur une courte durée — développaient une meilleure tolérance à l\'incertitude et un mieux-être affectif mesurable, comparées à un groupe témoin.', sourceId: S(13) },
-        { title: 'Dis le blanc, ne le cache pas', advice: 'Un principe central de l\'improvisation : accepter ce qui arrive plutôt que lutter contre. Dire simplement "attends, laisse-moi réfléchir une seconde" est plus fluide — et plus humain — qu\'un silence figé suivi de panique.', sourceId: S(13) },
+        { title: 'L\'improvisation, ça s\'entraîne (et ça marche), avec preuves', advice: 'Une expérience contrôlée a montré que des personnes formées à l\'improvisation théâtrale, même sur une courte durée, développaient une meilleure tolérance à l\'incertitude et un mieux-être affectif mesurable, comparées à un groupe témoin.', sourceId: S(13) },
+        { title: 'Dis le blanc, ne le cache pas', advice: 'Un principe central de l\'improvisation : accepter ce qui arrive plutôt que lutter contre. Dire simplement "attends, laisse-moi réfléchir une seconde" est plus fluide, et plus humain, qu\'un silence figé suivi de panique.', sourceId: S(13) },
         { title: 'Des phrases-pont à avoir en réserve', advice: '"C\'est une bonne question, laisse-moi y réfléchir", "ça me fait penser à...", "en fait je n\'y avais pas pensé comme ça" : mémoriser 2-3 phrases-pont te donne du temps sans silence gênant.', sourceId: S(12) },
         { title: 'Récap', advice: 'Vise "assez bien" plutôt que parfait, entraîne-toi à l\'incertitude comme une compétence, verbalise le blanc au lieu de le cacher, garde des phrases-pont en réserve.', sourceId: null },
       ],
@@ -162,22 +162,22 @@ const courses = [
   {
     id: C(7), slug: 'repas-reunions-famille', title: 'Gérer les repas et réunions de famille',
     order_index: 7, tags: ['famille', 'repas'], free_tier_included: false,
-    level: 1, parent_course_id: null, required_tier: 'intermediate',
+    level: 1, parent_course_id: null, required_tier: 'premium',
     content: {
-      hook: 'Le repas commence à peine que ton oncle lance déjà une remarque sur ta vie que tu redoutais. Tu sens ta mâchoire se serrer. Ce qui va se passer dans les 3 prochaines minutes est, statistiquement, presque entièrement prévisible d\'après des décennies de recherche sur la façon dont les tensions démarrent et dégénèrent — ou pas.',
+      hook: 'Le repas commence à peine que ton oncle lance déjà une remarque sur ta vie que tu redoutais. Tu sens ta mâchoire se serrer. Ce qui va se passer dans les 3 prochaines minutes est, statistiquement, presque entièrement prévisible d\'après des décennies de recherche sur la façon dont les tensions démarrent et dégénèrent, ou non.',
       diagnostic: { kind: 'slider', question: 'À quel point redoutes-tu qu\'un sujet précis revienne à la prochaine réunion de famille ?', min: 1, max: 10, minLabel: 'Pas du tout', maxLabel: "J'y pense déjà en boucle" },
       cards: [
         { title: 'Les 3 premières minutes comptent presque tout', advice: 'Une recherche menée sur des décennies de discussions filmées montre que la façon dont un échange démarre prédit avec une précision très élevée comment il va se terminer. Si un sujet démarre déjà sur un ton accusateur, désamorce tout de suite plutôt que d\'entrer dans le fond.', sourceId: S(14) },
-        { title: 'La tentative de réparation', advice: 'Ce qui distingue les familles qui gèrent bien les tensions, ce n\'est pas d\'éviter tout désaccord — c\'est de savoir le désamorcer en cours de route, par une phrase, un geste, ou même une pointe d\'humour, avant que ça escalade.', sourceId: S(14) },
-        { title: 'Change de sujet sans confrontation directe', advice: 'Une redirection neutre ("Tiens, en parlant de ça, tu as vu que...") détourne le fil sans déclarer ouvertement que tu refuses le sujet — technique de désescalade simple et éprouvée en pratique.', sourceId: S(15) },
-        { title: 'Tu n\'as pas à gagner le débat', advice: 'Le but n\'est pas d\'avoir raison au repas de famille — c\'est de préserver la relation à travers le repas. Lâcher le besoin de convaincre change complètement le niveau de tension.', sourceId: S(14) },
+        { title: 'La tentative de réparation', advice: 'Les familles qui gèrent bien les tensions ne cherchent pas à éviter tout désaccord. Elles savent le désamorcer en cours de route, par une phrase, un geste, ou même une pointe d\'humour, avant que ça escalade.', sourceId: S(14) },
+        { title: 'Change de sujet sans confrontation directe', advice: 'Une redirection neutre ("Tiens, en parlant de ça, tu as vu que...") détourne le fil sans déclarer ouvertement que tu refuses le sujet. C\'est une technique de désescalade simple, éprouvée en pratique.', sourceId: S(15) },
+        { title: 'Tu n\'as pas à gagner le débat', advice: 'Au repas de famille, le but est de préserver la relation, pas d\'avoir raison. Lâcher le besoin de convaincre change complètement le niveau de tension.', sourceId: S(14) },
         { title: 'Récap', advice: 'Désamorce dès les premières secondes, utilise une tentative de réparation avant l\'escalade, redirige sans confronter, laisse tomber le besoin d\'avoir raison.', sourceId: null },
       ],
       exercise: {
         kind: 'mcq-nuanced',
         prompt: 'Ta tante fait une remarque désobligeante sur un de tes choix de vie à table. Laquelle de ces réponses est la plus efficace pour désamorcer sans envenimer ?',
         options: [
-          { text: 'Répondre avec humour puis rediriger la conversation vers un autre sujet', feedback: 'Désamorce sans escalade ni sacrifice de dignité — c\'est une vraie tentative de réparation.', isBest: true },
+          { text: 'Répondre avec humour puis rediriger la conversation vers un autre sujet', feedback: 'Désamorce sans escalade ni sacrifice de dignité : c\'est une vraie tentative de réparation.', isBest: true },
           { text: 'Expliquer en détail et avec passion pourquoi elle a tort', feedback: 'Alimente le conflit dès les premières secondes plutôt que de le désamorcer.', isBest: false },
           { text: 'Ignorer complètement et changer de visage', feedback: 'Peut être perçu comme un signal de tension non résolu plutôt qu\'une vraie désescalade.', isBest: false },
         ],
@@ -187,13 +187,13 @@ const courses = [
   {
     id: C(8), slug: 'amis-age-adulte', title: 'Se faire des amis à l\'âge adulte',
     order_index: 8, tags: ['amitie'], free_tier_included: false,
-    level: 1, parent_course_id: null, required_tier: 'intermediate',
+    level: 1, parent_course_id: null, required_tier: 'premium',
     content: {
-      hook: 'Tu regardes tes contacts : des collègues, des connaissances, personne à qui envoyer un message "juste pour parler". Se faire des amis à l\'âge adulte semble impossible — et pourtant, une étude a mesuré précisément ce qu\'il faut, en heures, pour transformer un inconnu en ami. La réponse est rassurante : ce n\'est pas une question de chance, c\'est une question de temps cumulé.',
+      hook: 'Tu regardes tes contacts : des collègues, des connaissances, personne à qui envoyer un message "juste pour parler". Se faire des amis à l\'âge adulte semble impossible. Pourtant, une étude a mesuré précisément ce qu\'il faut, en heures, pour transformer un inconnu en ami. La réponse est rassurante : le temps cumulé compte plus que la chance.',
       diagnostic: { kind: 'slider', question: 'À quel point te sens-tu seul socialement en ce moment ?', min: 1, max: 10, minLabel: 'Pas du tout', maxLabel: 'Énormément' },
       cards: [
-        { title: 'Ce n\'est pas toi, c\'est le manque d\'heures', advice: 'Il faut environ 40 à 60 heures passées ensemble pour devenir des amis "occasionnels", 80 à 100 heures pour devenir vraiment amis, et plus de 200 heures pour un ami proche. L\'amitié à l\'âge adulte n\'a rien de magique — elle s\'accumule.', sourceId: S(16) },
-        { title: 'La répétition compte plus que la profondeur, au début', advice: 'Dans les premières heures, ce sont les interactions répétées — même courtes et légères — qui font avancer la relation, pas une seule conversation "profonde".', sourceId: S(16) },
+        { title: 'Ce n\'est pas toi, c\'est le manque d\'heures', advice: 'Il faut environ 40 à 60 heures passées ensemble pour devenir des amis "occasionnels", 80 à 100 heures pour devenir vraiment amis, et plus de 200 heures pour un ami proche. L\'amitié à l\'âge adulte n\'a rien de magique : elle s\'accumule.', sourceId: S(16) },
+        { title: 'La répétition compte plus que la profondeur, au début', advice: 'Dans les premières heures, ce sont les interactions répétées, même courtes et légères, qui font avancer la relation, pas une seule conversation "profonde".', sourceId: S(16) },
         { title: 'Le travail ne compte presque pas', advice: 'Les heures passées à travailler ensemble comptent beaucoup moins que les heures de loisirs partagés ou de simples moments informels. Un collègue avec qui tu ris à la pause compte plus, pour l\'amitié, qu\'un projet commun.', sourceId: S(16) },
         { title: 'Vise la récurrence, pas l\'événement unique', advice: 'Rejoindre une activité hebdomadaire ou mensuelle (club, sport, cours) accumule les heures nécessaires bien plus vite qu\'une série de rencontres isolées, même nombreuses.', sourceId: S(16) },
         { title: 'Récap', advice: 'L\'amitié adulte est une question d\'heures cumulées, pas de chance ; privilégie la récurrence à l\'événement unique ; le contexte informel compte plus que le contexte professionnel.', sourceId: null },
@@ -212,14 +212,14 @@ const courses = [
   {
     id: C(9), slug: 'small-talk-travail', title: 'Gérer les petites conversations au travail (small talk)',
     order_index: 9, tags: ['travail'], free_tier_included: false,
-    level: 1, parent_course_id: null, required_tier: 'intermediate',
+    level: 1, parent_course_id: null, required_tier: 'premium',
     content: {
-      hook: 'La machine à café. Encore. Tu sens déjà venir la question "ça va, ce week-end ?" et l\'échange creux qui suivra. Le small talk te semble être une perte de temps et d\'énergie — et pourtant, une étude menée sur des centaines d\'employés a mesuré exactement ce qu\'il t\'apporte vraiment, au-delà de l\'apparence.',
+      hook: 'La machine à café. Encore. Tu sens déjà venir la question "ça va, ce week-end ?" et l\'échange creux qui suivra. Le small talk te semble être une perte de temps et d\'énergie. Pourtant, une étude menée sur des centaines d\'employés a mesuré ce qu\'il t\'apporte vraiment, au-delà de l\'apparence.',
       diagnostic: { kind: 'slider', question: 'À quel point le small talk au travail te semble-t-il une perte de temps et d\'énergie ?', min: 1, max: 10, minLabel: 'Pas du tout', maxLabel: 'Complètement' },
       cards: [
         { title: 'Le small talk n\'est pas superficiel, il finance ta journée', advice: 'Une étude menée auprès de plus de 150 employés a montré que le small talk quotidien augmente les émotions positives et le sentiment de bien-être en fin de journée, et rend plus enclin à aider ses collègues.', sourceId: S(17) },
-        { title: 'Mais il a un vrai coût cognitif', advice: 'La même étude montre un effet double : "stimulant mais distrayant" — le small talk peut couper ta concentration. La solution n\'est pas de l\'éviter, mais de le cadrer dans le temps (2-3 minutes suffisent).', sourceId: S(17) },
-        { title: 'C\'est un rituel, pas un test', advice: 'Ce n\'est pas la profondeur ou l\'originalité du contenu qui compte — c\'est le fait même de l\'échange, comme un rituel social. Ça enlève la pression d\'être "intéressant".', sourceId: S(17) },
+        { title: 'Mais il a un vrai coût cognitif', advice: 'La même étude montre un effet double, "stimulant mais distrayant" : le small talk peut couper ta concentration. La solution n\'est pas de l\'éviter, mais de le cadrer dans le temps (2-3 minutes suffisent).', sourceId: S(17) },
+        { title: 'C\'est un rituel, pas un test', advice: 'Le fait même de l\'échange compte plus que la profondeur ou l\'originalité du contenu, comme un rituel social. Ça enlève la pression d\'être "intéressant".', sourceId: S(17) },
         { title: 'FORD, version bureau', advice: 'Reprends la méthode FORD du cours 1, mais évite "Famille" (trop personnel en contexte pro) et privilégie Occupation et loisirs neutres : "Tu avances sur quoi en ce moment ?", "Tu as vu un bon film récemment ?".', sourceId: S(2) },
         { title: 'Récap', advice: 'Le small talk améliore réellement ton bien-être au travail, cadre-le dans le temps pour limiter son coût cognitif, et traite-le comme un rituel plutôt qu\'un test de personnalité.', sourceId: null },
       ],
@@ -237,15 +237,15 @@ const courses = [
   {
     id: C(10), slug: 'poser-limite-sociale', title: 'Poser une limite sociale sans culpabiliser',
     order_index: 10, tags: ['limites'], free_tier_included: false,
-    level: 1, parent_course_id: null, required_tier: 'intermediate',
+    level: 1, parent_course_id: null, required_tier: 'premium',
     content: {
-      hook: 'Tu viens de dire "oui" à une sollicitation dont tu n\'avais pas envie. Encore une fois. La boule au ventre s\'installe déjà. Poser une limite semble impossible sans se sentir égoïste — pourtant, une synthèse de plusieurs essais contrôlés montre que cette capacité s\'entraîne, avec un effet mesurable.',
+      hook: 'Tu viens de dire "oui" à une sollicitation dont tu n\'avais pas envie. Encore une fois. La boule au ventre s\'installe déjà. Poser une limite semble impossible sans se sentir égoïste, pourtant une synthèse de plusieurs essais contrôlés montre que cette capacité s\'entraîne, avec un effet mesurable.',
       diagnostic: { kind: 'slider', question: 'À quel point te sens-tu coupable quand tu dis non à une sollicitation sociale ?', min: 1, max: 10, minLabel: 'Pas du tout', maxLabel: 'Énormément' },
       cards: [
         { title: 'Ça s\'entraîne, avec des preuves', advice: 'Une synthèse de 12 essais contrôlés randomisés portant sur plus de 500 personnes a montré que l\'entraînement à l\'affirmation de soi produit un effet réel et mesurable sur le comportement assertif et l\'anxiété sociale.', sourceId: S(18) },
         { title: 'La formule DESC', advice: 'Décris les faits, Exprime ce que tu ressens, Spécifie ce que tu proposes, précise les Conséquences positives. Une structure simple pour poser une limite sans agressivité ni justification excessive.', sourceId: S(19) },
         { title: 'Dire non sans se justifier pendant 5 minutes', advice: 'Une phrase courte suffit : "Je ne suis pas disponible ce soir-là." Sur-expliquer donne à l\'autre plus de prise pour négocier ta limite.', sourceId: S(20) },
-        { title: 'La culpabilité n\'est pas un signal d\'erreur', advice: 'La gêne initiale après avoir posé une limite est normale — et elle diminue avec la pratique, exactement comme le montre l\'effet d\'entraînement de la méta-analyse. Ce n\'est pas un signe que tu as mal agi.', sourceId: S(18) },
+        { title: 'La culpabilité n\'est pas un signal d\'erreur', advice: 'La gêne initiale après avoir posé une limite est normale, et elle diminue avec la pratique, comme le montre l\'effet d\'entraînement de la méta-analyse. Ce n\'est pas un signe que tu as mal agi.', sourceId: S(18) },
         { title: 'Récap', advice: 'Poser des limites est une compétence entraînable et prouvée ; utilise DESC ; une phrase courte suffit ; la culpabilité initiale est normale et passagère.', sourceId: null },
       ],
       exercise: {
@@ -261,14 +261,14 @@ const courses = [
   {
     id: C(11), slug: 'rejoindre-groupe', title: 'Rejoindre un groupe déjà en pleine conversation',
     order_index: 11, tags: ['groupe', 'conversation'], free_tier_included: false,
-    level: 1, parent_course_id: null, required_tier: 'intermediate',
+    level: 1, parent_course_id: null, required_tier: 'premium',
     content: {
       hook: 'Tu arrives à une soirée. Un petit groupe discute déjà en cercle, animé, personne ne te voit. Tu restes planté à côté, sans savoir comment t\'insérer sans avoir l\'air d\'interrompre. Ce moment précis a été étudié en détail par les chercheurs qui analysent comment les groupes s\'organisent physiquement dans l\'espace pendant une conversation.',
       diagnostic: { kind: 'slider', question: 'À quel point te sens-tu à l\'aise pour rejoindre un groupe déjà en pleine conversation ?', min: 1, max: 10, minLabel: 'Terrifié', maxLabel: 'Aucun souci' },
       cards: [
-        { title: 'Le cercle "ouvert" est une vraie invitation', advice: 'Les groupes en conversation forment naturellement des arrangements spatiaux étudiés en sciences sociales : un cercle légèrement ouvert (pas complètement fermé) est une configuration reconnue comme une invitation implicite à s\'approcher — ce n\'est pas un hasard si certains groupes te "laissent de la place" et d\'autres non.', sourceId: S(25) },
-        { title: 'Positionne-toi avant de parler', advice: 'Approche-toi de l\'ouverture du cercle, établis un contact visuel bref, hoche légèrement la tête — laisse le groupe t\'intégrer visuellement avant de dire quoi que ce soit. Le positionnement précède la prise de parole.', sourceId: S(25) },
-        { title: 'Écoute 10 secondes avant d\'intervenir', advice: 'Capter le sujet en cours évite l\'entrée "à l\'aveugle" qui casse la dynamique — une fois le sujet identifié, ton entrée paraît naturelle plutôt que plaquée.', sourceId: S(26) },
+        { title: 'Le cercle "ouvert" est une vraie invitation', advice: 'Les groupes en conversation forment naturellement des arrangements spatiaux étudiés en sciences sociales : un cercle légèrement ouvert (pas complètement fermé) est une configuration reconnue comme une invitation implicite à s\'approcher. Ce n\'est pas un hasard si certains groupes te "laissent de la place" et d\'autres non.', sourceId: S(25) },
+        { title: 'Positionne-toi avant de parler', advice: 'Approche-toi de l\'ouverture du cercle, établis un contact visuel bref, hoche légèrement la tête. Laisse le groupe t\'intégrer visuellement avant de dire quoi que ce soit : le positionnement précède la prise de parole.', sourceId: S(25) },
+        { title: 'Écoute 10 secondes avant d\'intervenir', advice: 'Capter le sujet en cours évite l\'entrée "à l\'aveugle" qui casse la dynamique. Une fois le sujet identifié, ton entrée paraît naturelle plutôt que plaquée.', sourceId: S(26) },
         { title: 'Entre avec une question, pas une déclaration', advice: 'Une question ouverte liée à ce qui vient d\'être dit ("Attends, comment vous en êtes arrivés là ?") s\'intègre plus naturellement qu\'une remarque sans lien, et donne immédiatement la parole à quelqu\'un du groupe.', sourceId: S(3) },
         { title: 'Récap', advice: 'Repère un cercle ouvert plutôt que fermé, positionne-toi avant de parler, écoute quelques secondes pour capter le sujet, entre avec une question plutôt qu\'une déclaration.', sourceId: null },
       ],
@@ -286,15 +286,15 @@ const courses = [
   {
     id: C(12), slug: 'ecouter-vraiment', title: 'Écouter pour de vrai',
     order_index: 12, tags: ['ecoute'], free_tier_included: false,
-    level: 1, parent_course_id: null, required_tier: 'intermediate',
+    level: 1, parent_course_id: null, required_tier: 'premium',
     content: {
-      hook: 'Un ami te raconte sa journée. Tu hoches la tête, mais une partie de toi est déjà en train de préparer ce que tu vas répondre. Tu n\'écoutes qu\'à moitié — et lui aussi, probablement, le sent. Plusieurs études en laboratoire ont mesuré ce qui change, chez la personne qui parle, quand elle se sent vraiment écoutée.',
+      hook: 'Un ami te raconte sa journée. Tu hoches la tête, mais une partie de toi est déjà en train de préparer ce que tu vas répondre. Tu n\'écoutes qu\'à moitié, et lui le sent probablement aussi. Plusieurs études en laboratoire ont mesuré ce qui change, chez la personne qui parle, quand elle se sent vraiment écoutée.',
       diagnostic: { kind: 'slider', question: 'À quel point penses-tu déjà à ta réponse pendant que l\'autre parle ?', min: 1, max: 10, minLabel: 'Jamais', maxLabel: 'Presque toujours' },
       cards: [
-        { title: 'Écouter change l\'autre, pas juste toi', advice: 'Une écoute de haute qualité — empathique, attentive, non-jugeante — réduit mesurablement l\'anxiété sociale et la défensivité de la personne qui parle, à travers plusieurs expériences contrôlées en laboratoire.', sourceId: S(27) },
+        { title: 'Écouter change l\'autre, pas juste toi', advice: 'Une écoute de haute qualité (empathique, attentive, non jugeante) réduit mesurablement l\'anxiété sociale et la défensivité de la personne qui parle, à travers plusieurs expériences contrôlées en laboratoire.', sourceId: S(27) },
         { title: 'Les 3 ingrédients d\'une bonne écoute', advice: 'Les chercheurs identifient trois composantes déterminantes : l\'empathie, l\'attention réelle, et l\'absence de jugement. Retirer un seul des trois suffit à réduire l\'effet.', sourceId: S(27) },
-        { title: 'Ça te rend aussi plus appréciable, toi', advice: 'Les personnes qui se sentent bien écoutées rapportent un sentiment de connexion plus fort envers leur interlocuteur — bien écouter n\'est pas un sacrifice social, c\'est aussi bénéfique pour toi.', sourceId: S(27) },
-        { title: 'La technique du reflet', advice: 'Avant de répondre ou de donner ton avis, reformule brièvement ce que tu viens d\'entendre ("si je comprends bien, tu es surtout frustré par...") — ça force une écoute réelle et montre à l\'autre qu\'il a été entendu.', sourceId: S(28) },
+        { title: 'Ça te rend aussi plus appréciable, toi', advice: 'Les personnes qui se sentent bien écoutées rapportent un sentiment de connexion plus fort envers leur interlocuteur. Bien écouter te profite aussi, ce n\'est pas qu\'un sacrifice social.', sourceId: S(27) },
+        { title: 'La technique du reflet', advice: 'Avant de répondre ou de donner ton avis, reformule brièvement ce que tu viens d\'entendre ("si je comprends bien, tu es surtout frustré par...") : ça force une écoute réelle et montre à l\'autre qu\'il a été entendu.', sourceId: S(28) },
         { title: 'Récap', advice: 'Une écoute de qualité réduit l\'anxiété de celui qui parle, repose sur 3 ingrédients précis (empathie, attention, non-jugement), et te rend toi-même plus appréciable.', sourceId: null },
       ],
       exercise: {
@@ -311,14 +311,14 @@ const courses = [
   {
     id: C(13), slug: 'rejet-social', title: 'Le rejet social, ça fait vraiment mal',
     order_index: 13, tags: ['rejet'], free_tier_included: false,
-    level: 1, parent_course_id: null, required_tier: 'intermediate',
+    level: 1, parent_course_id: null, required_tier: 'premium',
     content: {
-      hook: 'On t\'a ignoré dans une conversation de groupe, ou pire, exclu d\'un truc auquel tout le monde a été invité sauf toi. La blessure te semble disproportionnée par rapport à "juste" un rejet social — comme si tu réagissais trop fort. Une étude en imagerie cérébrale a montré que ta réaction n\'a rien d\'exagéré : ton cerveau traite littéralement ça comme une douleur physique.',
+      hook: 'On t\'a ignoré dans une conversation de groupe, ou pire, exclu d\'un truc auquel tout le monde a été invité sauf toi. La blessure te semble disproportionnée par rapport à "juste" un rejet social, comme si tu réagissais trop fort. Une étude en imagerie cérébrale a montré que ta réaction n\'a rien d\'exagéré : ton cerveau traite littéralement ça comme une douleur physique.',
       diagnostic: { kind: 'slider', question: 'À quel point la peur d\'être ignoré ou rejeté t\'empêche-t-elle d\'aller vers les autres ?', min: 1, max: 10, minLabel: 'Pas du tout', maxLabel: 'Ça me bloque complètement' },
       cards: [
-        { title: 'Ton cerveau ne fait pas la différence', advice: 'Une étude en IRMf a montré que l\'exclusion sociale active le cortex cingulaire antérieur — la même zone cérébrale impliquée dans la douleur physique — et que cette activation est corrélée à la détresse ressentie.', sourceId: S(29) },
-        { title: 'Donc ta réaction n\'est pas "exagérée"', advice: 'Puisque c\'est une douleur neurologiquement réelle, ressentir une réaction forte face au rejet n\'est pas un signe d\'hypersensibilité — c\'est le fonctionnement normal d\'un cerveau humain. Ça enlève une couche de honte inutile ajoutée à la douleur initiale.', sourceId: S(29) },
-        { title: 'La douleur sociale est un signal, pas une sentence', advice: 'Les chercheurs décrivent cette douleur comme une alarme — elle signale une rupture de lien à réparer, pas une preuve que tu ne mérites pas d\'appartenir quelque part.', sourceId: S(29) },
+        { title: 'Ton cerveau ne fait pas la différence', advice: 'Une étude en IRMf a montré que l\'exclusion sociale active le cortex cingulaire antérieur, la même zone cérébrale impliquée dans la douleur physique, et que cette activation est corrélée à la détresse ressentie.', sourceId: S(29) },
+        { title: 'Donc ta réaction n\'est pas "exagérée"', advice: 'Cette douleur est neurologiquement réelle : ressentir une réaction forte face au rejet est le fonctionnement normal d\'un cerveau humain, pas un signe d\'hypersensibilité. Ça enlève une couche de honte inutile ajoutée à la douleur initiale.', sourceId: S(29) },
+        { title: 'La douleur sociale est un signal, pas une sentence', advice: 'Les chercheurs décrivent cette douleur comme une alarme : elle signale une rupture de lien à réparer, pas une preuve que tu ne mérites pas d\'appartenir quelque part.', sourceId: S(29) },
         { title: 'Reprends contact plutôt que d\'éviter', advice: 'Éviter systématiquement toute situation où un nouveau rejet pourrait survenir entretient la douleur sur le long terme ; un petit pas de reconnexion, même minime, est plus protecteur que l\'évitement complet.', sourceId: S(30) },
         { title: 'Récap', advice: 'Le rejet active un vrai circuit de douleur cérébrale ; ta réaction n\'est pas exagérée ; c\'est un signal à traiter, pas une sentence ; reconnecte-toi plutôt que d\'éviter.', sourceId: null },
       ],
@@ -332,22 +332,22 @@ const courses = [
   {
     id: C(14), slug: 'reseauter-sans-se-forcer', title: 'Réseauter sans se forcer',
     order_index: 14, tags: ['travail', 'reseau'], free_tier_included: false,
-    level: 1, parent_course_id: null, required_tier: 'intermediate',
+    level: 1, parent_course_id: null, required_tier: 'premium',
     content: {
       hook: 'Un événement professionnel dans deux jours. Rien que d\'y penser, tu sens déjà la fatigue : sourire poliment, faire semblant que tout ça sert à quelque chose, échanger des cartes de visite avec des gens que tu ne reverras jamais. Sauf qu\'une étude fondatrice en sociologie, restée l\'une des plus citées de son domaine, montre exactement le contraire : ce sont ces liens légers qui comptent le plus.',
       diagnostic: { kind: 'slider', question: 'À quel point le réseautage professionnel te semble-t-il artificiel ou inutile ?', min: 1, max: 10, minLabel: 'Pas du tout', maxLabel: 'Complètement' },
       cards: [
         { title: 'Ce sont les liens faibles qui ouvrent des portes', advice: 'Une étude devenue une référence en sociologie a interrogé des centaines de personnes sur la façon dont elles avaient trouvé leur emploi : leurs connaissances éloignées et occasionnelles se sont révélées statistiquement plus utiles que leurs proches pour accéder à de nouvelles opportunités.', sourceId: S(31) },
-        { title: 'Pourquoi ça marche : l\'info ne se répète pas', advice: 'Tes proches connaissent déjà ce que tu sais. Tes connaissances éloignées, elles, évoluent dans des cercles différents — elles t\'apportent des informations que ton entourage proche ne peut pas te donner.', sourceId: S(31) },
+        { title: 'Pourquoi ça marche : l\'info ne se répète pas', advice: 'Tes proches connaissent déjà ce que tu sais. Tes connaissances éloignées, elles, évoluent dans des cercles différents, et t\'apportent des informations que ton entourage proche ne peut pas te donner.', sourceId: S(31) },
         { title: 'Vise 1 lien, pas 20', advice: 'Puisque la valeur vient des liens légers eux-mêmes, pas de leur nombre ni de leur intensité, l\'objectif réaliste d\'un événement n\'est pas "réseauter avec tout le monde" mais repartir avec une seule connexion légère mais réelle.', sourceId: S(31) },
-        { title: 'Le suivi compte plus que la soirée', advice: 'Un lien faible se maintient avec un minimum de contact périodique (un message tous les quelques mois suffit) — pas besoin d\'intensité ni de fréquence pour qu\'il reste utile.', sourceId: S(32) },
+        { title: 'Le suivi compte plus que la soirée', advice: 'Un lien faible se maintient avec un minimum de contact périodique (un message tous les quelques mois suffit). Pas besoin d\'intensité ni de fréquence pour qu\'il reste utile.', sourceId: S(32) },
         { title: 'Récap', advice: 'Les liens faibles sont statistiquement plus utiles que les liens forts pour les opportunités ; vise une seule connexion réelle par événement plutôt que la quantité ; entretiens-la avec un contact minimal mais régulier.', sourceId: null },
       ],
       exercise: {
         kind: 'free-plan',
         prompt: 'Choisis une personne rencontrée récemment lors d\'un événement pro. Quel message court pourrais-tu lui envoyer cette semaine pour garder le contact ?',
         examples: [
-          '"Ravi d\'avoir échangé l\'autre jour — je repense à ce que tu disais sur [sujet], ça m\'a donné à réfléchir !"',
+          '"Ravi d\'avoir échangé l\'autre jour, je repense à ce que tu disais sur [sujet], ça m\'a donné à réfléchir !"',
           '"Petit message pour garder le contact après notre échange à [événement], n\'hésite pas si je peux t\'être utile un jour."',
         ],
       },
@@ -356,15 +356,15 @@ const courses = [
   {
     id: C(15), slug: 'compliment-sincere', title: 'Faire un compliment sincère sans que ce soit bizarre',
     order_index: 15, tags: ['compliment'], free_tier_included: false,
-    level: 1, parent_course_id: null, required_tier: 'intermediate',
+    level: 1, parent_course_id: null, required_tier: 'premium',
     content: {
-      hook: 'Tu penses un vrai compliment à quelqu\'un — sa façon de présenter les choses, un choix qu\'il a fait, un détail que tu apprécies chez lui. Et tu le gardes pour toi, en imaginant que ça sonnerait faux ou gênant. Neuf expériences menées sur ce réflexe exact montrent que tu te trompes, systématiquement, dans le même sens.',
+      hook: 'Tu penses un vrai compliment à quelqu\'un : sa façon de présenter les choses, un choix qu\'il a fait, un détail que tu apprécies chez lui. Et tu le gardes pour toi, en imaginant que ça sonnerait faux ou gênant. Neuf expériences menées sur ce réflexe montrent que tu te trompes, et toujours dans le même sens.',
       diagnostic: { kind: 'slider', question: 'À quel point retiens-tu des compliments sincères par peur que ce soit gênant ?', min: 1, max: 10, minLabel: 'Jamais', maxLabel: 'Presque toujours' },
       cards: [
         { title: 'Tu sous-estimes l\'effet, dans les deux sens', advice: 'Sur neuf expériences, les personnes qui faisaient un compliment sous-estimaient systématiquement à quel point il rendrait l\'autre heureux, tout en surestimant à quel point ce serait gênant. Les deux erreurs vont dans le même sens : celui qui te retient d\'agir.', sourceId: S(33) },
-        { title: 'Ça ne s\'use pas', advice: 'Contrairement à l\'intuition, répéter des compliments sincères à la même personne ne les rend pas moins sincères ni moins appréciés à ses yeux — l\'effet ne s\'épuise pas avec la répétition.', sourceId: S(33) },
+        { title: 'Ça ne s\'use pas', advice: 'Contrairement à l\'intuition, répéter des compliments sincères à la même personne ne les rend pas moins sincères ni moins appréciés à ses yeux, l\'effet ne s\'épuise pas avec la répétition.', sourceId: S(33) },
         { title: 'Sois précis, pas générique', advice: 'Un compliment spécifique ("ta façon d\'expliquer ce point était hyper claire") est perçu comme plus sincère et a plus d\'impact qu\'un compliment vague ("t\'es sympa").', sourceId: S(33) },
-        { title: 'Dis-le sur le moment', advice: 'Plus tu attends, plus l\'occasion se referme et plus ton hésitation grandit — le compliment dit dans l\'instant demande moins de courage que celui préparé après coup.', sourceId: S(34) },
+        { title: 'Dis-le sur le moment', advice: 'Plus tu attends, plus l\'occasion se referme et plus ton hésitation grandit : le compliment dit dans l\'instant demande moins de courage que celui préparé après coup.', sourceId: S(34) },
         { title: 'Récap', advice: 'Tu sous-estimes l\'impact positif d\'un compliment et surestimes sa gêne ; il ne s\'use pas avec la répétition ; sois précis plutôt que vague ; dis-le sur le moment.', sourceId: null },
       ],
       exercise: {
@@ -377,17 +377,17 @@ const courses = [
       },
     },
   },
-  // Level 2 modules — always required_tier: 'superior'.
+  // Level 2 modules — always required_tier: 'premium'.
   {
     id: C(16), slug: 'faire-monter-conversation', title: 'Faire monter une conversation',
     order_index: 16, tags: ['conversation'], free_tier_included: false,
-    level: 2, parent_course_id: C(1), required_tier: 'superior',
+    level: 2, parent_course_id: C(1), required_tier: 'premium',
     content: {
-      hook: 'La conversation dure depuis dix minutes. Météo, boulot, week-end. Tu sens qu\'elle pourrait aller plus loin, mais une question un peu plus personnelle te semble risquée — comme si tu allais mettre l\'autre mal à l\'aise. Une étude sur plus de 1800 personnes a testé exactement cette peur, en confrontant des inconnus à des questions bien plus profondes que la météo.',
+      hook: 'La conversation dure depuis dix minutes. Météo, boulot, week-end. Tu sens qu\'elle pourrait aller plus loin, mais une question un peu plus personnelle te semble risquée, comme si tu allais mettre l\'autre mal à l\'aise. Une étude sur plus de 1800 personnes a testé cette peur, en confrontant des inconnus à des questions bien plus profondes que la météo.',
       diagnostic: { kind: 'slider', question: 'À quel point as-tu peur qu\'une question plus personnelle mette l\'autre mal à l\'aise ?', min: 1, max: 10, minLabel: 'Pas du tout', maxLabel: 'Énormément' },
       cards: [
         { title: 'Ton estimation est fausse, dans le bon sens', advice: 'Dans 12 expériences menées sur plus de 1800 participants, les conversations profondes entre inconnus se sont systématiquement révélées moins gênantes, plus connectantes et plus agréables que ce que les deux parties avaient prédit avant de commencer.', sourceId: S(21) },
-        { title: 'Monte d\'un cran, pas de dix', advice: 'Pas besoin de sauter directement à une question intime — une question légèrement plus personnelle que la moyenne ("Qu\'est-ce qui te motive dans ce que tu fais ?" plutôt que "Tu bosses où ?") suffit à faire basculer une conversation vers plus de connexion.', sourceId: S(21) },
+        { title: 'Monte d\'un cran, pas de dix', advice: 'Pas besoin de sauter directement à une question intime, une question légèrement plus personnelle que la moyenne ("Qu\'est-ce qui te motive dans ce que tu fais ?" plutôt que "Tu bosses où ?") suffit à faire basculer une conversation vers plus de connexion.', sourceId: S(21) },
         { title: 'Partage à la même profondeur', advice: 'Dans l\'étude, les échanges les plus connectants étaient réciproques : après avoir posé une question plus personnelle, partage aussi quelque chose d\'un niveau de profondeur comparable sur toi-même.', sourceId: S(21) },
         { title: 'Récap', advice: 'Tu surestimes largement la gêne que provoque une question plus personnelle ; monte d\'un cran progressivement ; partage à la même profondeur que ce que tu demandes.', sourceId: null },
       ],
@@ -404,15 +404,15 @@ const courses = [
   {
     id: C(17), slug: 'arreter-ruminations', title: 'Après l\'événement : arrêter les ruminations',
     order_index: 17, tags: ['anxiete', 'recuperation'], free_tier_included: false,
-    level: 2, parent_course_id: C(5), required_tier: 'superior',
+    level: 2, parent_course_id: C(5), required_tier: 'premium',
     content: {
-      hook: 'L\'événement est terminé depuis des heures, mais toi, tu es encore dedans — tu repasses en boucle cette phrase que tu as mal formulée, ce silence bizarre, ce regard que tu as peut-être mal interprété. Ce phénomène a un nom précis en recherche clinique, et il a été mesuré : plus tu rumines, plus ton souvenir de l\'événement se déforme dans le sens négatif.',
+      hook: 'L\'événement est terminé depuis des heures, mais toi, tu es encore dedans : tu repasses en boucle cette phrase que tu as mal formulée, ce silence bizarre, ce regard que tu as peut-être mal interprété. Ce phénomène a un nom précis en recherche clinique, et il a été mesuré : plus tu rumines, plus ton souvenir de l\'événement se déforme dans le sens négatif.',
       diagnostic: { kind: 'slider', question: 'Après un événement social, à quel point repasses-tu mentalement ce qui s\'est dit ou ce que tu aurais dû dire ?', min: 1, max: 10, minLabel: 'Pas du tout', maxLabel: 'En boucle pendant des heures' },
       cards: [
         { title: 'Ça s\'appelle le "post-event processing"', advice: 'C\'est un phénomène mesuré et corrélé à l\'anxiété sociale : des souvenirs récurrents et intrusifs de l\'événement, qui interfèrent avec la concentration et poussent à éviter des situations similaires.', sourceId: S(22) },
         { title: 'Le souvenir se déforme pendant que tu rumines', advice: 'Ce n\'est pas un rejeu neutre : plus tu repasses l\'événement, plus ton souvenir se biaise vers les détails négatifs, même si l\'événement s\'est objectivement bien passé. La rumination fabrique le souvenir qu\'elle prétend analyser.', sourceId: S(22) },
-        { title: 'Fixe une fenêtre, pas un accès illimité', advice: 'Autorise-toi 10 minutes, à un moment précis de la journée, pour repenser à l\'événement — puis stoppe consciemment en dehors de cette fenêtre. Contenir la rumination dans un créneau limité réduit son emprise sur le reste de la journée.', sourceId: S(23) },
-        { title: 'Sépare les faits de l\'histoire que tu te racontes', advice: '"J\'ai dit un truc bizarre" est une interprétation, pas un fait. Écris ce qui s\'est objectivement passé, puis à côté ce que tu en déduis sur toi — les deux colonnes sont rarement aussi liées que ta rumination le laisse penser.', sourceId: S(11) },
+        { title: 'Fixe une fenêtre, pas un accès illimité', advice: 'Autorise-toi 10 minutes, à un moment précis de la journée, pour repenser à l\'événement, puis stoppe consciemment en dehors de cette fenêtre. Contenir la rumination dans un créneau limité réduit son emprise sur le reste de la journée.', sourceId: S(23) },
+        { title: 'Sépare les faits de l\'histoire que tu te racontes', advice: '"J\'ai dit un truc bizarre" est une interprétation, pas un fait. Écris ce qui s\'est objectivement passé, puis à côté ce que tu en déduis sur toi. Les deux colonnes sont rarement aussi liées que ta rumination le laisse penser.', sourceId: S(11) },
         { title: 'Récap', advice: 'Le post-event processing est un phénomène identifié et mesurable ; la rumination déforme le souvenir plus qu\'elle ne l\'analyse ; limite-la à une fenêtre de temps ; sépare les faits des interprétations.', sourceId: null },
       ],
       exercise: {
@@ -425,14 +425,14 @@ const courses = [
   {
     id: C(18), slug: 'entretenir-amitie', title: 'Entretenir une amitié dans la durée',
     order_index: 18, tags: ['amitie'], free_tier_included: false,
-    level: 2, parent_course_id: C(8), required_tier: 'superior',
+    level: 2, parent_course_id: C(8), required_tier: 'premium',
     content: {
-      hook: 'Tu as mis des dizaines d\'heures à devenir vraiment proche de quelqu\'un. Et puis la vie prend le dessus, les semaines passent sans nouvelles, et le lien s\'effiloche sans qu\'aucune dispute n\'ait eu lieu. Une étude longitudinale sur 18 mois a suivi exactement ce phénomène — et la bonne nouvelle, c\'est qu\'il obéit à des règles précises, pas au hasard.',
+      hook: 'Tu as mis des dizaines d\'heures à devenir vraiment proche de quelqu\'un. Et puis la vie prend le dessus, les semaines passent sans nouvelles, et le lien s\'effiloche sans qu\'aucune dispute n\'ait eu lieu. Une étude longitudinale sur 18 mois a suivi ce phénomène. Bonne nouvelle : il obéit à des règles précises, pas au hasard.',
       diagnostic: { kind: 'slider', question: 'Combien de tes amis proches as-tu contactés ce mois-ci ?', min: 0, max: 10, minLabel: 'Aucun', maxLabel: 'Tous' },
       cards: [
         { title: 'L\'amitié se dégrade sans contact, contrairement à la famille', advice: 'Une étude longitudinale sur 18 mois montre que les liens familiaux résistent au manque de contact, mais que les amitiés, elles, se dégradent mesurablement sans entretien actif régulier.', sourceId: S(24) },
         { title: 'Le rythme dépend de la proximité du cercle', advice: 'Plus une amitié est proche, plus elle demande de fréquence : contact quasi quotidien pour le cercle le plus intime, hebdomadaire pour les amis proches, mensuel pour les cercles plus larges.', sourceId: S(24) },
-        { title: 'Pas le même levier pour tout le monde', advice: 'La même étude observe une différence : le déclin est surtout évité par la fréquence des échanges (se parler) d\'un côté, et par les activités partagées de l\'autre — identifie lequel fonctionne le mieux avec chaque ami plutôt que d\'appliquer la même recette à tous.', sourceId: S(24) },
+        { title: 'Pas le même levier pour tout le monde', advice: 'La même étude observe une différence : le déclin est surtout évité par la fréquence des échanges (se parler) pour certains liens, et par les activités partagées pour d\'autres. Identifie ce qui fonctionne le mieux avec chaque ami plutôt que d\'appliquer la même recette à tous.', sourceId: S(24) },
         { title: 'Programme-le, ne le laisse pas au hasard', advice: 'Puisque la dégradation est passive (elle arrive sans qu\'il y ait de conflit), la seule protection efficace est active : planifier le contact à l\'avance plutôt que de compter sur l\'envie spontanée.', sourceId: S(24) },
         { title: 'Récap', advice: 'Une amitié demande un entretien actif, contrairement à la famille ; adapte la fréquence à la proximité du lien ; identifie si c\'est la conversation ou l\'activité partagée qui compte le plus pour chaque ami ; planifie plutôt que d\'attendre l\'envie.', sourceId: null },
       ],
@@ -471,7 +471,7 @@ function sqlJsonb(obj) {
 const lines = [
   '-- Recharj — seed 002: courses',
   '-- Run after 001_sources.sql (courses.content references source ids).',
-  '-- Generated from contenu-cours-mvp.md via generate-courses-seed.mjs — review before executing.',
+  '-- Generated from contenu-cours-mvp.md via generate-courses-seed.mjs, review before executing.',
   '',
   'insert into courses (id, slug, title, order_index, tags, free_tier_included, level, parent_course_id, required_tier, content) values',
 ];
@@ -481,8 +481,14 @@ const rows = courses.map((c) => {
   return `('${c.id}', '${c.slug}', ${sqlString(c.title)}, ${c.order_index}, ${sqlArray(c.tags)}, ${sqlBool(c.free_tier_included)}, ${c.level}, ${parent}, '${c.required_tier}', ${sqlJsonb(c.content)})`;
 });
 
-lines.push(rows.join(',\n\n') + ';');
+const onConflict =
+  'on conflict (id) do update set slug = excluded.slug, title = excluded.title, order_index = excluded.order_index, ' +
+  'tags = excluded.tags, free_tier_included = excluded.free_tier_included, level = excluded.level, ' +
+  'parent_course_id = excluded.parent_course_id, required_tier = excluded.required_tier, content = excluded.content;';
+
+lines.push(rows.join(',\n\n'));
+lines.push(onConflict);
 lines.push('');
 
 writeFileSync('c:/Users/ngoss/Recharj/supabase/seed/002_courses.sql', lines.join('\n'), 'utf8');
-console.log('Wrote supabase/seed/002_courses.sql —', courses.length, 'courses');
+console.log('Wrote supabase/seed/002_courses.sql,', courses.length, 'courses');

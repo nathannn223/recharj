@@ -4,7 +4,7 @@
 const EVENT_TYPE_TAGS: Record<string, string[]> = {
   'Repas de famille': ['famille', 'repas'],
   'Travail': ['travail'],
-  'Soirée entre amis': ['amitie', 'conversation'],
+  'Soirée entre amis': ['amitie'],
   'Rendez-vous': ['conversation'],
 };
 

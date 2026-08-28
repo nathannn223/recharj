@@ -319,13 +319,69 @@ Cela réduit le risque sans le supprimer : `npx tsc --noEmit` reste à lancer.
 
 ---
 
+### 2026-08-28 — Vérification exécutée par l'utilisateur, et découverte d'un arriéré non commité
+
+Nathan a lancé lui-même, dans le terminal VS Code (PowerShell), les commandes
+que les sessions précédentes n'avaient pas pu exécuter.
+
+**`npx tsc --noEmit` : aucune erreur.** Le contrôle de types manquant sur les
+chantiers 1 et 2 est donc levé. C'était le seul risque technique ouvert.
+
+**Les deux commits ont été créés :**
+
+- `05c4aa6` — *Carry the battery level forward across days and persist it*
+  (6 fichiers, +756 / −58)
+- `c7d8bf8` — *Add month navigation, event editing and deletion to the calendar*
+  (4 fichiers, +538 / −54)
+
+**Découverte importante.** Le `git status` a révélé qu'au moment où ces
+chantiers ont été écrits, le dépôt contenait déjà **une vingtaine de fichiers
+modifiés et une dizaine de fichiers non suivis sans rapport avec eux**. Le
+dernier commit datait du 17/08/2026, mais tout le travail réalisé depuis
+n'avait jamais été commité :
+
+- quiz pré-inscription et son câblage (`app/(auth)/index.tsx`,
+  `app/onboarding.tsx`, `lib/pendingOnboarding.ts`, `lib/onboarding.tsx`)
+- `lib/legal.ts`, `lib/obstacles.ts`, `lib/socialProfile.ts`
+- migrations `005` à `010`
+- `supabase/functions/delete-account/`
+- seeds `001_sources.sql` / `002_courses.sql` et
+  `supabase/seed/generate-courses-seed.mjs`
+- `app.json`, `package.json`, `package-lock.json`, `tsconfig.json`
+
+Autrement dit : l'analyse initiale du projet portait sur l'**arbre de travail**,
+pas sur l'état commité, et les deux divergeaient largement. Les migrations 005
+à 010 étaient décrites comme existantes — elles l'étaient sur le disque, pas
+dans l'historique. La migration 011 a donc été commitée avant ses six
+prédécesseurs. Sans conséquence fonctionnelle (`battery_days` ne référence que
+`auth.users`), mais l'historique est temporairement incohérent.
+
+**Correction d'une affirmation précédente.** Il avait été écrit qu'aucune CLI
+Supabase n'était utilisée sur ce projet. Le dossier `supabase/.temp/` existe
+bel et bien — mais il ne contient que `cli-latest`, le cache de version écrit
+par n'importe quel appel `npx supabase`. Il n'y a **ni `supabase/config.toml`
+ni projet lié**, donc `supabase db push` ne fonctionnerait pas. La conclusion
+tient : les migrations passent par le SQL Editor du dashboard.
+
+**Décidé.** `.agents/` et `supabase/.temp/` sont ajoutés au `.gitignore`
+plutôt que commités : outillage local et cache, sans valeur pour le dépôt.
+L'arriéré ci-dessus est commité en un seul lot — le découper a posteriori en
+commits thématiques aurait demandé un travail d'archéologie disproportionné
+face au risque de le laisser non versionné plus longtemps.
+
+**Leçon pour les sessions suivantes.** Le point 2 du protocole (`git status`
+au démarrage) n'est pas une formalité : ici il aurait révélé dès le début que
+l'arbre de travail et l'historique divergeaient de onze jours.
+
+---
+
 ### Reste à faire
 
 Par ordre de priorité.
 
 **Vérification non effectuée dans cette session (shell indisponible) :**
 
-- [ ] `npx tsc --noEmit` sur l'ensemble du projet
+- [x] `npx tsc --noEmit` sur l'ensemble du projet — **fait le 28/08/2026, aucune erreur**
 - [ ] Lancer l'app en Expo Go et vérifier le rendu réel : jauge héros avec un
       niveau autre que 100, navigation entre mois, suppression, édition
 - [ ] Vérifier le comportement de rattrapage sur un vrai décalage de dates

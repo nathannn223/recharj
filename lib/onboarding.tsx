@@ -6,6 +6,13 @@ const KEY = 'recharj.onboarding_seen';
 type OnboardingContextValue = {
   seen: boolean | null; // null while the AsyncStorage read is in flight
   markSeen: () => Promise<void>;
+  // Dev-only. The __DEV__ override below only fires once, on the provider's
+  // initial mount, so it does not catch a second test signup made later in
+  // the same running session (sign out, sign up again, no app restart) —
+  // `seen` stays true from the first account and onboarding gets skipped.
+  // Call this right after a fresh signUp() succeeds to reset it. No-op in
+  // production.
+  resetSeen: () => void;
 };
 
 const OnboardingContext = createContext<OnboardingContextValue | null>(null);
@@ -31,7 +38,11 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     setSeen(true);
   };
 
-  return <OnboardingContext.Provider value={{ seen, markSeen }}>{children}</OnboardingContext.Provider>;
+  const resetSeen = () => {
+    if (__DEV__) setSeen(false);
+  };
+
+  return <OnboardingContext.Provider value={{ seen, markSeen, resetSeen }}>{children}</OnboardingContext.Provider>;
 }
 
 export function useOnboarding() {

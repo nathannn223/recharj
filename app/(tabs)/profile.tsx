@@ -1,23 +1,26 @@
+import * as WebBrowser from 'expo-web-browser';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChevronRightIcon, UserIcon } from '@/components/icons/Icon';
 import { colors, fontFamily, radii, spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import type { SubscriptionTier } from '@/lib/courses';
+import { PRIVACY_URL, SUPPORT_EMAIL, TERMS_URL } from '@/lib/legal';
 import { supabase } from '@/lib/supabase';
 
 const TIER_LABEL: Record<SubscriptionTier, string> = {
   free: 'Gratuit',
-  intermediate: 'Intermédiaire',
-  superior: 'Supérieur',
+  premium: 'Premium',
 };
 
 export default function ProfileScreen() {
-  const { session, signOut } = useAuth();
+  const { session, signOut, deleteAccount } = useAuth();
   const [tier, setTier] = useState<SubscriptionTier | null>(null);
   const [completedCount, setCompletedCount] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!session) return;
@@ -37,8 +40,28 @@ export default function ProfileScreen() {
     };
   }, [session]);
 
+  const confirmDeleteAccount = () => {
+    Alert.alert(
+      'Supprimer ton compte ?',
+      'Toutes tes données (profil, événements, progression) seront effacées définitivement. Cette action est irréversible.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            setDeleting(true);
+            const { error } = await deleteAccount();
+            setDeleting(false);
+            if (error) Alert.alert('Erreur', error);
+          },
+        },
+      ]
+    );
+  };
+
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <View style={styles.badge}>
@@ -64,11 +87,36 @@ export default function ProfileScreen() {
           <ChevronRightIcon color={colors.textDim} size={18} />
         </Pressable>
 
+        <View style={styles.group}>
+          <Text style={styles.groupLabel}>Légal</Text>
+          <Pressable style={styles.row} onPress={() => WebBrowser.openBrowserAsync(PRIVACY_URL)}>
+            <Text style={styles.rowText}>Politique de confidentialité</Text>
+            <ChevronRightIcon color={colors.textDim} size={18} />
+          </Pressable>
+          <Pressable style={styles.row} onPress={() => WebBrowser.openBrowserAsync(TERMS_URL)}>
+            <Text style={styles.rowText}>Conditions d'utilisation</Text>
+            <ChevronRightIcon color={colors.textDim} size={18} />
+          </Pressable>
+          <Pressable style={styles.row} onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}`)}>
+            <Text style={styles.rowText}>Contacter le support</Text>
+            <ChevronRightIcon color={colors.textDim} size={18} />
+          </Pressable>
+        </View>
+
+        <Text style={styles.disclaimer}>
+          Recharj est un outil d'auto-amélioration sociale. Ça ne remplace pas un accompagnement médical ou psychologique
+          professionnel.
+        </Text>
+
         <Pressable style={styles.signOutBtn} onPress={signOut}>
           <Text style={styles.signOutText}>Se déconnecter</Text>
         </Pressable>
+
+        <Pressable style={styles.deleteBtn} onPress={confirmDeleteAccount} disabled={deleting}>
+          <Text style={styles.deleteText}>{deleting ? 'Suppression…' : 'Supprimer mon compte'}</Text>
+        </Pressable>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -78,8 +126,8 @@ const styles = StyleSheet.create({
 
   header: { alignItems: 'center', gap: spacing[2] },
   badge: { width: 76, height: 76, borderRadius: 24, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.borderSoft },
-  title: { fontFamily: fontFamily.displaySemiBold, fontSize: 24, color: colors.text, marginTop: spacing[2] },
-  email: { fontFamily: fontFamily.textMedium, fontSize: 14, color: colors.textDim },
+  title: { fontFamily: fontFamily.displaySemiBold, fontSize: 28, color: colors.text, marginTop: spacing[2] },
+  email: { fontFamily: fontFamily.textMedium, fontSize: 15, color: colors.textDim },
 
   statsRow: { flexDirection: 'row', gap: spacing[3], width: '100%' },
   statCard: {
@@ -95,6 +143,9 @@ const styles = StyleSheet.create({
   statValue: { fontFamily: fontFamily.displaySemiBold, fontSize: 20, color: colors.text },
   statLabel: { fontFamily: fontFamily.textRegular, fontSize: 12, color: colors.textDim, textAlign: 'center' },
 
+  group: { width: '100%', gap: spacing[3] },
+  groupLabel: { fontFamily: fontFamily.textBold, fontSize: 13, color: colors.textFaint, textTransform: 'uppercase', letterSpacing: 0.8 },
+
   row: {
     width: '100%',
     flexDirection: 'row',
@@ -108,8 +159,10 @@ const styles = StyleSheet.create({
   },
   rowText: { fontFamily: fontFamily.textSemiBold, fontSize: 15, color: colors.text },
 
+  disclaimer: { fontFamily: fontFamily.textRegular, fontSize: 12, color: colors.textFaint, textAlign: 'center', lineHeight: 18, paddingHorizontal: spacing[4] },
+
   signOutBtn: {
-    marginTop: spacing[4],
+    marginTop: spacing[2],
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radii.md,
@@ -117,4 +170,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   signOutText: { fontFamily: fontFamily.textSemiBold, fontSize: 14, color: colors.critical },
+
+  deleteBtn: { paddingVertical: 8, paddingHorizontal: 24 },
+  deleteText: { fontFamily: fontFamily.textMedium, fontSize: 12, color: colors.textFaint, textDecorationLine: 'underline' },
 });

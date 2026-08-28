@@ -4,6 +4,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import 'react-native-reanimated';
 
 import {
@@ -55,14 +56,16 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={navTheme}>
-      <StatusBar style="light" />
-      <AuthProvider>
-        <OnboardingProvider>
-          <RootNavigator />
-        </OnboardingProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider value={navTheme}>
+        <StatusBar style="light" />
+        <AuthProvider>
+          <OnboardingProvider>
+            <RootNavigator />
+          </OnboardingProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }
 

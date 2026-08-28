@@ -2,6 +2,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CloseIcon } from '@/components/icons/Icon';
 import { colors, fontFamily, radii, spacing } from '@/constants/theme';
@@ -34,7 +35,7 @@ export default function SourceScreen() {
   }, [id]);
 
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.row}>
           <Text style={styles.h1}>Approfondir ce sujet</Text>
@@ -81,7 +82,7 @@ export default function SourceScreen() {
           </>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -89,7 +90,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.ink },
   content: { padding: spacing[5], paddingTop: spacing[6], gap: spacing[4], paddingBottom: spacing[8] },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  h1: { fontFamily: fontFamily.displaySemiBold, fontSize: 22, color: colors.text },
+  h1: { fontFamily: fontFamily.displaySemiBold, fontSize: 25, color: colors.text },
   centered: { paddingVertical: spacing[7], alignItems: 'center' },
   errorText: { fontFamily: fontFamily.textMedium, fontSize: 14, color: colors.critical },
 
