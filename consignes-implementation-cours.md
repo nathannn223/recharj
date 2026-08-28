@@ -1,5 +1,14 @@
 # Consignes d'implémentation — système de cours + sources
 
+> **Obsolète depuis migration 009 (2026-08-26)** : ce document décrit encore
+> le modèle à 3 paliers (`free`/`intermediate`/`superior`). L'app est passée
+> à 2 paliers (`free`/`premium`, un seul produit payant facturé au mois ou
+> à l'année) — voir `supabase/migrations/009_simplify_subscription_tier.sql`
+> et `lib/courses.ts`. Le système de cours lui-même (18 cours, sources,
+> cartes flip, niveaux 1/2) est construit et reflète ce document pour tout
+> le reste. Gardé pour l'historique de conception, pas comme référence sur
+> les paliers d'abonnement.
+
 À donner tel quel à la discussion qui écrit le code. Objectif : faire passer l'app de l'état actuel (contenu de cours codé en dur, aucune notion de source) au système complet décrit dans `contenu-cours-mvp.md` et `textes-approfondir-sujet.md` — 15 cours (10 niveau 1 + 3 modules niveau 2 + 5 nouveaux niveau 1), chaque carte sourcée et cliquable vers une page détail.
 
 **Lire d'abord** : `contenu-cours-mvp.md` (contenu des cours + règles de format + schéma de données) et `textes-approfondir-sujet.md` (34 textes de pages détail + table de correspondance carte → source). Ce sont les documents de contenu source de vérité — ne pas réinventer le contenu, seulement le structurer et l'afficher.

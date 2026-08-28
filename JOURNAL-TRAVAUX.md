@@ -375,6 +375,94 @@ l'arbre de travail et l'historique divergeaient de onze jours.
 
 ---
 
+### 2026-08-28 — Chantier 4 : courbe de batterie revue, requête bibliothèque allégée, tests
+
+**Contexte.** Session Claude Code, shell fonctionnel. Suite directe des
+chantiers 1-3 ci-dessus : audit complet du dépôt (git log, lecture croisée
+de tous les fichiers touchés depuis le dernier commit connu de cette
+session), puis plan validé avec l'utilisateur avant d'écrire quoi que ce
+soit (voir `.claude/plans/fancy-snacking-wall.md`).
+
+**Fait.**
+
+1. **`lib/battery.ts` — deux changements de comportement, décidés avec
+   l'utilisateur, pas unilatéralement :**
+   - Un événement léger (difficulté 4-5) ne fait plus remonter la batterie
+     — `level` inchangé, `eliteStreak` toujours préservé. Négligeable (2-3)
+     inchangé (récupération pleine).
+   - Le drain entre difficulté 6 et 10 est désormais une fonction continue
+     `drainFor(d)`, interpolation linéaire entre les deux valeurs déjà
+     validées (6 → 18, 10 → 60), remplaçant les deux taux discrets
+     (`MODERATE_DRAIN_PER_POINT` / `HIGH_DRAIN_PER_POINT`) qui produisaient
+     le saut −21 → −48 entre 7 et 8. `HIGH_THRESHOLD` supprimé (plus
+     utilisé nulle part ailleurs, vérifié par grep avant suppression).
+   - Historique déjà persisté non touché — cohérent avec la décision déjà
+     actée au chantier 1 (l'histoire n'est jamais réécrite).
+
+2. **`lib/battery.test.ts` (nouveau).** 21 tests sur `drainFor`,
+   `stepBattery` (toutes les bandes, le plafonnement de l'exposant de
+   streak, le clamp 0-100, plusieurs événements le même jour),
+   `projectBattery`, `groupEventsByDay`, les utilitaires de date et
+   `levelBand`. Nécessite `@types/jest` (absent jusqu'ici) pour que
+   `tsc --noEmit` reconnaisse `describe`/`it`/`expect` — les tests
+   passaient déjà à l'exécution sans ce paquet, mais la vérification
+   statique du projet non.
+
+3. **`app/(tabs)/library.tsx`.** Le `select('*')` sur `courses` chargeait
+   le `content jsonb` complet des 18 cours pour n'afficher qu'une liste de
+   titres. Remplacé par un `select` explicite des seules colonnes utilisées
+   par cet écran. Nouveau type local `LibraryCourse` (au lieu de
+   `CourseRow` complet) pour que le typage reflète honnêtement ce qui est
+   réellement chargé ici — `course/[id].tsx` continue de faire sa propre
+   requête complète quand un cours est ouvert.
+
+4. **Hygiène git.** `.agents/product-marketing.md` et
+   `supabase/.temp/cli-latest` étaient trackés malgré leur présence dans
+   `.gitignore` (ajouté après coup par le chantier précédent, jamais
+   commité) — un `.gitignore` n'a aucun effet rétroactif. `git rm --cached`
+   sur les deux, contenu vérifié non sensible avant.
+
+5. **Docs obsolètes.** `AGENTS.md` pointait vers la doc Expo v52 (projet en
+   SDK 54) — corrigé, avec une note pour que la prochaine mise à jour SDK
+   pense à changer ce numéro. `consignes-implementation-cours.md` : bandeau
+   d'obsolescence ajouté en tête plutôt que réécriture (document
+   historique, l'implémentation réelle fait foi ailleurs).
+
+**Décisions de conception (validées avec l'utilisateur avant implémentation,
+pas unilatérales cette fois).**
+
+- Les deux bornes du drain (6→18, 10→60) ne bougent pas : elles avaient été
+  fixées explicitement par l'utilisateur tôt dans le projet
+  (« il faut qu'à 7 et 6 ça réduise la batterie également, mais moins que 8
+  et plus »). Seule l'interpolation entre les deux change.
+- La mécanique de streak élite n'est pas touchée : mécanisme distinct de la
+  courbe de drain, déjà validé, hors périmètre de cette décision.
+
+**Non fait, en attente de l'utilisateur.**
+
+- Remote git : l'utilisateur a confirmé vouloir en créer/fournir un, mais
+  l'URL n'a pas encore été donnée au moment de cette entrée. Reste la
+  première chose à faire dès qu'elle arrive.
+- Migration 011 toujours pas appliquée sur le projet Supabase réel (aucun
+  `supabase/config.toml`, donc pas de `db push` possible — reste une
+  copie manuelle dans l'éditeur SQL, comme toutes les précédentes).
+- Vérification sur appareil réel (Expo Go) non faite par cette session —
+  je n'ai pas accès à un téléphone.
+
+**Fichiers touchés.**
+
+- modifié : `lib/battery.ts`
+- créé : `lib/battery.test.ts`
+- modifié : `app/(tabs)/library.tsx`
+- modifié : `.gitignore` (commité, il ne l'était pas encore malgré son
+  contenu déjà présent dans l'arbre de travail)
+- modifié : `AGENTS.md`, `consignes-implementation-cours.md`
+- modifié : `package.json`, `package-lock.json` (ajout de `@types/jest`)
+- supprimé du suivi git (conservés en local) : `.agents/product-marketing.md`,
+  `supabase/.temp/cli-latest`
+
+---
+
 ### Reste à faire
 
 Par ordre de priorité.
@@ -393,24 +481,25 @@ Par ordre de priorité.
 **Suite du produit :**
 
 - [ ] Appliquer la migration 011 sur Supabase
-- [ ] Écrire des tests sur `lib/battery.ts` — logique pure, jamais testée,
-      partie la plus critique du produit. `jest` + `jest-expo` sont déjà
-      configurés mais il n'existe aucun fichier de test.
-- [ ] Lisser la discontinuité de drain entre difficulté 7 (−21) et 8 (−48) :
-      un cran de curseur fait plus que doubler l'impact, ce qui n'est pas une
-      intention produit visible.
-- [ ] Décider si un événement « mild » (4-5) doit vraiment faire *monter* la
-      batterie (+3 à +3,6 actuellement) — contre-intuitif côté utilisateur.
+- [x] Écrire des tests sur `lib/battery.ts` — **fait le 28/08/2026**,
+      `lib/battery.test.ts`, 21 tests
+- [x] Lisser la discontinuité de drain entre difficulté 7 et 8 — **fait le
+      28/08/2026**, courbe continue `drainFor()`, bornes 6→18 et 10→60
+      inchangées
+- [x] Décider si un événement « mild » (4-5) doit vraiment faire *monter* la
+      batterie — **décidé et fait le 28/08/2026** : non, neutre désormais
 - [ ] Brancher RevenueCat : le paywall est une maquette, le bouton
-      « Devenir Premium » ne fait que fermer la modale.
+      « Devenir Premium » ne fait que fermer la modale. Bloqué sur la
+      création du compte Apple Developer par l'utilisateur.
 - [ ] Héberger de vraies CGU / politique de confidentialité — `lib/legal.ts`
       pointe vers une URL d'artefact temporaire.
 - [ ] Mettre en place EAS Build (`eas.json`, `projectId`, `runtimeVersion`).
-- [ ] Corriger `app/(tabs)/calendar.tsx` : la liste « Prochains événements »
+- [x] Corriger `app/(tabs)/calendar.tsx` : la liste « Prochains événements »
       affichait `ev.type` au lieu de `ev.title || ev.type` — **corrigé dans le
-      chantier 2**, mentionné ici pour mémoire.
-- [ ] `library.tsx` fait `select('*')` sur `courses` et charge 18 blobs
-      `content jsonb` complets pour afficher une liste de titres.
-- [ ] Mettre à jour ou archiver `AGENTS.md` et
-      `consignes-implementation-cours.md`, tous deux obsolètes.
+      chantier 2**.
+- [x] `library.tsx` fait `select('*')` sur `courses` — **corrigé le
+      28/08/2026** (chantier 4), select ciblé + type `LibraryCourse`.
+- [x] Mettre à jour ou archiver `AGENTS.md` et
+      `consignes-implementation-cours.md` — **fait le 28/08/2026** (chantier 4).
 - [ ] Pousser le dépôt sur un remote — l'historique n'existe que localement.
+      Décidé le 28/08/2026, en attente de l'URL du repo (voir chantier 4).
