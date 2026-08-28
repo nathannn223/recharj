@@ -127,6 +127,28 @@ export function PlusIcon(props: IconProps) {
   );
 }
 
+export function TrashIcon(props: IconProps) {
+  const c = props.color ?? '#F4F1FC';
+  return (
+    <Base {...props}>
+      <Path d="M4 7h16" stroke={c} {...strokeProps} />
+      <Path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" stroke={c} {...strokeProps} />
+      <Path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12" stroke={c} {...strokeProps} />
+      <Path d="M10 11v6M14 11v6" stroke={c} {...strokeProps} />
+    </Base>
+  );
+}
+
+export function PencilIcon(props: IconProps) {
+  const c = props.color ?? '#F4F1FC';
+  return (
+    <Base {...props}>
+      <Path d="M4 20h4L19 9a2.5 2.5 0 0 0-4-4L4 16z" stroke={c} {...strokeProps} />
+      <Path d="M14.5 5.5 18.5 9.5" stroke={c} {...strokeProps} />
+    </Base>
+  );
+}
+
 export function StarIcon(props: IconProps) {
   const c = props.color ?? '#F4F1FC';
   return (

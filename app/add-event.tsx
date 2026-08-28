@@ -1,15 +1,28 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { CalendarIcon, CloseIcon } from '@/components/icons/Icon';
+import { BoltIcon, CalendarIcon, CloseIcon } from '@/components/icons/Icon';
 import { chargeGradient, colors, fontFamily, radii, spacing } from '@/constants/theme';
-import { useEvents } from '@/hooks/useEvents';
-import { toDateKey } from '@/lib/battery';
+import { useAuth } from '@/lib/auth';
+import { fromDateKey, toDateKey } from '@/lib/battery';
+import { tagsForEventType } from '@/lib/eventTags';
 import { safeBack } from '@/lib/navigation';
+import { supabase } from '@/lib/supabase';
+import { useEvents } from '@/hooks/useEvents';
 
 const EVENT_TYPES = ['Repas de famille', 'Travail', 'Soirée entre amis', 'Rendez-vous', 'Autre'];
+
+type Recommendation = { id: string; title: string };
+
+function submitLabel(isEditing: boolean, submitting: boolean, waiting: boolean): string {
+  if (waiting) return 'Chargement…';
+  if (isEditing) return submitting ? 'Enregistrement…' : 'Enregistrer les modifications';
+  return submitting ? 'Ajout en cours…' : 'Ajouter à mon calendrier';
+}
 
 function formatFrenchDate(date: Date): string {
   const formatted = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -17,41 +30,154 @@ function formatFrenchDate(date: Date): string {
 }
 
 export default function AddEventScreen() {
-  const { addEvent } = useEvents();
+  const { session } = useAuth();
+  // Editing reuses this screen rather than duplicating a near-identical form:
+  // the fields, the validation and the difficulty scale are the same, so a
+  // route param is cheaper than a second screen to keep in sync.
+  const { eventId } = useLocalSearchParams<{ eventId?: string }>();
+  const isEditing = !!eventId;
+  const { events, addEvent, updateEvent } = useEvents();
+
+  const [title, setTitle] = useState('');
   const [selectedType, setSelectedType] = useState(EVENT_TYPES[0]);
   const [date, setDate] = useState(new Date());
   const [showPicker, setShowPicker] = useState(false);
   const [difficulty, setDifficulty] = useState(7);
+  const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
+  const [eventTypeForRec, setEventTypeForRec] = useState('');
+  const [prefilled, setPrefilled] = useState(false);
+
+  // useEvents() resolves asynchronously, so the row being edited isn't there
+  // on first render. Fill the form once it arrives, and only once — after
+  // that the user's own edits own the state.
+  useEffect(() => {
+    if (!isEditing || prefilled) return;
+    const existing = events.find((e) => e.id === eventId);
+    if (!existing) return;
+    setTitle(existing.title ?? '');
+    setSelectedType(EVENT_TYPES.includes(existing.type) ? existing.type : EVENT_TYPES[EVENT_TYPES.length - 1]);
+    setDate(fromDateKey(existing.eventDate));
+    setDifficulty(existing.difficulty);
+    setDescription(existing.description ?? '');
+    setPrefilled(true);
+  }, [isEditing, prefilled, events, eventId]);
+
+  const canPickType = title.trim().length > 0;
+  const waitingForEvent = isEditing && !prefilled;
 
   const submit = async () => {
+    if (!canPickType) {
+      setError('Donne un titre à ton événement avant de continuer.');
+      return;
+    }
     setError(null);
     setSubmitting(true);
-    const { error: submitError } = await addEvent({
+
+    const input = {
+      title,
       type: selectedType,
       eventDate: toDateKey(date),
       difficulty,
-    });
-    setSubmitting(false);
+      description,
+    };
+
+    // Narrowing on `eventId` itself rather than on `isEditing`: it does not
+    // depend on TypeScript's aliased-condition analysis holding for whatever
+    // shape useLocalSearchParams() returns.
+    if (eventId) {
+      const { error: updateError } = await updateEvent(eventId, input);
+      setSubmitting(false);
+      if (updateError) {
+        setError(updateError);
+        return;
+      }
+      // No course recommendation on edit: replaying that screen every time a
+      // difficulty is corrected would be intrusive. Recommending stays a
+      // moment of creation.
+      safeBack();
+      return;
+    }
+
+    const { error: submitError } = await addEvent(input);
     if (submitError) {
+      setSubmitting(false);
       setError(submitError);
+      return;
+    }
+
+    // On te propose un cours adapté quand l'évènement est marqué difficile
+    // (voir le texte d'aide sous le curseur), mais jamais un cours déjà
+    // terminé — inutile de recommander ce que l'utilisateur connaît déjà.
+    let match: Recommendation | null = null;
+    const tags = difficulty >= 7 ? tagsForEventType(selectedType) : [];
+    if (tags.length && session) {
+      const [{ data: candidates }, { data: progressRows }] = await Promise.all([
+        supabase.from('courses').select('id, title').contains('tags', tags).order('order_index', { ascending: true }),
+        supabase.from('course_progress').select('course_id').eq('status', 'completed'),
+      ]);
+      const completedIds = new Set((progressRows ?? []).map((p) => p.course_id as string));
+      match = ((candidates ?? []) as Recommendation[]).find((c) => !completedIds.has(c.id)) ?? null;
+    }
+
+    setSubmitting(false);
+    if (match) {
+      setEventTypeForRec(selectedType);
+      setRecommendation(match);
     } else {
       safeBack();
     }
   };
 
+  if (recommendation) {
+    return (
+      <SafeAreaView style={styles.screen} edges={['top']}>
+        <View style={styles.recContent}>
+          <View style={styles.recBadge}>
+            <BoltIcon color={colors.surfaceScreen} size={22} />
+          </View>
+          <Text style={styles.recTitle}>{recommendation.title}</Text>
+          <Text style={styles.recNote}>Recommandé pour "{eventTypeForRec}"</Text>
+
+          <View style={{ gap: spacing[3], width: '100%', marginTop: spacing[6] }}>
+            <Pressable onPress={() => router.replace(`/course/${recommendation.id}`)}>
+              <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.submitBtn}>
+                <Text style={styles.submitText}>Voir le cours recommandé</Text>
+              </LinearGradient>
+            </Pressable>
+            <Pressable onPress={() => safeBack()} style={styles.skipBtn}>
+              <Text style={styles.skipText}>Continuer</Text>
+            </Pressable>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.row}>
-          <Text style={styles.h1}>Nouvel événement</Text>
+          <Text style={styles.h1}>{isEditing ? "Modifier l'événement" : 'Nouvel événement'}</Text>
           <Pressable onPress={() => safeBack()} hitSlop={10}>
             <CloseIcon color={colors.textDim} size={26} />
           </Pressable>
         </View>
 
         <View>
+          <Text style={styles.sectionLabel}>Titre</Text>
+          <TextInput
+            value={title}
+            onChangeText={setTitle}
+            placeholder="Donne un titre à cet événement"
+            placeholderTextColor={colors.textFaint}
+            style={styles.titleInput}
+          />
+        </View>
+
+        <View pointerEvents={canPickType ? 'auto' : 'none'} style={!canPickType && { opacity: 0.4 }}>
           <Text style={styles.sectionLabel}>Type</Text>
           <View style={styles.chipRow}>
             {EVENT_TYPES.map((type) => {
@@ -63,6 +189,7 @@ export default function AddEventScreen() {
               );
             })}
           </View>
+          {!canPickType && <Text style={styles.helper}>Ajoute d'abord un titre pour choisir le type.</Text>}
         </View>
 
         <View>
@@ -76,13 +203,28 @@ export default function AddEventScreen() {
               value={date}
               mode="date"
               display="default"
-              minimumDate={new Date()}
+              // An event being corrected may legitimately sit in the past;
+              // a new one may not.
+              minimumDate={isEditing ? undefined : new Date()}
               onChange={(event, selectedDate) => {
                 setShowPicker(Platform.OS === 'ios');
                 if (event.type === 'set' && selectedDate) setDate(selectedDate);
               }}
             />
           )}
+        </View>
+
+        <View>
+          <Text style={styles.sectionLabel}>Description</Text>
+          <TextInput
+            value={description}
+            onChangeText={setDescription}
+            placeholder="Un détail à te rappeler sur cet événement (optionnel)"
+            placeholderTextColor={colors.textFaint}
+            multiline
+            numberOfLines={3}
+            style={styles.textarea}
+          />
         </View>
 
         <View>
@@ -101,23 +243,23 @@ export default function AddEventScreen() {
             <Text style={styles.sliderLabel}>Facile</Text>
             <Text style={styles.sliderLabel}>Éprouvant</Text>
           </View>
-          <Text style={styles.helper}>On te proposera un cours adapté si le niveau dépasse 6.</Text>
+          {!isEditing && <Text style={styles.helper}>On te proposera un cours adapté si le niveau dépasse 6.</Text>}
         </View>
 
         {error && <Text style={styles.error}>{error}</Text>}
 
-        <Pressable onPress={submit} disabled={submitting}>
+        <Pressable onPress={submit} disabled={submitting || !canPickType || waitingForEvent}>
           <LinearGradient
             colors={chargeGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
-            style={[styles.submitBtn, submitting && { opacity: 0.6 }]}
+            style={[styles.submitBtn, (submitting || !canPickType || waitingForEvent) && { opacity: 0.6 }]}
           >
-            <Text style={styles.submitText}>{submitting ? 'Ajout en cours…' : 'Ajouter à mon calendrier'}</Text>
+            <Text style={styles.submitText}>{submitLabel(isEditing, submitting, waitingForEvent)}</Text>
           </LinearGradient>
         </Pressable>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -125,7 +267,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.ink },
   content: { padding: spacing[5], paddingTop: spacing[6], gap: spacing[7], paddingBottom: spacing[8] },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  h1: { fontFamily: fontFamily.displaySemiBold, fontSize: 24, color: colors.text },
+  h1: { fontFamily: fontFamily.displaySemiBold, fontSize: 27, color: colors.text },
 
   sectionLabel: { fontFamily: fontFamily.textBold, fontSize: 13, color: colors.textFaint, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 },
 
@@ -148,6 +290,32 @@ const styles = StyleSheet.create({
   },
   fieldText: { fontFamily: fontFamily.textMedium, fontSize: 16, color: colors.text },
 
+  titleInput: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    borderRadius: radii.md,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    fontFamily: fontFamily.textMedium,
+    fontSize: 16,
+    color: colors.text,
+  },
+
+  textarea: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    borderRadius: radii.md,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    fontFamily: fontFamily.textMedium,
+    fontSize: 15,
+    color: colors.text,
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+
   diffValue: { fontFamily: fontFamily.textBold, fontSize: 15, color: colors.coral, marginBottom: 8 },
   sliderTrack: { flexDirection: 'row', gap: 4, marginTop: 8, marginBottom: 10 },
   sliderStep: { flex: 1, height: 14 },
@@ -160,4 +328,12 @@ const styles = StyleSheet.create({
 
   submitBtn: { borderRadius: 16, paddingVertical: 18, alignItems: 'center' },
   submitText: { fontFamily: fontFamily.textBold, fontSize: 16, color: colors.surfaceScreen },
+
+  recContent: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing[6] },
+  recBadge: { width: 52, height: 52, borderRadius: 16, backgroundColor: colors.lime, alignItems: 'center', justifyContent: 'center' },
+  recTitle: { fontFamily: fontFamily.displaySemiBold, fontSize: 22, color: colors.text, textAlign: 'center', marginTop: spacing[4] },
+  recNote: { fontFamily: fontFamily.textRegular, fontSize: 14, color: colors.textDim, marginTop: 6, textAlign: 'center' },
+
+  skipBtn: { alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 6 },
+  skipText: { fontFamily: fontFamily.textSemiBold, fontSize: 14, color: colors.textFaint },
 });
