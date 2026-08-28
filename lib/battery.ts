@@ -1,8 +1,10 @@
 export type SocialEvent = {
   id: string;
+  title: string | null;
   type: string;
   eventDate: string; // 'YYYY-MM-DD'
   difficulty: number; // 1-10
+  description: string | null;
 };
 
 // Recharj's projection model.
@@ -33,19 +35,25 @@ export type SocialEvent = {
 // - A moderate or high day (6+) pushes the level backward and resets
 //   eliteStreak to zero — a real setback ends any recovery streak.
 //
-// There is no live check-in in the MVP, so the model always assumes
-// yesterday was fully charged (100) and simulates forward from there;
-// "today" (day 0) is the first computed value and is what the Dashboard's
-// big battery reads.
-const BASE_RECOVERY = 6;
-const STREAK_MULTIPLIER = 1.5;
-const HIGH_THRESHOLD = 8;
-const MODERATE_THRESHOLD = 6;
-const NEGLIGIBLE_THRESHOLD = 3;
-const ELITE_THRESHOLD = 1;
-const HIGH_DRAIN_PER_POINT = 6;
-const MODERATE_DRAIN_PER_POINT = 3;
-const BASELINE = 100;
+// The model is CARRY-FORWARD: a day's closing level is the next day's
+// opening level. There is no live check-in in the MVP, so the level is
+// never observed directly — it is simulated from the events the user
+// planned, day after day, starting from the last state persisted in
+// `battery_days` (see lib/batteryStore.ts). A user with no history at
+// all starts from a full battery, which is what the model assumed
+// unconditionally before persistence existed.
+export const BASE_RECOVERY = 6;
+export const STREAK_MULTIPLIER = 1.5;
+export const HIGH_THRESHOLD = 8;
+export const MODERATE_THRESHOLD = 6;
+export const NEGLIGIBLE_THRESHOLD = 3;
+export const ELITE_THRESHOLD = 1;
+export const HIGH_DRAIN_PER_POINT = 6;
+export const MODERATE_DRAIN_PER_POINT = 3;
+export const BASELINE = 100;
+export const MAX_LEVEL = 100;
+export const MIN_LEVEL = 0;
+export const MAX_STREAK_EXPONENT = 32;
 
 // Local-calendar-day key, deliberately not toISOString() (which converts to
 // UTC first and can silently shift the date near midnight depending on the
@@ -55,6 +63,12 @@ export function toDateKey(date: Date): string {
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
+}
+
+/** 'YYYY-MM-DD' -> local Date at midnight. Mirror of toDateKey(). */
+export function fromDateKey(key: string): Date {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y, m - 1, d);
 }
 
 export function addDays(date: Date, days: number): Date {
@@ -69,53 +83,116 @@ export function startOfToday(): Date {
   return d;
 }
 
+/** Whole calendar days from `from` to `to` (negative if `to` is earlier). */
+export function daysBetween(from: Date, to: Date): number {
+  const a = new Date(from.getFullYear(), from.getMonth(), from.getDate()).getTime();
+  const b = new Date(to.getFullYear(), to.getMonth(), to.getDate()).getTime();
+  return Math.round((b - a) / 86400000);
+}
+
+/**
+ * Everything the model needs to carry from one day to the next. `level` is
+ * the closing level of the day this state describes; `eliteStreak` is the
+ * run of consecutive elite days ending on it.
+ */
+export type BatteryState = {
+  level: number; // 0-100
+  eliteStreak: number;
+};
+
+/**
+ * State assumed for the day before a user's first ever simulated day.
+ * A brand-new user starts from a full battery — the same assumption the
+ * model made unconditionally before `battery_days` existed, so first-launch
+ * behaviour is unchanged.
+ */
+export function initialBatteryState(): BatteryState {
+  return { level: BASELINE, eliteStreak: 0 };
+}
+
 export type ProjectedDay = {
   date: string; // 'YYYY-MM-DD'
   level: number; // 0-100
+  eliteStreak: number;
   events: SocialEvent[];
 };
 
-/** Projects the battery level for `days` days starting today. */
-export function projectBattery(events: SocialEvent[], days: number, fromDate: Date = startOfToday()): ProjectedDay[] {
-  const eventsByDay = new Map<string, SocialEvent[]>();
-  for (const ev of events) {
-    const list = eventsByDay.get(ev.eventDate) ?? [];
-    list.push(ev);
-    eventsByDay.set(ev.eventDate, list);
+/**
+ * Advances the battery by exactly one day. Pure: same state + same events
+ * always give the same result, which is what makes gap-filling and
+ * forward projection share one implementation.
+ */
+export function stepBattery(state: BatteryState, dayEvents: SocialEvent[]): BatteryState {
+  const high = dayEvents.filter((e) => e.difficulty >= HIGH_THRESHOLD);
+  const moderate = dayEvents.filter((e) => e.difficulty >= MODERATE_THRESHOLD && e.difficulty < HIGH_THRESHOLD);
+  const isElite = dayEvents.every((e) => e.difficulty <= ELITE_THRESHOLD); // vacuously true if empty
+
+  if (high.length > 0 || moderate.length > 0) {
+    const drain =
+      high.reduce((sum, e) => sum + e.difficulty * HIGH_DRAIN_PER_POINT, 0) +
+      moderate.reduce((sum, e) => sum + e.difficulty * MODERATE_DRAIN_PER_POINT, 0);
+    return { level: Math.max(MIN_LEVEL, state.level - drain), eliteStreak: 0 };
   }
 
+  if (isElite) {
+    const eliteStreak = state.eliteStreak + 1;
+    // The exponent is capped purely to stay in finite arithmetic: 1.5^32 is
+    // already ~4.3 million, i.e. far past the point where the +recovery is
+    // clamped to MAX_LEVEL anyway, so the cap is behaviourally invisible.
+    // Without it a streak of a few hundred days overflows to Infinity.
+    const exponent = Math.min(eliteStreak - 1, MAX_STREAK_EXPONENT);
+    const recovery = BASE_RECOVERY * STREAK_MULTIPLIER ** exponent;
+    return { level: Math.min(MAX_LEVEL, state.level + recovery), eliteStreak };
+  }
+
+  // Negligible (2-3) or mild (4-5): a pause, not a setback — recovers at the
+  // flat base rate (dampened if 4-5), and the elite streak resumes right
+  // where it left off on the next elite day.
+  const notableMilds = dayEvents.filter((e) => e.difficulty > NEGLIGIBLE_THRESHOLD);
+  const worstMild = notableMilds.length > 0 ? Math.max(...notableMilds.map((e) => e.difficulty)) : 0;
+  const dampening = 1 - worstMild / 10;
+  return {
+    level: Math.min(MAX_LEVEL, state.level + BASE_RECOVERY * dampening),
+    eliteStreak: state.eliteStreak,
+  };
+}
+
+/** Groups events by their 'YYYY-MM-DD' key. */
+export function groupEventsByDay(events: SocialEvent[]): Map<string, SocialEvent[]> {
+  const byDay = new Map<string, SocialEvent[]>();
+  for (const ev of events) {
+    const list = byDay.get(ev.eventDate) ?? [];
+    list.push(ev);
+    byDay.set(ev.eventDate, list);
+  }
+  return byDay;
+}
+
+/**
+ * Projects the battery level for `days` days starting at `fromDate`.
+ *
+ * `initialState` is the CLOSING state of the day *before* `fromDate` — pass
+ * the anchor loaded from `battery_days` to project from the user's real
+ * level. Omitting it reproduces the pre-persistence behaviour (start from a
+ * full battery), which is still the right default for a user with no
+ * history yet.
+ */
+export function projectBattery(
+  events: SocialEvent[],
+  days: number,
+  fromDate: Date = startOfToday(),
+  initialState: BatteryState = initialBatteryState()
+): ProjectedDay[] {
+  const eventsByDay = groupEventsByDay(events);
+
   const result: ProjectedDay[] = [];
-  let level = BASELINE;
-  let eliteStreak = 0;
+  let state = initialState;
 
   for (let i = 0; i < days; i++) {
     const date = toDateKey(addDays(fromDate, i));
     const dayEvents = eventsByDay.get(date) ?? [];
-    const high = dayEvents.filter((e) => e.difficulty >= HIGH_THRESHOLD);
-    const moderate = dayEvents.filter((e) => e.difficulty >= MODERATE_THRESHOLD && e.difficulty < HIGH_THRESHOLD);
-    const isElite = dayEvents.every((e) => e.difficulty <= ELITE_THRESHOLD); // vacuously true if empty
-
-    if (high.length > 0 || moderate.length > 0) {
-      const drain =
-        high.reduce((sum, e) => sum + e.difficulty * HIGH_DRAIN_PER_POINT, 0) +
-        moderate.reduce((sum, e) => sum + e.difficulty * MODERATE_DRAIN_PER_POINT, 0);
-      level = Math.max(0, level - drain);
-      eliteStreak = 0;
-    } else if (isElite) {
-      eliteStreak += 1;
-      const recovery = BASE_RECOVERY * STREAK_MULTIPLIER ** (eliteStreak - 1);
-      level = Math.min(100, level + recovery);
-    } else {
-      // Negligible (2-3) or mild (4-5): a pause, not a setback — recovers
-      // at the flat base rate (dampened if 4-5), and the elite streak
-      // resumes right where it left off on the next elite day.
-      const notableMilds = dayEvents.filter((e) => e.difficulty > NEGLIGIBLE_THRESHOLD);
-      const worstMild = notableMilds.length > 0 ? Math.max(...notableMilds.map((e) => e.difficulty)) : 0;
-      const dampening = 1 - worstMild / 10;
-      level = Math.min(100, level + BASE_RECOVERY * dampening);
-    }
-
-    result.push({ date, level, events: dayEvents });
+    state = stepBattery(state, dayEvents);
+    result.push({ date, level: state.level, eliteStreak: state.eliteStreak, events: dayEvents });
   }
   return result;
 }

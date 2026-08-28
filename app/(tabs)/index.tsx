@@ -1,11 +1,13 @@
 import { Link } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Path, Polyline, Stop } from 'react-native-svg';
 
 import { BatteryGauge } from '@/components/BatteryGauge';
 import { BoltIcon, ChevronRightIcon, SettingsIcon } from '@/components/icons/Icon';
 import { colors, difficultyColor, fontFamily, radii, spacing } from '@/constants/theme';
+import { useBattery } from '@/hooks/useBattery';
 import { useEvents } from '@/hooks/useEvents';
 import { addDays, projectBattery, startOfToday, toDateKey } from '@/lib/battery';
 import { relativeDayLabel } from '@/lib/dates';
@@ -24,10 +26,14 @@ function levelToY(level: number) {
 
 export default function DashboardScreen() {
   const { events, loading } = useEvents();
+  const now = startOfToday();
 
-  const projection = projectBattery(events, 7);
-  const today = projection[0];
-  const todayLevel = Math.round(today?.level ?? 100);
+  // The hero gauge reads the user's REAL carried-forward level, caught up
+  // from `battery_days` (see lib/batteryStore.ts), not a fresh simulation
+  // that would restart from a full battery every day.
+  const battery = useBattery(events, !loading);
+  const projection = projectBattery(events, 7, now, battery.anchor);
+  const todayLevel = battery.level;
 
   const points = projection.map((day, i) => {
     const x = (i / (projection.length - 1)) * CHART_W;
@@ -42,7 +48,6 @@ export default function DashboardScreen() {
 
   const eventsThisWeek = projection.reduce((sum, d) => sum + d.events.length, 0);
 
-  const now = startOfToday();
   const upcomingEvents = events
     .filter((e) => e.eventDate >= toDateKey(now))
     .slice(0, 3);
@@ -64,7 +69,7 @@ export default function DashboardScreen() {
     supabase
       .from('courses')
       .select('id, title')
-      .overlaps('tags', tags)
+      .contains('tags', tags)
       .order('order_index', { ascending: true })
       .limit(1)
       .then(({ data }) => {
@@ -76,7 +81,7 @@ export default function DashboardScreen() {
   }, [difficultEvent?.id]);
 
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.row}>
           <View>
@@ -151,7 +156,7 @@ export default function DashboardScreen() {
               <View key={ev.id} style={styles.eventRow}>
                 <View style={[styles.eventDot, { backgroundColor: difficultyColor(ev.difficulty) }]} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.eventName}>{ev.type}</Text>
+                  <Text style={styles.eventName}>{ev.title || ev.type}</Text>
                   <Text style={styles.eventWhen}>{relativeDayLabel(ev.eventDate)}</Text>
                 </View>
                 <Text style={[styles.diffPill, { color: difficultyColor(ev.difficulty) }]}>{ev.difficulty}/10</Text>
@@ -162,7 +167,7 @@ export default function DashboardScreen() {
 
         {difficultEvent && (
           <Link href={recommendedCourse ? `/course/${recommendedCourse.id}` : '/(tabs)/library'} asChild>
-            <View style={styles.recCard}>
+            <Pressable style={styles.recCard}>
               <View style={styles.recBadge}>
                 <BoltIcon color={colors.surfaceScreen} size={20} />
               </View>
@@ -170,11 +175,11 @@ export default function DashboardScreen() {
                 <Text style={styles.recTitle}>{recommendedCourse ? recommendedCourse.title : "Un cours pour t'y préparer"}</Text>
                 <Text style={styles.recNote}>Recommandé pour "{difficultEvent.type}"</Text>
               </View>
-            </View>
+            </Pressable>
           </Link>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -182,8 +187,8 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.ink },
   content: { padding: spacing[5], paddingTop: spacing[6], gap: spacing[6], paddingBottom: spacing[8] },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sub: { fontFamily: fontFamily.textRegular, fontSize: 16, color: colors.textDim },
-  h1: { fontFamily: fontFamily.displaySemiBold, fontSize: 30, color: colors.text, marginTop: 2 },
+  sub: { fontFamily: fontFamily.textRegular, fontSize: 18, color: colors.textDim },
+  h1: { fontFamily: fontFamily.displaySemiBold, fontSize: 34, color: colors.text, marginTop: 2 },
 
   batteryWrap: { gap: spacing[3] },
   battery: { width: '90%', alignSelf: 'center' },
