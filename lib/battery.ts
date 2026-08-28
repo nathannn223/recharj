@@ -11,12 +11,13 @@ export type SocialEvent = {
 //
 // Every event falls into one of four difficulty bands:
 //   1    elite      — nothing happened, or an almost-effortless event.
-//   2-3  negligible — no effect at all, same as no event.
-//   4-5  mild       — doesn't push the level backward, just dampens
-//                     that day's recovery, proportional to difficulty.
-//   6-7  moderate   — does push the level backward, but at a reduced
-//                     rate compared to the high band.
-//   8-10 high       — pushes the level backward at the full rate.
+//   2-3  negligible — no effect at all, same as no event: full recovery.
+//   4-5  mild       — a real but modest ask. Neutral: doesn't cost
+//                     anything, but doesn't recharge the day either.
+//   6-10 draining   — pushes the level backward, on a single continuous
+//                     curve (see drainFor()) rather than a stepped rate,
+//                     so two neighbouring difficulty values never produce
+//                     wildly different drains.
 //
 // Two different streaks track history, because "not draining" and
 // "actively accelerating recovery" aren't the same thing:
@@ -28,12 +29,11 @@ export type SocialEvent = {
 //   gets. This is what makes a very low battery take several consecutive
 //   great days before recovery visibly speeds up.
 // - A negligible or mild day (2-5) neither breaks nor advances
-//   eliteStreak — it's a "pause": the day still recovers (dampened if
-//   4-5, full if 2-3), but at the flat BASE_RECOVERY rate, not the
-//   accelerated one, and eliteStreak resumes exactly where it left off
-//   on the next elite day.
-// - A moderate or high day (6+) pushes the level backward and resets
-//   eliteStreak to zero — a real setback ends any recovery streak.
+//   eliteStreak — it's a "pause": negligible still recovers at the flat
+//   BASE_RECOVERY rate, mild holds the level steady, and eliteStreak
+//   resumes exactly where it left off on the next elite day.
+// - A draining day (6+) pushes the level backward and resets eliteStreak
+//   to zero — a real setback ends any recovery streak.
 //
 // The model is CARRY-FORWARD: a day's closing level is the next day's
 // opening level. There is no live check-in in the MVP, so the level is
@@ -44,16 +44,34 @@ export type SocialEvent = {
 // unconditionally before persistence existed.
 export const BASE_RECOVERY = 6;
 export const STREAK_MULTIPLIER = 1.5;
-export const HIGH_THRESHOLD = 8;
 export const MODERATE_THRESHOLD = 6;
 export const NEGLIGIBLE_THRESHOLD = 3;
 export const ELITE_THRESHOLD = 1;
 export const HIGH_DRAIN_PER_POINT = 6;
 export const MODERATE_DRAIN_PER_POINT = 3;
+// The two ends of the drain curve, in the exact values the stepped model
+// already used at difficulty 6 and difficulty 10 (6 * 3, 10 * 6) — kept as
+// the anchor points so the already-tuned extremes don't move, only the
+// steps in between smooth out.
+export const DRAIN_AT_MODERATE_THRESHOLD = MODERATE_THRESHOLD * MODERATE_DRAIN_PER_POINT;
+export const DRAIN_AT_MAX_DIFFICULTY = 10 * HIGH_DRAIN_PER_POINT;
 export const BASELINE = 100;
 export const MAX_LEVEL = 100;
 export const MIN_LEVEL = 0;
 export const MAX_STREAK_EXPONENT = 32;
+
+/**
+ * How much a single event of this difficulty drains the battery. 0 below
+ * the draining threshold; above it, a straight line between the two
+ * already-validated endpoints (6 -> 18, 10 -> 60), so there is no jump
+ * between neighbouring difficulty values the way the old stepped rates
+ * produced (7 -> 21, 8 -> 48, more than double for one notch).
+ */
+export function drainFor(difficulty: number): number {
+  if (difficulty < MODERATE_THRESHOLD) return 0;
+  const t = (difficulty - MODERATE_THRESHOLD) / (10 - MODERATE_THRESHOLD);
+  return DRAIN_AT_MODERATE_THRESHOLD + t * (DRAIN_AT_MAX_DIFFICULTY - DRAIN_AT_MODERATE_THRESHOLD);
+}
 
 // Local-calendar-day key, deliberately not toISOString() (which converts to
 // UTC first and can silently shift the date near midnight depending on the
@@ -123,14 +141,11 @@ export type ProjectedDay = {
  * forward projection share one implementation.
  */
 export function stepBattery(state: BatteryState, dayEvents: SocialEvent[]): BatteryState {
-  const high = dayEvents.filter((e) => e.difficulty >= HIGH_THRESHOLD);
-  const moderate = dayEvents.filter((e) => e.difficulty >= MODERATE_THRESHOLD && e.difficulty < HIGH_THRESHOLD);
   const isElite = dayEvents.every((e) => e.difficulty <= ELITE_THRESHOLD); // vacuously true if empty
+  const isDraining = dayEvents.some((e) => e.difficulty >= MODERATE_THRESHOLD);
 
-  if (high.length > 0 || moderate.length > 0) {
-    const drain =
-      high.reduce((sum, e) => sum + e.difficulty * HIGH_DRAIN_PER_POINT, 0) +
-      moderate.reduce((sum, e) => sum + e.difficulty * MODERATE_DRAIN_PER_POINT, 0);
+  if (isDraining) {
+    const drain = dayEvents.reduce((sum, e) => sum + drainFor(e.difficulty), 0);
     return { level: Math.max(MIN_LEVEL, state.level - drain), eliteStreak: 0 };
   }
 
@@ -145,16 +160,14 @@ export function stepBattery(state: BatteryState, dayEvents: SocialEvent[]): Batt
     return { level: Math.min(MAX_LEVEL, state.level + recovery), eliteStreak };
   }
 
-  // Negligible (2-3) or mild (4-5): a pause, not a setback — recovers at the
-  // flat base rate (dampened if 4-5), and the elite streak resumes right
-  // where it left off on the next elite day.
-  const notableMilds = dayEvents.filter((e) => e.difficulty > NEGLIGIBLE_THRESHOLD);
-  const worstMild = notableMilds.length > 0 ? Math.max(...notableMilds.map((e) => e.difficulty)) : 0;
-  const dampening = 1 - worstMild / 10;
-  return {
-    level: Math.min(MAX_LEVEL, state.level + BASE_RECOVERY * dampening),
-    eliteStreak: state.eliteStreak,
-  };
+  // Negligible (2-3): a pause, not a setback — recovers at the flat base
+  // rate, and the elite streak resumes right where it left off on the next
+  // elite day. Mild (4-5): a real ask, but not a setback either — holds the
+  // level steady instead of recovering, without breaking the streak.
+  const worstEvent = dayEvents.reduce((max, e) => Math.max(max, e.difficulty), 0);
+  const isMild = worstEvent > NEGLIGIBLE_THRESHOLD;
+  const level = isMild ? state.level : Math.min(MAX_LEVEL, state.level + BASE_RECOVERY);
+  return { level, eliteStreak: state.eliteStreak };
 }
 
 /** Groups events by their 'YYYY-MM-DD' key. */
