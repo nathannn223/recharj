@@ -35,3 +35,8 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+# agent tooling
+.agents/
+
+# supabase CLI cache
+supabase/.temp/
