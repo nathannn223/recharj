@@ -26,11 +26,19 @@ const TIER_LABEL: Record<SubscriptionTier, string> = {
 
 type ProgressStatus = 'not_started' | 'in_progress' | 'completed';
 
+// Only what this screen's list and access checks touch — course/[id].tsx
+// fetches the full CourseRow (content included) itself, once a course is
+// actually opened.
+type LibraryCourse = Pick<
+  CourseRow,
+  'id' | 'title' | 'order_index' | 'tags' | 'free_tier_included' | 'level' | 'parent_course_id' | 'required_tier'
+>;
+
 export default function LibraryScreen() {
   const { session } = useAuth();
   const [tier, setTier] = useState<SubscriptionTier>('free');
   const [freeCourseId, setFreeCourseId] = useState<string | null>(null);
-  const [courses, setCourses] = useState<CourseRow[]>([]);
+  const [courses, setCourses] = useState<LibraryCourse[]>([]);
   const [progress, setProgress] = useState<Map<string, ProgressStatus>>(new Map());
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState(FILTERS[0]);
@@ -45,13 +53,19 @@ export default function LibraryScreen() {
       const [{ data: profile }, { data: freeCourseRow }, { data: courseRows }, { data: progressRows }] = await Promise.all([
         supabase.from('profiles').select('subscription_tier').single(),
         supabase.from('profiles').select('free_course_id').maybeSingle(),
-        supabase.from('courses').select('*').order('order_index', { ascending: true }),
+        // Only what the list and its access checks need — the full `content`
+        // JSONB (hook, cards, exercise) is course/[id].tsx's job, which
+        // fetches it itself once a course is actually opened.
+        supabase
+          .from('courses')
+          .select('id, title, order_index, tags, free_tier_included, level, parent_course_id, required_tier')
+          .order('order_index', { ascending: true }),
         supabase.from('course_progress').select('course_id, status'),
       ]);
       if (cancelled) return;
       setTier((profile?.subscription_tier as SubscriptionTier) ?? 'free');
       setFreeCourseId((freeCourseRow?.free_course_id as string) ?? null);
-      setCourses((courseRows as CourseRow[]) ?? []);
+      setCourses((courseRows as LibraryCourse[]) ?? []);
       setProgress(new Map((progressRows ?? []).map((p) => [p.course_id as string, p.status as ProgressStatus])));
       setLoading(false);
     }
@@ -66,7 +80,7 @@ export default function LibraryScreen() {
   const level1 = courses.filter((c) => c.level === 1 && (!activeTag || c.tags.includes(activeTag)));
   const level2ByParent = new Map(courses.filter((c) => c.level === 2).map((c) => [c.parent_course_id, c]));
 
-  const openCourse = (course: CourseRow) => {
+  const openCourse = (course: LibraryCourse) => {
     if (!canAccessCourse(course, tier, freeCourseId)) {
       router.push({ pathname: '/paywall', params: { courseId: course.id } });
     } else {
