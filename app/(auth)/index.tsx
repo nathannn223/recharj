@@ -1,8 +1,8 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
 import * as WebBrowser from 'expo-web-browser';
-import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Animated, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
@@ -13,6 +13,7 @@ import {
   CalendarIcon,
   CheckIcon,
   ChevronRightIcon,
+  FlameIcon,
   HeartIcon,
   LockIcon,
   MoonIcon,
@@ -80,13 +81,14 @@ const STEP = {
   MOMENT: 8,
   AUTHORITY: 9,
   FEATURES: 10,
-  NOTIFICATIONS: 11,
-  UNIQUE: 12,
-  CONTRACT: 13,
-  RECAP: 14,
-  TRIAL: 15,
-  SIGNUP: 16,
-  CHECK_EMAIL: 17,
+  STREAK: 11,
+  NOTIFICATIONS: 12,
+  UNIQUE: 13,
+  CONTRACT: 14,
+  RECAP: 15,
+  TRIAL: 16,
+  SIGNUP: 17,
+  CHECK_EMAIL: 18,
 } as const;
 
 // The battery fills silently as the user answers each of the eight
@@ -128,6 +130,8 @@ function nextButtonLabel(step: number, submitting: boolean, firstName: string): 
       return "Voir comment Recharj t'aide";
     case STEP.FEATURES:
       return 'Je veux que ça change';
+    case STEP.STREAK:
+      return 'Je ne veux pas la perdre';
     case STEP.UNIQUE:
       return "Je m'engage";
     case STEP.CONTRACT:
@@ -456,6 +460,12 @@ export default function AuthScreen() {
             </View>
           )}
 
+          {step === STEP.STREAK && (
+            <View style={styles.hero}>
+              <StreakDemo />
+            </View>
+          )}
+
           {step === STEP.NOTIFICATIONS && (
             <View style={styles.hero}>
               <Text style={styles.eyebrow}>Reste sur la bonne voie</Text>
@@ -645,6 +655,43 @@ export default function AuthScreen() {
   );
 }
 
+// Lets the user trigger the exact moment the app is trying to make into a
+// daily habit — filling in a day — instead of describing it. Nothing here
+// is wired to real data (this runs before signup); tapping just proves out
+// the payoff the real check-in delivers every night.
+function StreakDemo() {
+  const [lit, setLit] = useState(false);
+  const scale = useRef(new Animated.Value(1)).current;
+  const glow = useRef(new Animated.Value(0)).current;
+
+  const fillDay = () => {
+    if (lit) return;
+    setLit(true);
+    Animated.parallel([
+      Animated.sequence([
+        Animated.spring(scale, { toValue: 1.35, useNativeDriver: true, speed: 24, bounciness: 14 }),
+        Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 16, bounciness: 8 }),
+      ]),
+      Animated.timing(glow, { toValue: 1, duration: 450, useNativeDriver: true }),
+    ]).start();
+  };
+
+  const glowOpacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0, 0.35] });
+
+  return (
+    <View style={{ alignItems: 'center' }}>
+      <Pressable onPress={fillDay} hitSlop={16}>
+        <Animated.View style={[styles.flameWrap, lit && styles.flameWrapLit, { transform: [{ scale }] }]}>
+          {lit && <Animated.View pointerEvents="none" style={[styles.flameGlow, { opacity: glowOpacity }]} />}
+          <FlameIcon color={lit ? colors.coral : colors.textFaint} size={56} />
+        </Animated.View>
+      </Pressable>
+      <Text style={styles.title}>{lit ? 'Ta série a commencé.' : 'Chaque soir, fais le point.'}</Text>
+      <Text style={styles.tagline}>{lit ? "Reviens chaque jour pour l'entretenir." : 'Touche la flamme pour remplir ta journée.'}</Text>
+    </View>
+  );
+}
+
 // Mimics a real iOS push notification (app icon, bold app name, timestamp,
 // title, body) in the app's own palette, instead of describing what a
 // notification looks like. The body uses the answer just given on the
@@ -770,6 +817,20 @@ const styles = StyleSheet.create({
   signLabel: { fontFamily: fontFamily.textSemiBold, fontSize: 13, color: colors.textFaint, marginTop: spacing[5], marginBottom: spacing[2] },
   signedRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing[3] },
   signedText: { fontFamily: fontFamily.textBold, fontSize: 14, color: colors.lime, letterSpacing: 0.4 },
+
+  flameWrap: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: colors.borderSoft,
+    marginBottom: spacing[5],
+  },
+  flameWrapLit: { borderColor: 'rgba(255,122,107,0.5)' },
+  flameGlow: { position: 'absolute', top: -14, left: -14, right: -14, bottom: -14, borderRadius: 74, backgroundColor: colors.coral },
 
   notifCard: {
     alignSelf: 'stretch',

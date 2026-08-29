@@ -62,21 +62,30 @@ function WeekPreview() {
   );
 }
 
-// The app's own battery icon, shown low then high — the exact gauge the
-// user will see on their Dashboard, not a generic illustration of one.
-function BatteryFlowPreview() {
+// Shows the actual mechanic instead of describing it: a note (the same
+// 1-10 scale as app/checkin.tsx) turning directly into the app's own
+// battery gauge — no drain/recovery formula in between, since a checked-in
+// day's level IS the score (see checkInBatteryState() in lib/battery.ts).
+function CheckInPreview() {
   return (
-    <View style={styles.batteryFlowRow}>
-      <BatteryGauge level={28} size="sm" />
-      <Text style={styles.batteryFlowArrow}>→</Text>
-      <BatteryGauge level={92} size="sm" />
+    <View style={styles.checkinPreview}>
+      <View style={styles.checkinSliderCol}>
+        <View style={styles.checkinTrack}>
+          {Array.from({ length: 10 }, (_, i) => (
+            <View key={i} style={[styles.checkinStep, i < 8 && styles.checkinStepFilled]} />
+          ))}
+        </View>
+        <Text style={styles.checkinScoreLabel}>8/10</Text>
+      </View>
+      <Text style={styles.checkinArrow}>→</Text>
+      <BatteryGauge level={80} size="sm" />
     </View>
   );
 }
 
 const SLIDES: Slide[] = [
   { title: 'Ajoute tes événements sociaux.', body: 'On calcule leur impact.', illustration: <WeekPreview /> },
-  { title: 'Ta batterie suit tes journées.', body: 'Elle se vide, puis se recharge.', illustration: <BatteryFlowPreview /> },
+  { title: 'Chaque soir, fais le point.', body: 'Ta note devient ta batterie.', illustration: <CheckInPreview /> },
   {
     title: 'Progresse avec de vrais cours.',
     body: 'Touche la carte pour essayer.',
@@ -146,6 +155,11 @@ const styles = StyleSheet.create({
   weekBarFill: { width: '100%', borderRadius: 6 },
   weekDayLabel: { fontFamily: fontFamily.textMedium, fontSize: 11, color: colors.textFaint },
 
-  batteryFlowRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  batteryFlowArrow: { fontFamily: fontFamily.textBold, fontSize: 18, color: colors.textFaint },
+  checkinPreview: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  checkinSliderCol: { alignItems: 'center', gap: 8 },
+  checkinTrack: { flexDirection: 'row', gap: 3 },
+  checkinStep: { width: 10, height: 14, borderRadius: 4, backgroundColor: colors.borderSoft },
+  checkinStepFilled: { backgroundColor: colors.violetSoft },
+  checkinScoreLabel: { fontFamily: fontFamily.textBold, fontSize: 13, color: colors.coral },
+  checkinArrow: { fontFamily: fontFamily.textBold, fontSize: 18, color: colors.textFaint },
 });

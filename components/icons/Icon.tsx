@@ -158,6 +158,20 @@ export function StarIcon(props: IconProps) {
   );
 }
 
+export function FlameIcon(props: IconProps) {
+  const c = props.color ?? '#F4F1FC';
+  return (
+    <Base {...props}>
+      <Path
+        fillRule="evenodd"
+        d="M12.96 2.29a.75.75 0 0 0-1.07-.14 9.74 9.74 0 0 0-3.54 6.18 7.55 7.55 0 0 1-1.7-1.72.75.75 0 0 0-1.15-.08A9 9 0 1 0 15.68 4.53a7.46 7.46 0 0 1-2.72-2.24ZM15.75 14.25a3.75 3.75 0 1 1-7.31-1.17c.63.46 1.35.81 2.13 1a5.99 5.99 0 0 1 1.93-3.54 3.75 3.75 0 0 1 3.25 3.71Z"
+        fill={c}
+        stroke="none"
+      />
+    </Base>
+  );
+}
+
 export function SearchIcon(props: IconProps) {
   const c = props.color ?? '#F4F1FC';
   return (

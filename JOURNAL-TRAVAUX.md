@@ -1102,3 +1102,47 @@ est ta batterie »).
 
 - modifié : `components/StreakBadge.tsx`, `components/CheckInCard.tsx`,
   `lib/notifications.ts`, `app/(auth)/index.tsx`, `app/(tabs)/index.tsx`
+
+---
+
+### 2026-08-29 — Chantier 13 : l'onboarding parle maintenant du check-in, pas juste de la projection
+
+**Contexte.** L'onboarding datait d'avant le chantier 10 (check-in
+quotidien) et présentait encore la batterie comme purement pilotée par les
+événements — plus rien à voir avec le vrai mécanisme actuel (une note
+manuelle qui devient directement le niveau du jour). Demandé : corriger le
+slide du carrousel qui décrit ça, et ajouter un écran de démonstration
+interactive de la flamme de streak.
+
+**Fait.**
+
+1. **`components/icons/Icon.tsx`** : nouvelle `FlameIcon` (silhouette de
+   flamme classique, un seul `Path` avec `fillRule="evenodd"` pour la
+   découpe interne — reproduit fidèlement l'icône plutôt qu'une
+   approximation à deux calques de couleur qui aurait mal vieilli sur un
+   fond différent du gris foncé de l'app).
+2. **`components/onboarding/FeatureCarousel.tsx`**, slide 2 : « Ta batterie
+   suit tes journées / Elle se vide, puis se recharge » (qui décrivait
+   l'ancien modèle événementiel) devient « Chaque soir, fais le point / Ta
+   note devient ta batterie ». Illustration remplacée : un curseur 1-10
+   (même visuel que `app/checkin.tsx`) à 8, une flèche, puis la vraie jauge
+   `BatteryGauge` à 80% — montre littéralement la note devenir le niveau,
+   sans détour par une formule.
+3. **Nouvel écran `STEP.STREAK`** (`app/(auth)/index.tsx`, entre le
+   carrousel et la demande de notification) : une flamme tapable
+   (`StreakDemo`), grisée au départ. Au tap : rebond à ressort + halo qui
+   apparaît (`Animated`, même pattern que `StreakBadge`/`BatteryGauge`),
+   texte qui passe de « Chaque soir, fais le point » à « Ta série a
+   commencé ». Rien n'est réellement enregistré ici (avant inscription) —
+   sert uniquement à faire vivre le geste avant de demander la permission de
+   notification juste après, ce qui rend cette demande plus légitime
+   (« je ne veux pas la perdre » comme libellé de transition, en écho direct
+   au message de `CheckInCard`).
+
+**Vérifié.** `npx tsc --noEmit` propre, `npx jest --watchAll=false` :
+28/28, `npx expo lint` propre.
+
+**Fichiers touchés.**
+
+- modifié : `components/icons/Icon.tsx`,
+  `components/onboarding/FeatureCarousel.tsx`, `app/(auth)/index.tsx`
