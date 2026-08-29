@@ -1,6 +1,6 @@
 import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -97,6 +97,24 @@ function RootNavigator() {
       SplashScreen.hideAsync();
     }
   }, [stillResolving]);
+
+  // Tapping the daily reminder should land on the specific course it
+  // mentioned (lib/notifications.ts sets data.courseId whenever the
+  // content names one), not just open the app to wherever it was.
+  // Covers both a tap while the app is already running and a cold start
+  // from a tap (the notification that launched the app is only available
+  // via getLastNotificationResponseAsync, not the listener below).
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const courseId = response.notification.request.content.data?.courseId;
+      if (typeof courseId === 'string') router.push(`/course/${courseId}`);
+    });
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      const courseId = response?.notification.request.content.data?.courseId;
+      if (typeof courseId === 'string') router.push(`/course/${courseId}`);
+    });
+    return () => subscription.remove();
+  }, []);
 
   if (stillResolving) {
     return null;

@@ -832,3 +832,58 @@ attente jusqu'ici.
 - modifié : `app/paywall.tsx`, `app/(auth)/index.tsx`, `app/_layout.tsx`,
   `app/course/[id].tsx`, `app/(tabs)/index.tsx`, `package.json` (script
   `lint` + deps `eslint`/`eslint-config-expo`)
+
+---
+
+### 2026-08-29 — Chantier 9 : notification quotidienne dynamique
+
+**Contexte.** L'utilisateur a demandé si le contenu de la notification
+change selon la batterie réelle — non, à ce stade c'était un texte fixe
+programmé une seule fois pendant l'onboarding — et a demandé d'autres
+notifications qui poussent vers des cours précis. Choix fait avec
+l'utilisateur (question posée directement) : recalcul local à chaque
+ouverture de l'app plutôt qu'une infra de push serveur (Edge Function +
+pg_cron + tokens push) — beaucoup moins coûteux à construire, au prix de ne
+se déclencher que si l'app a été ouverte récemment (pas de vraie notif
+serveur si l'app reste fermée plusieurs jours).
+
+**Fait.**
+
+1. **`lib/notifications.ts` réécrit.** `scheduleDailyReminder(ctx)`
+   remplace l'ancien `scheduleLowBatteryReminder` figé. Priorité du
+   contenu : (1) un événement difficile à venir + un cours qui matche ses
+   tags → message nommant l'événement et le cours ; (2) sinon batterie
+   projetée basse (<40) → le message de baisse déjà promis à l'onboarding ;
+   (3) sinon un cours pas encore terminé, en découverte ; (4) sinon un
+   message neutre. `data.courseId` est attaché quand un cours est
+   mentionné.
+2. **`app/(tabs)/index.tsx`** : nouveau `useEffect` qui reprogramme la
+   notification à chaque fois que le Dashboard a des données fraîches
+   (batterie, événement difficile à venir, cours recommandé déjà calculés
+   pour la carte de recommandation existante — réutilisés, pas recalculés
+   en double). Requête best-effort supplémentaire pour le cours de
+   découverte : `course_progress` (terminés) puis premier cours non terminé
+   par `order_index`.
+3. **`app/(auth)/index.tsx`** : l'écran de notification de l'onboarding
+   appelle maintenant `scheduleDailyReminder` avec un contexte forcé
+   (`batteryLevel: 0`) pour produire exactement le message montré dans le
+   mock — la vraie donnée prend le relais dès le premier chargement du
+   Dashboard.
+4. **Tap sur la notification → cours** (`app/_layout.tsx`) :
+   `Notifications.addNotificationResponseReceivedListener` +
+   `getLastNotificationResponseAsync` (pour le cold start) redirigent vers
+   `/course/{courseId}` quand la notification en mentionnait un.
+
+**Vérifié.** `npx tsc --noEmit` propre, `npx jest --watchAll=false` : 21/21,
+`npx expo lint` propre.
+
+**Non fait / limite assumée.** Aucune notification ne se déclenche si
+l'app n'a pas été rouverte récemment — comportement accepté avec
+l'utilisateur en échange de ne pas construire d'infra de push serveur pour
+l'instant. À reconsidérer si l'engagement post-onboarding s'avère trop
+faible.
+
+**Fichiers touchés.**
+
+- réécrit : `lib/notifications.ts`
+- modifié : `app/(tabs)/index.tsx`, `app/(auth)/index.tsx`, `app/_layout.tsx`

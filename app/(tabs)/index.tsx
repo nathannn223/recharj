@@ -12,6 +12,7 @@ import { useEvents } from '@/hooks/useEvents';
 import { addDays, projectBattery, startOfToday, toDateKey } from '@/lib/battery';
 import { relativeDayLabel } from '@/lib/dates';
 import { tagsForEventType } from '@/lib/eventTags';
+import { scheduleDailyReminder } from '@/lib/notifications';
 import { supabase } from '@/lib/supabase';
 
 const WEEKDAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S']; // Date#getDay(): 0=dimanche
@@ -83,6 +84,46 @@ export default function DashboardScreen() {
     // instead of only when the underlying event actually changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [difficultEvent?.id]);
+
+  // Reschedules the daily reminder (lib/notifications.ts) with what's
+  // actually true right now, every time this screen has fresh data —
+  // onboarding only ever sets the initial "battery will be low" promise,
+  // this is what keeps it honest afterwards. No-ops on its own if
+  // permission was never granted.
+  useEffect(() => {
+    if (loading) return;
+    let cancelled = false;
+
+    async function refreshReminder() {
+      const { data: profile } = await supabase.from('profiles').select('low_battery_moment').maybeSingle();
+      const momentLabel = profile?.low_battery_moment || 'Le soir';
+
+      let discoverCourse: { id: string; title: string } | null = null;
+      if (!difficultEvent || !recommendedCourse) {
+        const { data: completedRows } = await supabase.from('course_progress').select('course_id').eq('status', 'completed');
+        const completedIds = (completedRows ?? []).map((r) => r.course_id);
+        let query = supabase.from('courses').select('id, title').order('order_index', { ascending: true }).limit(1);
+        if (completedIds.length > 0) query = query.not('id', 'in', `(${completedIds.join(',')})`);
+        const { data: nextCourse } = await query.maybeSingle();
+        discoverCourse = nextCourse ?? null;
+      }
+
+      if (cancelled) return;
+      await scheduleDailyReminder({
+        momentLabel,
+        batteryLevel: todayLevel,
+        upcomingEvent: difficultEvent ? { title: difficultEvent.title, type: difficultEvent.type } : null,
+        matchedCourse: recommendedCourse,
+        discoverCourse,
+      });
+    }
+
+    refreshReminder();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, todayLevel, difficultEvent?.id, recommendedCourse?.id]);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>

@@ -28,7 +28,7 @@ import { chargeGradient, colors, fontFamily, radii, spacing } from '@/constants/
 import { useAuth } from '@/lib/auth';
 import { PRIVACY_URL, TERMS_URL } from '@/lib/legal';
 import { MOMENT_OPTIONS } from '@/lib/momentOfDay';
-import { scheduleLowBatteryReminder } from '@/lib/notifications';
+import { scheduleDailyReminder } from '@/lib/notifications';
 import { OBSTACLES } from '@/lib/obstacles';
 import { useOnboarding } from '@/lib/onboarding';
 import { PAIN_TYPES } from '@/lib/painTypes';
@@ -260,7 +260,11 @@ export default function AuthScreen() {
     try {
       const { status } = await Notifications.requestPermissionsAsync();
       if (status === 'granted') {
-        await scheduleLowBatteryReminder(momentLabel ?? 'Le soir');
+        // Forces the same low-battery message the mock on this screen just
+        // showed. Real day-to-day content (a course tied to an actual
+        // upcoming event, or the battery genuinely low) takes over the
+        // first time the Dashboard loads with real data.
+        await scheduleDailyReminder({ momentLabel: momentLabel ?? 'Le soir', batteryLevel: 0 });
       }
     } catch {
       // Permission prompt or scheduling failing (simulator, already denied
