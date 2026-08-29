@@ -45,6 +45,7 @@ export default function DashboardScreen() {
   const todayCheckIn = battery.checkIns.get(todayKey) ?? null;
 
   const [checkInStreak, setCheckInStreak] = useState(0);
+  const [firstName, setFirstName] = useState('');
 
   // A check-in made from app/checkin.tsx (or an event added/edited/deleted
   // elsewhere) happens in a different screen instance — resyncing on every
@@ -117,7 +118,8 @@ export default function DashboardScreen() {
     let cancelled = false;
 
     async function refreshReminder() {
-      const { data: profile } = await supabase.from('profiles').select('low_battery_moment').maybeSingle();
+      const { data: profile } = await supabase.from('profiles').select('first_name, low_battery_moment').maybeSingle();
+      if (!cancelled) setFirstName(profile?.first_name || '');
       const momentLabel = profile?.low_battery_moment || 'Le soir';
 
       let discoverCourse: { id: string; title: string } | null = null;
@@ -152,10 +154,7 @@ export default function DashboardScreen() {
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.row}>
-          <View>
-            <Text style={styles.sub}>Bonjour</Text>
-            <Text style={styles.h1}>Ta semaine</Text>
-          </View>
+          <Text style={styles.h1}>Bonjour{firstName ? ` ${firstName}` : ''}</Text>
           <StreakBadge streak={checkInStreak} onPress={() => router.push('/checkin')} />
         </View>
 
@@ -257,7 +256,6 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.ink },
   content: { padding: spacing[5], paddingTop: spacing[6], gap: spacing[6], paddingBottom: spacing[8] },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sub: { fontFamily: fontFamily.textRegular, fontSize: 18, color: colors.textDim },
   h1: { fontFamily: fontFamily.displaySemiBold, fontSize: 34, color: colors.text, marginTop: 2 },
 
   batteryWrap: { gap: spacing[3] },
