@@ -32,6 +32,7 @@ create index if not exists battery_days_user_day_idx on battery_days (user_id, d
 
 alter table battery_days enable row level security;
 
+drop policy if exists "Users manage their own battery history" on battery_days;
 create policy "Users manage their own battery history"
   on battery_days for all
   using (auth.uid() = user_id)

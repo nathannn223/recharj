@@ -182,6 +182,53 @@ export function SettingsIcon(props: IconProps) {
   );
 }
 
+export function BellIcon(props: IconProps) {
+  const c = props.color ?? '#F4F1FC';
+  return (
+    <Base {...props}>
+      <Path d="M6 10a6 6 0 0 1 12 0c0 4 1.5 5.5 2 6H4c.5-.5 2-2 2-6z" stroke={c} {...strokeProps} />
+      <Path d="M10 19a2 2 0 0 0 4 0" stroke={c} {...strokeProps} />
+    </Base>
+  );
+}
+
+export function SunIcon(props: IconProps) {
+  const c = props.color ?? '#F4F1FC';
+  return (
+    <Base {...props}>
+      <Circle cx={12} cy={12} r={4.2} stroke={c} {...strokeProps} />
+      <Path
+        d="M12 2.5v3M12 18.5v3M4.6 4.6l2.1 2.1M17.3 17.3l2.1 2.1M2.5 12h3M18.5 12h3M4.6 19.4l2.1-2.1M17.3 6.7l2.1-2.1"
+        stroke={c}
+        {...strokeProps}
+      />
+    </Base>
+  );
+}
+
+export function ShieldIcon(props: IconProps) {
+  const c = props.color ?? '#F4F1FC';
+  return (
+    <Base {...props}>
+      <Path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z" stroke={c} {...strokeProps} />
+      <Path d="M9 12l2 2 4-4.5" stroke={c} {...strokeProps} />
+    </Base>
+  );
+}
+
+export function HeartIcon(props: IconProps) {
+  const c = props.color ?? '#F4F1FC';
+  return (
+    <Base {...props}>
+      <Path
+        d="M12 20s-7.5-4.6-9.7-9.4C.7 7.3 2.3 4 5.6 4c1.8 0 3.3.9 4.4 2.5C11.1 4.9 12.6 4 14.4 4c3.3 0 4.9 3.3 3.3 6.6C15.5 15.4 12 20 12 20z"
+        stroke={c}
+        {...strokeProps}
+      />
+    </Base>
+  );
+}
+
 export function UserIcon(props: IconProps) {
   const c = props.color ?? '#F4F1FC';
   return (

@@ -501,5 +501,273 @@ Par ordre de priorité.
       28/08/2026** (chantier 4), select ciblé + type `LibraryCourse`.
 - [x] Mettre à jour ou archiver `AGENTS.md` et
       `consignes-implementation-cours.md` — **fait le 28/08/2026** (chantier 4).
-- [ ] Pousser le dépôt sur un remote — l'historique n'existe que localement.
-      Décidé le 28/08/2026, en attente de l'URL du repo (voir chantier 4).
+- [x] Pousser le dépôt sur un remote — **fait le 28/08/2026** :
+      `https://github.com/nathannn223/recharj`, `master` suit `origin/master`,
+      arbre de travail propre.
+
+---
+
+### 2026-08-29 — Chantier 5 : refonte complète de l'onboarding
+
+**Contexte.** L'utilisateur a fourni une liste de consignes précises pour
+refaire l'onboarding pré-inscription (`app/(auth)/index.tsx`) et l'écran
+post-inscription (`app/onboarding.tsx`), avec trois pièces jointes de
+référence (écran de permission notifications façon Brick, écran de contrat
+signé à la main, écran d'essai gratuit façon Duolingo Super). Consigne
+générale valable sur chaque écran : texte réduit à 6 mots par phrase maximum,
+petite illustration minimaliste dans la DA de l'app. Les écrans à choix
+(question à choix unique/multiple) sont conservés tels quels dans leur
+mécanique ; le reste est réécrit.
+
+**Fait.**
+
+1. **Nouvelle question** : à quel moment de la journée la batterie sociale
+   est la plus basse (`lib/momentOfDay.ts`, 4 options). Réponse stockée sur
+   `profiles.low_battery_moment` (nouvelle colonne, voir migration 012) et
+   réutilisée pour personnaliser le texte de l'aperçu de notification et le
+   récapitulatif post-inscription.
+2. **Écran d'affirmation « autorité »** (nouveau, avant le carrousel de
+   fonctionnalités) : positionne Recharj comme spécifique aux introvertis et
+   basé sur de vraies études, plutôt qu'une app de bien-être générique.
+3. **Carrousel de fonctionnalités** (`components/onboarding/FeatureCarousel.tsx`) :
+   un seul écran, 3 slides swipables avec pagination à points (ajout
+   d'événements, batterie qui suit les journées, cours basés sur des études),
+   chacune avec sa propre illustration minimaliste. Remplace les deux anciens
+   écrans séparés `EVENTS_INTRO` / `COURSES_INTRO`.
+4. **Écran de permission notifications** (`STEP.NOTIFICATIONS`) : reprend la
+   structure de la pièce jointe (accroche + mockup de notification) dans le
+   style de l'app, personnalisé avec la réponse à la question du moment de la
+   journée. Appelle `Notifications.requestPermissionsAsync()`
+   (`expo-notifications`, déjà une dépendance mais jamais câblée jusqu'ici).
+   Ajout du plugin `expo-notifications` à `app.json` (recommandé par la doc
+   Expo SDK 54, pas obligatoire mais évite des surprises au build natif).
+5. **Écran d'affirmation « unicité »** (nouveau) : phrase courte rappelant à
+   l'utilisateur que sa fatigue sociale lui est propre.
+6. **Écran de contrat signé** (`STEP.CONTRACT`) : liste d'engagements courts
+   + zone de signature tactile (`components/onboarding/SignaturePad.tsx`,
+   construit avec `PanResponder` + `react-native-svg`, aucune dépendance
+   ajoutée). Le bouton de confirmation reste désactivé tant qu'aucun trait
+   n'a été dessiné.
+7. **Écran récapitulatif post-inscription réécrit** (`app/onboarding.tsx`,
+   `STEP.RECAP`) : « Voici ce que Recharj a identifié » + liste courte
+   (score de départ, point de blocage principal, moment de baisse), au lieu
+   d'un paragraphe.
+8. **Écran d'essai gratuit** (`app/onboarding.tsx`, `STEP.TRIAL`, nouveau) :
+   timeline verticale façon Duolingo Super adaptée à 7 jours (aujourd'hui /
+   rappel / premier prélèvement), sélecteur de plan fonctionnel (annuel /
+   mensuel, les deux avec le badge « 7 jours offerts »), CTA + lien
+   « Plus tard ». Les données de prix ont été extraites dans `lib/plans.ts`,
+   partagées avec `app/paywall.tsx` (qui les important déjà en double avant
+   ce chantier) pour que les deux écrans ne puissent pas diverger sur un
+   prix.
+9. **Illustrations.** `components/onboarding/IllustrationBadge.tsx` (badge
+   circulaire teinté + icône) plutôt qu'une image bespoke par écran — chaque
+   nouvelle icône ajoutée à `components/icons/Icon.tsx`
+   (`BellIcon`, `SunIcon`, `ShieldIcon`, `HeartIcon`), cohérentes avec le
+   style trait existant (`strokeWidth` 1.8, coins arrondis).
+10. **Migration 012** (`supabase/migrations/012_low_battery_moment.sql`) :
+    `alter table profiles add column low_battery_moment text`. **Pas encore
+    appliquée en base**, comme la 011.
+
+**Vérifié.** `npx tsc --noEmit` propre, `npx jest --watchAll=false` : 21/21
+tests toujours au vert (aucun test ne couvre les nouveaux écrans
+d'onboarding — uniquement `lib/battery.ts`, non touché ici).
+
+**Changements implicites repérés pour plus tard** (demandés explicitement
+par l'utilisateur à consigner, pas à traiter maintenant) :
+
+- La permission notification est désormais demandée, mais **rien ne
+  planifie encore de vraie notification** au moment choisi par l'utilisateur
+  (`low_battery_moment`). Reste à construire : notification locale planifiée
+  via `expo-notifications`, ou notification serveur.
+- L'écran d'essai gratuit **promet 7 jours offerts sur les deux plans**,
+  mais c'est une promesse d'interface uniquement (`lib/plans.ts`,
+  `TRIAL_DAYS`) — il faudra configurer un vrai essai gratuit / offre
+  d'introduction sur les deux produits StoreKit dans App Store Connect, puis
+  le refléter dans RevenueCat, une fois ce compte créé. Sans ça, un achat
+  réel facturerait immédiatement au lieu d'attendre 7 jours.
+- Le bouton « Commencer mon essai gratuit » (`app/onboarding.tsx`,
+  `startTrial`) ne fait aujourd'hui que continuer vers le premier cours,
+  comme le bouton « Devenir Premium » du paywall classique — même TODO,
+  même blocage (compte Apple Developer).
+- `app/paywall.tsx` (le paywall classique, affiché quand un cours verrouillé
+  est ouvert) **ne mentionne pas l'essai gratuit**. Si un utilisateur ignore
+  l'offre pendant l'onboarding (« Plus tard »), il n'a aujourd'hui aucun
+  moyen de la redéclencher depuis ce paywall. À trancher plus tard, une fois
+  les achats réels en place (il faudra un moyen de savoir si l'essai a déjà
+  été consommé).
+- L'engagement signé sur `STEP.CONTRACT` n'est **pas persisté** en base —
+  c'est un rituel d'interface, pas une donnée produit. À décider si ça vaut
+  la peine de stocker un `committed_at` (par ex. pour du texte de relance
+  utilisateur inactif), ou si ça reste volontairement local.
+- Toujours aucun linter configuré (`eslint-config-expo`) — reporté depuis le
+  chantier précédent.
+
+**Fichiers touchés.**
+
+- réécrit : `app/(auth)/index.tsx`, `app/onboarding.tsx`
+- modifié : `app/paywall.tsx` (utilise désormais `lib/plans.ts`)
+- créé : `lib/momentOfDay.ts`, `lib/plans.ts`,
+  `components/onboarding/IllustrationBadge.tsx`,
+  `components/onboarding/SignaturePad.tsx`,
+  `components/onboarding/FeatureCarousel.tsx`,
+  `supabase/migrations/012_low_battery_moment.sql`
+- modifié : `lib/pendingOnboarding.ts` (champ `lowBatteryMoment`),
+  `components/icons/Icon.tsx` (4 nouvelles icônes), `app.json` (plugin
+  `expo-notifications`)
+
+### Reste à faire
+
+Par ordre de priorité.
+
+- [ ] Appliquer les migrations 011 et 012 sur Supabase (aucune des deux ne
+      l'est à ce jour)
+- [ ] Vérifier le nouvel onboarding sur appareil réel (Expo Go) : les 15
+      écrans, la signature tactile, le carrousel, la permission
+      notifications, le récapitulatif et l'essai gratuit
+- [ ] Construire la vraie notification planifiée (`low_battery_moment`)
+- [ ] Brancher RevenueCat + configurer l'essai gratuit 7 jours réel sur les
+      deux produits (bloqué sur le compte Apple Developer)
+- [ ] Décider du sort du paywall classique vis-à-vis de l'essai gratuit
+      ignoré pendant l'onboarding
+- [ ] Aucun linter configuré (`eslint-config-expo`)
+
+---
+
+### 2026-08-29 — Chantier 6 : retours d'utilisation réelle sur le nouvel onboarding
+
+**Contexte.** L'utilisateur a testé le chantier 5 sur appareil réel et
+remonté une liste de retours concrets : questions trop courtes pour être
+comprises, boutons au texte non centré, mauvaises illustrations sur le
+carrousel, une vraie fausse notification à simuler, un bug reproductible
+(paywall verrouillé affiché juste après l'onboarding au lieu du premier
+cours), et surtout une demande de réordonnancement : la création de compte
+doit être la toute dernière étape, après le récap et l'essai gratuit — pas
+avant.
+
+**Fait.**
+
+1. **Réordonnancement complet.** `STEP.RECAP` et `STEP.TRIAL` (récap +
+   offre d'essai) ont été déplacés de `app/onboarding.tsx` (post-inscription)
+   vers `app/(auth)/index.tsx` (pré-inscription, juste après `CONTRACT`) —
+   ils ne dépendent que des réponses déjà en mémoire locale, aucune requête
+   Supabase nécessaire. `STEP.SIGNUP` est maintenant littéralement la
+   dernière étape avant `CHECK_EMAIL`. `app/onboarding.tsx` (post-inscription,
+   maintenant avec une session réelle) ne fait plus que : matcher le cours
+   gratuit, écrire le profil, puis afficher un unique écran motivant
+   (« Merci de nous faire confiance » + bouton « C'est parti ! »), qu'un
+   essai ait été démarré ou ignoré — plus de paywall à ce moment-là.
+2. **Bug corrigé : paywall verrouillé affiché après l'onboarding au lieu du
+   premier cours.** Cause trouvée : la mise à jour de `profiles` dans
+   `app/onboarding.tsx` écrivait `low_battery_moment` (migration 012, pas
+   encore appliquée) dans le **même** `.update()` que `free_course_id` — une
+   colonne inconnue de PostgREST fait échouer tout l'update, silencieusement
+   (déjà le même bug de fond que celui corrigé au chantier 2 sur les
+   `select` combinés). `low_battery_moment` est maintenant écrit dans un
+   `.update()` séparé et best-effort, qui ne peut plus faire échouer l'octroi
+   du cours gratuit.
+3. **Carrousel de fonctionnalités.** Slide 2 utilise maintenant deux vraies
+   `<BatteryGauge size="sm">` (la jauge réelle de l'app) au lieu de barres
+   colorées génériques. Slide 3 : la carte à retourner (`FlipCard`) est
+   redevenue interactive — l'ancien écran séparé « Essaie une vraie carte »
+   (`STEP.SAMPLE`) est supprimé, sa carte est directement intégrée à ce
+   slide. Correction technique associée : `FlipCard` positionne ses faces en
+   `absolute`, donc sans largeur explicite d'un parent elle s'effondre à
+   largeur nulle sous un conteneur `alignItems:'center'` — enveloppée dans
+   une `View` de largeur fixe pour ce cas précis.
+4. **Textes de questions rallongés** là où ils étaient devenus
+   incompréhensibles à 6 mots : « Qu'est-ce qui te vide le plus d'énergie ? »,
+   « À quel rythme ça t'arrive ? », « À quel moment de la journée ta
+   batterie est la plus basse ? ». La règle des 6 mots reste appliquée
+   partout ailleurs, mais n'est plus respectée au prix de la
+   compréhension.
+5. **Centrage des boutons.** `textAlign: 'center'` ajouté sur les styles de
+   texte de bouton concernés (`nextBtnText`, `submitText` du paywall) — le
+   vrai bug était qu'un texte de bouton assez long pour passer sur deux
+   lignes s'alignait à gauche par défaut sans `textAlign` explicite, même
+   avec un conteneur centré. Le bouton du paywall « Débloquer {titre complet
+   du cours} » est aussi redevenu simplement « Débloquer ce cours ».
+6. **Écran de notification** : illustration remplacée par une vraie
+   simulation de notification (icône de l'app, ombre portée, style carte
+   flottante) plutôt qu'un encart plat ; texte réécrit pour donner envie de
+   toucher la notification (« Grosse baisse en vue » / « Ta batterie sera
+   basse {moment}. Découvre comment t'y préparer. ») au lieu d'une phrase
+   qu'une vraie notification ne dirait jamais.
+7. **Écran d'affirmation (unicité)** : sous-titre changé pour
+   « Tu mérites d'être aidé. »
+8. **Écran de contrat** : retiré l'engagement « Je vais tester les cours. » ;
+   le badge « Engagé » n'est plus un overlay en position absolue (qui
+   pouvait se retrouver caché ou mal positionné) mais une ligne fixe sous la
+   zone de signature, garantie de rester affichée tant que
+   `signatureGiven` est vrai.
+9. **Écran de récapitulatif** réécrit en paragraphe qui relie les réponses
+   entre elles (score de départ, point de blocage, moment de la journée,
+   fréquence, méthode de recharge) plutôt qu'une liste à puces isolées.
+10. **Écran d'essai gratuit** agrandi : icônes de timeline 48px (au lieu de
+    32), texte de jour en 18 (au lieu de 14), connecteur plus épais — la
+    timeline est maintenant l'élément dominant de l'écran, espacement resserré
+    pour éviter les grands vides signalés.
+
+**Non résolu / signalé sans changement de code.** Une « erreur d'auth »
+rencontrée au moment de signer a été mentionnée par l'utilisateur sans
+message d'erreur précis ni reproduction claire — possible incident
+transitoire côté Supabase plutôt qu'un bug de code. À surveiller si ça se
+reproduit, avec le message d'erreur exact cette fois.
+
+**Vérifié.** `npx tsc --noEmit` propre, `npx jest --watchAll=false` : 21/21.
+
+**Changements implicites qui restent à traiter plus tard** (mise à jour de
+la liste du chantier 5, toujours valable) :
+
+- Migrations 011 et 012 toujours pas appliquées sur Supabase — c'est
+  précisément la 012 qui a causé le bug de ce chantier, donc l'urgence de
+  l'appliquer est plus haute qu'avant.
+- Le paywall classique (`app/paywall.tsx`) ne mentionne toujours pas l'essai
+  gratuit — un utilisateur qui l'a ignoré pendant l'onboarding n'a aucun
+  moyen de le redéclencher depuis là.
+- Notification planifiée réelle et RevenueCat/StoreKit : toujours pas
+  construits (voir chantier 5).
+
+**Fichiers touchés.**
+
+- réécrit : `app/(auth)/index.tsx`, `app/onboarding.tsx`,
+  `components/onboarding/FeatureCarousel.tsx`
+- modifié : `app/paywall.tsx` (libellé du bouton + centrage)
+
+---
+
+### 2026-08-29 — Chantier 7 : le paywall verrouillé réapparaît encore après l'onboarding
+
+**Contexte.** Même après application de la migration 012, l'utilisateur a
+revu le paywall d'un cours payant juste après l'inscription, sans avoir rien
+cliqué de spécial — donc pas juste le bug de colonne combinée du chantier 6.
+Cause exacte non confirmée (pas d'accès aux logs/données Supabase depuis
+cette session), donc traité défensivement plutôt qu'avec un correctif
+ciblé sur une cause supposée.
+
+**Fait.**
+
+1. **`app/onboarding.tsx` — vérification du grant avant d'y envoyer
+   l'utilisateur.** Après résolution de `resolvedFreeCourseId`, une
+   re-lecture confirme que le cours est soit réellement
+   `free_tier_included`, soit que `profiles.free_course_id` a bien été
+   écrit avec cette valeur — sinon `resolvedFreeCourseId` repasse à `null`
+   et `start()` retombe sur `/(tabs)` au lieu d'un cours qui rebondirait
+   vers le paywall. Convertit un échec d'octroi silencieux (quelle qu'en
+   soit la cause) en atterrissage sur le dashboard plutôt qu'en surprise du
+   paywall juste après l'inscription.
+2. **Bouton « Aller sur le dashboard »** ajouté sur l'écran « Merci de nous
+   faire confiance », en secondaire sous « C'est parti ! » — demandé
+   explicitement, sert aussi d'échappatoire si le cours gratuit ne se
+   résout toujours pas correctement.
+
+**Non résolu.** La cause racine exacte (pourquoi le grant échoue encore
+après la 012) reste incertaine sans accès aux données live. Si le problème
+persiste après ce chantier, il faudra que l'utilisateur relève le nom exact
+du cours affiché sur l'écran de paywall qui apparaît, pour savoir si
+`matchedCourseId` trouve le mauvais cours (tags qui matchent plusieurs
+cours) ou aucun cours du tout.
+
+**Vérifié.** `npx tsc --noEmit` propre.
+
+**Fichiers touchés.** modifié : `app/onboarding.tsx`

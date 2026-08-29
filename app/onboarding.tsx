@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BatteryGauge } from '@/components/BatteryGauge';
 import { chargeGradient, colors, fontFamily, radii, spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { useOnboarding } from '@/lib/onboarding';
@@ -12,20 +11,17 @@ import { PAIN_TYPES } from '@/lib/painTypes';
 import { readAndClearPendingOnboarding } from '@/lib/pendingOnboarding';
 import { supabase } from '@/lib/supabase';
 
-// Signup and onboarding are not the same thing. Signup creates the account;
-// onboarding has to show what the product does. The quiz already put the
-// flip card mechanic and the battery fill in the user's hands before
-// signup, so this screen closes the loop it opened there: it recaps the
-// answers the user gave and sends them straight into the course that
-// targets their specific pain point.
+// Signup, and the quiz/recap/trial screens that lead to it, all happen
+// before an account exists (see app/(auth)/index.tsx). This screen runs
+// right after — the account is real now — and has one job: match the free
+// course to the pain point the user picked, grant it on their profile, and
+// hand them a single clean "go" moment into the app, regardless of whether
+// they started the trial or skipped it on the previous screen.
 export default function OnboardingWelcomeScreen() {
   const { session } = useAuth();
   const { markSeen } = useOnboarding();
 
   const [preparing, setPreparing] = useState(true);
-  const [firstName, setFirstName] = useState('');
-  const [score, setScore] = useState<number | null>(null);
-  const [painType, setPainType] = useState('');
   const [freeCourseId, setFreeCourseId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -37,10 +33,6 @@ export default function OnboardingWelcomeScreen() {
       let matchedCourseId: string | null = null;
 
       if (pending && !cancelled) {
-        setFirstName(pending.firstName);
-        setScore(pending.baselineScore);
-        setPainType(pending.painType);
-
         // The free course this user gets is the one matching the pain point
         // they picked in the quiz, not a single fixed course for everyone.
         const painDef = PAIN_TYPES.find((p) => p.label === pending.painType);
@@ -68,6 +60,17 @@ export default function OnboardingWelcomeScreen() {
             free_course_id: matchedCourseId,
           })
           .eq('id', session!.user.id);
+
+        // Best-effort and deliberately separate from the update above:
+        // low_battery_moment (migration 012) is a recent column that may
+        // not exist yet on every Supabase project. A single combined
+        // update fails entirely if any one column is unknown to
+        // PostgREST — which previously broke free_course_id along with it
+        // and made a genuinely unlocked course look locked. Splitting it
+        // out means that failure mode can never take the grant down with it.
+        if (pending.lowBatteryMoment) {
+          await supabase.from('profiles').update({ low_battery_moment: pending.lowBatteryMoment }).eq('id', session!.user.id);
+        }
       }
 
       let resolvedFreeCourseId = matchedCourseId;
@@ -89,6 +92,32 @@ export default function OnboardingWelcomeScreen() {
         resolvedFreeCourseId = fallbackCourse?.id ?? null;
       }
 
+      // Confirm the grant actually landed before promising direct entry
+      // into it. A course reached this way is either free_tier_included
+      // (always accessible, nothing to confirm) or depends entirely on
+      // profiles.free_course_id having been written — and a silent write
+      // failure has broken exactly that column before (see migration 012
+      // above). Re-reading it here turns a broken grant into "land on the
+      // dashboard" instead of the locked-course paywall surprising the
+      // user straight after signup.
+      if (resolvedFreeCourseId) {
+        const { data: resolvedCourse } = await supabase
+          .from('courses')
+          .select('free_tier_included')
+          .eq('id', resolvedFreeCourseId)
+          .maybeSingle();
+        if (!resolvedCourse?.free_tier_included) {
+          const { data: confirmProfile } = await supabase
+            .from('profiles')
+            .select('free_course_id')
+            .eq('id', session!.user.id)
+            .maybeSingle();
+          if (confirmProfile?.free_course_id !== resolvedFreeCourseId) {
+            resolvedFreeCourseId = null;
+          }
+        }
+      }
+
       if (cancelled) return;
       setFreeCourseId(resolvedFreeCourseId);
       setPreparing(false);
@@ -108,7 +137,7 @@ export default function OnboardingWelcomeScreen() {
     router.replace(freeCourseId ? `/course/${freeCourseId}` : '/(tabs)');
   };
 
-  const skip = async () => {
+  const goToDashboard = async () => {
     await markSeen();
     router.replace('/(tabs)');
   };
@@ -123,34 +152,17 @@ export default function OnboardingWelcomeScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      <View style={styles.content}>
-        <View style={styles.hero}>
-          <Text style={styles.title}>
-            {firstName ? `Bienvenue, ${firstName}.` : 'Bienvenue.'} Recharj est calibré pour t'aider au maximum.
-          </Text>
-        </View>
-
-        <View style={styles.gaugeWrap}>
-          <BatteryGauge level={score !== null ? score * 10 : 50} size="lg" />
-        </View>
-
-        <Text style={styles.recap}>
-          {score !== null && painType
-            ? `Tu pars de ${score}/10, et ${painType.toLowerCase()} te coûte le plus d'énergie. Ton premier cours attaque directement ce point.`
-            : 'Ton premier cours attend juste en dessous.'}
-        </Text>
-
-        <View style={{ gap: spacing[3] }}>
-          <Pressable onPress={start}>
-            <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.startBtn}>
-              <Text style={styles.startBtnText}>Accéder à mon premier cours</Text>
-            </LinearGradient>
-          </Pressable>
-
-          <Pressable onPress={skip} style={styles.skipBtn}>
-            <Text style={styles.skipText}>Ignorer</Text>
-          </Pressable>
-        </View>
+      <View style={[styles.content, styles.centered]}>
+        <Text style={styles.title}>Merci de nous faire confiance.</Text>
+        <Text style={styles.tagline}>Tu peux découvrir ton premier cours dès maintenant.</Text>
+        <Pressable onPress={start} style={{ alignSelf: 'stretch', marginTop: spacing[6] }}>
+          <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.startBtn}>
+            <Text style={styles.startBtnText}>C'est parti !</Text>
+          </LinearGradient>
+        </Pressable>
+        <Pressable onPress={goToDashboard} style={styles.dashboardBtn}>
+          <Text style={styles.dashboardText}>Aller sur le dashboard</Text>
+        </Pressable>
       </View>
     </SafeAreaView>
   );
@@ -159,17 +171,14 @@ export default function OnboardingWelcomeScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.ink },
   centered: { alignItems: 'center', justifyContent: 'center' },
-  content: { flex: 1, padding: spacing[6], paddingTop: spacing[8], justifyContent: 'center', gap: spacing[6] },
+  content: { flex: 1, padding: spacing[6] },
 
-  hero: { gap: spacing[2] },
-  title: { fontFamily: fontFamily.displayBold, fontSize: 30, color: colors.text, lineHeight: 36 },
-
-  gaugeWrap: { paddingHorizontal: spacing[2] },
-  recap: { fontFamily: fontFamily.textRegular, fontSize: 16, color: colors.textDim, lineHeight: 23 },
+  title: { fontFamily: fontFamily.displayBold, fontSize: 28, color: colors.text, lineHeight: 34, textAlign: 'center' },
+  tagline: { fontFamily: fontFamily.textRegular, fontSize: 17, color: colors.textDim, lineHeight: 24, textAlign: 'center', marginTop: spacing[3] },
 
   startBtn: { borderRadius: radii.md, paddingVertical: 17, alignItems: 'center' },
-  startBtnText: { fontFamily: fontFamily.textBold, fontSize: 16, color: colors.surfaceScreen },
+  startBtnText: { fontFamily: fontFamily.textBold, fontSize: 16, color: colors.surfaceScreen, textAlign: 'center' },
 
-  skipBtn: { alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 6 },
-  skipText: { fontFamily: fontFamily.textSemiBold, fontSize: 14, color: colors.textFaint },
+  dashboardBtn: { alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 6, marginTop: spacing[3] },
+  dashboardText: { fontFamily: fontFamily.textSemiBold, fontSize: 14, color: colors.textFaint },
 });

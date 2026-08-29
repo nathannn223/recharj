@@ -1,4 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Notifications from 'expo-notifications';
 import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -6,16 +7,32 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
 import { BatteryGauge } from '@/components/BatteryGauge';
-import { FlipCard } from '@/components/course/FlipCard';
-import { BookIcon } from '@/components/icons/Icon';
+import {
+  BellIcon,
+  BoltIcon,
+  CalendarIcon,
+  CheckIcon,
+  ChevronRightIcon,
+  HeartIcon,
+  LockIcon,
+  MoonIcon,
+  ShieldIcon,
+  StarIcon,
+  SunIcon,
+  UserIcon,
+} from '@/components/icons/Icon';
+import { FeatureCarousel } from '@/components/onboarding/FeatureCarousel';
+import { IllustrationBadge } from '@/components/onboarding/IllustrationBadge';
+import { SignaturePad } from '@/components/onboarding/SignaturePad';
 import { chargeGradient, colors, fontFamily, radii, spacing } from '@/constants/theme';
-import type { CourseCard } from '@/lib/courses';
 import { useAuth } from '@/lib/auth';
 import { PRIVACY_URL, TERMS_URL } from '@/lib/legal';
+import { MOMENT_OPTIONS } from '@/lib/momentOfDay';
 import { OBSTACLES } from '@/lib/obstacles';
 import { useOnboarding } from '@/lib/onboarding';
 import { PAIN_TYPES } from '@/lib/painTypes';
 import { savePendingOnboarding } from '@/lib/pendingOnboarding';
+import { PLANS, TRIAL_DAYS, TRIAL_RENEWAL_TEXT, type Plan } from '@/lib/plans';
 import { ANTICIPATION_OPTIONS, EVENT_FREQUENCY_OPTIONS, RECHARGE_OPTIONS } from '@/lib/socialProfile';
 
 function LogoMark({ size = 56 }: { size?: number }) {
@@ -34,18 +51,19 @@ function LogoMark({ size = 56 }: { size?: number }) {
   );
 }
 
-// A real card from the course content, shown once during the quiz so the
-// user tries the flip mechanic before signing up instead of reading a
-// description of it. Kept short: the goal here is the gesture, not the
-// content depth a real course card would have. Uses the liking gap
-// (Boothby, Cooney, Sandstrom & Epley, 2018) rather than the more familiar
-// mere exposure effect, for a stronger first impression.
-const SAMPLE_CARD: CourseCard = {
-  title: "L'écart de sympathie",
-  advice:
-    "Après une conversation, tu penses presque toujours avoir moins plu que la réalité. Des chercheurs ont mesuré cet écart en 2018. Ton interlocuteur t'a sans doute apprécié plus que tu ne le crois.",
-  sourceId: null,
-};
+const CONTRACT_COMMITMENTS = ['Je vais suivre ma batterie.', 'Je vais mieux me connaître.', 'Je vais avancer à mon rythme.'];
+
+const TIMELINE = [
+  { day: 'Aujourd’hui', text: 'Accès complet débloqué.', icon: 'bolt' as const },
+  { day: `Jour ${TRIAL_DAYS - 2}`, text: 'Rappel avant la fin.', icon: 'bell' as const },
+  { day: `Jour ${TRIAL_DAYS}`, text: 'Premier prélèvement, résiliable avant.', icon: 'check' as const },
+];
+
+function TimelineIcon({ kind }: { kind: 'bolt' | 'bell' | 'check' }) {
+  if (kind === 'bolt') return <BoltIcon color={colors.lime} size={22} />;
+  if (kind === 'bell') return <BellIcon color={colors.violetSoft} size={22} />;
+  return <CheckIcon color={colors.coral} size={22} />;
+}
 
 type Mode = 'quiz' | 'signin';
 
@@ -58,29 +76,32 @@ const STEP = {
   FREQUENCY: 5,
   RECHARGE: 6,
   ANTICIPATION: 7,
-  EVENTS_INTRO: 8,
-  COURSES_INTRO: 9,
-  SAMPLE: 10,
-  SIGNUP: 11,
-  CHECK_EMAIL: 12,
+  MOMENT: 8,
+  AUTHORITY: 9,
+  FEATURES: 10,
+  NOTIFICATIONS: 11,
+  UNIQUE: 12,
+  CONTRACT: 13,
+  RECAP: 14,
+  TRIAL: 15,
+  SIGNUP: 16,
+  CHECK_EMAIL: 17,
 } as const;
 
-// The battery fills silently as the user answers each of the seven
-// questions (NAME through ANTICIPATION), no caption explaining the
-// mechanic. It reaches full on the last question and stays full through
-// the two intro screens, the sample card and signup.
+// The battery fills silently as the user answers each of the eight
+// questions (NAME through MOMENT), no caption explaining the mechanic. It
+// reaches full on the last question and stays full for the rest of the flow.
 function batteryLevelForStep(step: number): number | undefined {
   if (step === STEP.HOOK) return undefined;
-  if (step <= STEP.ANTICIPATION) {
+  if (step <= STEP.MOMENT) {
     const questionIndex = step - STEP.NAME;
-    return Math.round((questionIndex / (STEP.ANTICIPATION - STEP.NAME)) * 100);
+    return Math.round((questionIndex / (STEP.MOMENT - STEP.NAME)) * 100);
   }
   return 100;
 }
 
 // Each button teases what the next step reveals instead of repeating
-// "Continuer" at every screen — the user always knows what tapping it
-// gets them, which is a stronger nudge than a neutral label.
+// "Continuer" at every screen.
 function nextButtonLabel(step: number, submitting: boolean, firstName: string): string {
   if (step === STEP.SIGNUP) return submitting ? 'Un instant…' : 'Créer mon compte';
   switch (step) {
@@ -99,13 +120,19 @@ function nextButtonLabel(step: number, submitting: boolean, firstName: string): 
     case STEP.RECHARGE:
       return 'Un dernier point sur toi';
     case STEP.ANTICIPATION:
+      return 'Une dernière question';
+    case STEP.MOMENT:
+      return 'Voir pourquoi Recharj est différent';
+    case STEP.AUTHORITY:
       return "Voir comment Recharj t'aide";
-    case STEP.EVENTS_INTRO:
-      return 'Voir les cours';
-    case STEP.COURSES_INTRO:
-      return 'Essayer une carte';
-    case STEP.SAMPLE:
+    case STEP.FEATURES:
       return 'Je veux que ça change';
+    case STEP.UNIQUE:
+      return "Je m'engage";
+    case STEP.CONTRACT:
+      return 'Confirmer mon engagement';
+    case STEP.RECAP:
+      return 'Voir mon plan personnalisé';
     default:
       return 'Continuer';
   }
@@ -124,12 +151,16 @@ export default function AuthScreen() {
   const [frequencyIndex, setFrequencyIndex] = useState<number | null>(null);
   const [rechargeIndex, setRechargeIndex] = useState<number | null>(null);
   const [anticipationIndex, setAnticipationIndex] = useState<number | null>(null);
+  const [momentIndex, setMomentIndex] = useState<number | null>(null);
+  const [signatureGiven, setSignatureGiven] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<Plan['id']>('annual');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const pain = painIndex !== null ? PAIN_TYPES[painIndex] : null;
+  const momentLabel = momentIndex !== null ? MOMENT_OPTIONS[momentIndex] : null;
 
   const toggleObstacle = (i: number) => {
     setObstacleIndices((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]));
@@ -143,7 +174,9 @@ export default function AuthScreen() {
     (step === STEP.OBSTACLE && obstacleIndices.length === 0) ||
     (step === STEP.FREQUENCY && frequencyIndex === null) ||
     (step === STEP.RECHARGE && rechargeIndex === null) ||
-    (step === STEP.ANTICIPATION && anticipationIndex === null);
+    (step === STEP.ANTICIPATION && anticipationIndex === null) ||
+    (step === STEP.MOMENT && momentIndex === null) ||
+    (step === STEP.CONTRACT && !signatureGiven);
 
   const submitSignUp = async () => {
     setError(null);
@@ -160,6 +193,7 @@ export default function AuthScreen() {
       eventFrequency: frequencyIndex !== null ? EVENT_FREQUENCY_OPTIONS[frequencyIndex] : '',
       rechargeMethod: rechargeIndex !== null ? RECHARGE_OPTIONS[rechargeIndex] : '',
       anticipationStyle: anticipationIndex !== null ? ANTICIPATION_OPTIONS[anticipationIndex] : '',
+      lowBatteryMoment: momentLabel ?? '',
     });
     const { error: signUpError, hasSession } = await signUp(email, password);
     setSubmitting(false);
@@ -176,15 +210,15 @@ export default function AuthScreen() {
   };
 
   // Dev-only: generates a fresh, guaranteed-unique test account and runs it
-  // through the exact same signUp() path as a real user. Supabase still
-  // requires a unique email per account, this just removes the tedium of
-  // typing one by hand every time. Never rendered in production (__DEV__).
+  // through the exact same signUp() path as a real user. Never rendered in
+  // production (__DEV__).
   const devQuickSignUp = async () => {
     const testEmail = `dev+${Date.now()}@recharj.dev`;
     const testPassword = 'DevTest123!';
     setFirstName('Dev');
     setScore(5);
     setPainIndex(0);
+    setMomentIndex(0);
     setEmail(testEmail);
     setPassword(testPassword);
     setError(null);
@@ -197,6 +231,7 @@ export default function AuthScreen() {
       eventFrequency: '',
       rechargeMethod: '',
       anticipationStyle: '',
+      lowBatteryMoment: MOMENT_OPTIONS[0],
     });
     const { error: signUpError, hasSession } = await signUp(testEmail, testPassword);
     setSubmitting(false);
@@ -218,6 +253,16 @@ export default function AuthScreen() {
     const { error: signInError } = await signIn(email, password);
     setSubmitting(false);
     if (signInError) setError(signInError);
+  };
+
+  const requestNotifications = async () => {
+    try {
+      await Notifications.requestPermissionsAsync();
+    } catch {
+      // Permission prompt failing (simulator, already denied at OS level,
+      // etc.) should never block onboarding — just move on.
+    }
+    setStep((s) => s + 1);
   };
 
   if (mode === 'signin') {
@@ -271,6 +316,7 @@ export default function AuthScreen() {
   }
 
   const batteryLevel = batteryLevelForStep(step);
+  const isCustomFooterStep = step === STEP.NOTIFICATIONS || step === STEP.TRIAL;
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -286,16 +332,16 @@ export default function AuthScreen() {
           {step === STEP.HOOK && (
             <View style={styles.hero}>
               <LogoMark />
-              <Text style={styles.title}>Les sorties te vident plus vite que tout le monde ?</Text>
-              <Text style={styles.tagline}>
-                Recharj te montre la fatigue sociale avant qu'elle arrive. Tu avances un peu à chaque événement que tu ajoutes.
-              </Text>
+              <Text style={styles.title}>Les sorties te vident vite ?</Text>
+              <Text style={styles.tagline}>Recharj anticipe ta fatigue sociale.</Text>
+              <Text style={styles.tagline}>Avant qu'elle arrive.</Text>
             </View>
           )}
 
           {step === STEP.NAME && (
             <View style={styles.question}>
-              <Text style={styles.questionTitle}>Comment tu t'appelles ?</Text>
+              <IllustrationBadge icon={<UserIcon color={colors.violet} size={36} />} accent={colors.violet} />
+              <Text style={[styles.questionTitle, styles.withIllustration]}>Comment tu t'appelles ?</Text>
               <TextInput
                 value={firstName}
                 onChangeText={setFirstName}
@@ -309,7 +355,8 @@ export default function AuthScreen() {
 
           {step === STEP.DIAGNOSTIC && (
             <View style={styles.question}>
-              <Text style={styles.questionTitle}>{firstName}, à quel point te sens-tu à l'aise en société aujourd'hui ?</Text>
+              <IllustrationBadge icon={<BoltIcon color={colors.coral} size={36} />} accent={colors.coral} />
+              <Text style={[styles.questionTitle, styles.withIllustration]}>{firstName}, ton aisance sociale aujourd'hui ?</Text>
               <View style={styles.slider}>
                 {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
                   <Pressable key={n} onPress={() => setScore(n)} style={styles.sliderStep} hitSlop={4}>
@@ -318,7 +365,7 @@ export default function AuthScreen() {
                 ))}
               </View>
               <View style={styles.row}>
-                <Text style={styles.sliderLabel}>Pas à l'aise du tout</Text>
+                <Text style={styles.sliderLabel}>Pas à l'aise</Text>
                 {score !== null && <Text style={styles.sliderValue}>{score}</Text>}
                 <Text style={styles.sliderLabel}>Très à l'aise</Text>
               </View>
@@ -327,14 +374,16 @@ export default function AuthScreen() {
 
           {step === STEP.PAIN && (
             <View style={styles.question}>
-              <Text style={styles.questionTitle}>{firstName}, qu'est-ce qui te vide le plus ?</Text>
+              <IllustrationBadge icon={<MoonIcon color={colors.violetSoft} size={36} />} accent={colors.violetSoft} />
+              <Text style={[styles.questionTitle, styles.withIllustration]}>{firstName}, qu'est-ce qui te vide le plus d'énergie ?</Text>
               <ChoiceList options={PAIN_TYPES.map((p) => p.label)} selected={painIndex !== null ? [painIndex] : []} onToggle={setPainIndex} />
             </View>
           )}
 
           {step === STEP.OBSTACLE && (
             <View style={styles.question}>
-              <Text style={styles.questionTitle}>Qu'est-ce qui t'empêche de reprendre le contrôle ?</Text>
+              <IllustrationBadge icon={<LockIcon color={colors.violet} size={36} />} accent={colors.violet} />
+              <Text style={[styles.questionTitle, styles.withIllustration]}>Qu'est-ce qui te bloque ?</Text>
               <Text style={styles.questionSubtitle}>Choisis tout ce qui s'applique.</Text>
               <ChoiceList options={OBSTACLES} selected={obstacleIndices} onToggle={toggleObstacle} multi square />
             </View>
@@ -342,7 +391,8 @@ export default function AuthScreen() {
 
           {step === STEP.FREQUENCY && (
             <View style={styles.question}>
-              <Text style={styles.questionTitle}>{firstName}, à quel rythme les situations difficiles reviennent dans ta semaine ?</Text>
+              <IllustrationBadge icon={<CalendarIcon color={colors.lime} size={36} />} accent={colors.lime} />
+              <Text style={[styles.questionTitle, styles.withIllustration]}>{firstName}, à quel rythme ça t'arrive ?</Text>
               <ChoiceList
                 options={EVENT_FREQUENCY_OPTIONS}
                 selected={frequencyIndex !== null ? [frequencyIndex] : []}
@@ -353,14 +403,17 @@ export default function AuthScreen() {
 
           {step === STEP.RECHARGE && (
             <View style={styles.question}>
-              <Text style={styles.questionTitle}>Qu'est-ce qui te recharge le plus après une sortie qui t'a demandé de l'énergie ?</Text>
+              <IllustrationBadge icon={<SunIcon color={colors.lime} size={36} />} accent={colors.lime} />
+              <Text style={[styles.questionTitle, styles.withIllustration]}>Qu'est-ce qui te recharge le mieux ?</Text>
               <ChoiceList options={RECHARGE_OPTIONS} selected={rechargeIndex !== null ? [rechargeIndex] : []} onToggle={setRechargeIndex} />
             </View>
           )}
 
           {step === STEP.ANTICIPATION && (
             <View style={styles.question}>
-              <Text style={styles.questionTitle}>Un évènement difficile arrive dans ton agenda. Tu réagis comment ?</Text>
+              <IllustrationBadge icon={<ChevronRightIcon color={colors.coral} size={36} />} accent={colors.coral} />
+              <Text style={[styles.questionTitle, styles.withIllustration]}>Un événement difficile arrive.</Text>
+              <Text style={styles.questionTitle}>Tu réagis comment ?</Text>
               <ChoiceList
                 options={ANTICIPATION_OPTIONS}
                 selected={anticipationIndex !== null ? [anticipationIndex] : []}
@@ -369,34 +422,127 @@ export default function AuthScreen() {
             </View>
           )}
 
-          {step === STEP.EVENTS_INTRO && (
-            <View style={styles.hero}>
-              <Text style={styles.title}>Ajoute tes évènements de la semaine</Text>
-              <Text style={styles.tagline}>
-                Recharj projette l'impact de chaque évènement sur ta batterie sociale, avant qu'il arrive. Pour ceux qui s'annoncent
-                difficiles, on te propose un cours adapté.
-              </Text>
-              <WeekPreview />
-            </View>
-          )}
-
-          {step === STEP.COURSES_INTRO && (
-            <View style={styles.hero}>
-              <Text style={styles.title}>Des mini cours basés sur de vraies études</Text>
-              <Text style={styles.tagline}>
-                Chaque carte te donne un conseil concret, tiré d'un vrai papier de recherche. Tu peux consulter la source si tu veux
-                approfondir.
-              </Text>
-              <CardStackPreview />
-            </View>
-          )}
-
-          {step === STEP.SAMPLE && (
+          {step === STEP.MOMENT && (
             <View style={styles.question}>
-              <Text style={styles.questionTitle}>Voici à quoi ressemble une carte de cours.</Text>
-              <View style={{ marginTop: spacing[5] }}>
-                <FlipCard card={SAMPLE_CARD} index={0} total={1} />
+              <IllustrationBadge icon={<MoonIcon color={colors.violetSoft} size={36} />} accent={colors.violetSoft} />
+              <Text style={[styles.questionTitle, styles.withIllustration]}>À quel moment de la journée ta batterie est la plus basse ?</Text>
+              <ChoiceList options={MOMENT_OPTIONS} selected={momentIndex !== null ? [momentIndex] : []} onToggle={setMomentIndex} />
+            </View>
+          )}
+
+          {step === STEP.AUTHORITY && (
+            <View style={styles.hero}>
+              <IllustrationBadge icon={<ShieldIcon color={colors.lime} size={40} />} accent={colors.lime} size={92} />
+              <Text style={styles.brandWord}>RECHARJ</Text>
+              <Text style={styles.title}>N'est pas une app de plus.</Text>
+              <Text style={styles.tagline}>Conçu pour les introvertis.</Text>
+              <Text style={styles.tagline}>Basé sur de vraies études.</Text>
+            </View>
+          )}
+
+          {step === STEP.FEATURES && (
+            <View style={styles.hero}>
+              <FeatureCarousel />
+            </View>
+          )}
+
+          {step === STEP.NOTIFICATIONS && (
+            <View style={styles.hero}>
+              <Text style={styles.eyebrow}>Reste sur la bonne voie</Text>
+              <Text style={styles.title}>Profite au maximum de Recharj</Text>
+              <Text style={styles.tagline}>Autorise les notifications pour rester régulier.</Text>
+              <NotificationMock momentLabel={momentLabel ?? 'ce soir'} />
+            </View>
+          )}
+
+          {step === STEP.UNIQUE && (
+            <View style={styles.hero}>
+              <IllustrationBadge icon={<StarIcon color={colors.coral} size={34} />} accent={colors.coral} size={92} />
+              <Text style={styles.title}>{firstName ? `${firstName}, tu es unique.` : 'Tu es unique.'}</Text>
+              <Text style={styles.tagline}>Tu mérites d'être aidé.</Text>
+            </View>
+          )}
+
+          {step === STEP.CONTRACT && (
+            <View style={styles.question}>
+              <IllustrationBadge icon={<HeartIcon color={colors.coral} size={34} />} accent={colors.coral} />
+              <Text style={[styles.questionTitle, styles.withIllustration]}>Un engagement envers toi-même.</Text>
+              <View style={styles.commitments}>
+                {CONTRACT_COMMITMENTS.map((c) => (
+                  <Text key={c} style={styles.commitmentLine}>
+                    · {c}
+                  </Text>
+                ))}
               </View>
+              <Text style={styles.signLabel}>Signe avec ton doigt.</Text>
+              <SignaturePad onChange={setSignatureGiven} />
+              {signatureGiven && (
+                <View style={styles.signedRow}>
+                  <CheckIcon color={colors.lime} size={16} />
+                  <Text style={styles.signedText}>Engagé</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {step === STEP.RECAP && (
+            <View style={styles.hero}>
+              <Text style={styles.eyebrow}>Voici ce que Recharj a identifié</Text>
+              <View style={styles.gaugeWrap}>
+                <BatteryGauge level={score !== null ? score * 10 : 50} size="lg" />
+              </View>
+              <Text style={styles.recapParagraph}>
+                {firstName ? `${firstName}, tu` : 'Tu'} pars d'un score de {score}/10, et {pain ? pain.label.toLowerCase() : 'ça'} est ce
+                qui te coûte le plus d'énergie aujourd'hui. Cette fatigue est plus forte {momentLabel?.toLowerCase()}, et revient{' '}
+                {frequencyIndex !== null ? EVENT_FREQUENCY_OPTIONS[frequencyIndex].toLowerCase() : 'souvent'}. Recharj va t'aider à
+                l'anticiper, et à récupérer grâce à {rechargeIndex !== null ? RECHARGE_OPTIONS[rechargeIndex].toLowerCase() : 'ce qui te fait du bien'}.
+              </Text>
+            </View>
+          )}
+
+          {step === STEP.TRIAL && (
+            <View style={styles.trial}>
+              <Text style={styles.eyebrow}>Comment marche ton essai gratuit</Text>
+              <View style={styles.timeline}>
+                {TIMELINE.map((row, i) => (
+                  <View key={row.day} style={styles.timelineRow}>
+                    <View style={styles.timelineIconCol}>
+                      <View style={styles.timelineIcon}>
+                        <TimelineIcon kind={row.icon} />
+                      </View>
+                      {i < TIMELINE.length - 1 && <View style={styles.timelineConnector} />}
+                    </View>
+                    <View style={{ flex: 1, paddingBottom: spacing[5] }}>
+                      <Text style={styles.timelineDay}>{row.day}</Text>
+                      <Text style={styles.timelineText}>{row.text}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+
+              <View style={{ gap: spacing[3] }}>
+                {PLANS.map((plan) => {
+                  const isSelected = plan.id === selectedPlan;
+                  return (
+                    <Pressable key={plan.id} onPress={() => setSelectedPlan(plan.id)} style={[styles.planCard, isSelected && styles.planCardSelected]}>
+                      <View style={styles.trialBadge}>
+                        <Text style={styles.trialBadgeText}>{TRIAL_DAYS} jours offerts</Text>
+                      </View>
+                      <View style={styles.planRow}>
+                        <View style={[styles.radio, isSelected && styles.radioSelected]} />
+                        <Text style={styles.planName}>{plan.name}</Text>
+                        <View style={{ flex: 1 }} />
+                        <Text style={styles.planPrice}>
+                          {plan.perMonth}
+                          <Text style={styles.planPriceUnit}> / mois</Text>
+                        </Text>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              <Text style={styles.footnote}>{TRIAL_RENEWAL_TEXT[selectedPlan]}</Text>
             </View>
           )}
 
@@ -427,87 +573,85 @@ export default function AuthScreen() {
           </Pressable>
         )}
 
-        <View style={styles.footer}>
-          {step === STEP.HOOK ? (
-            <Pressable onPress={() => setMode('signin')} style={styles.skipBtn} hitSlop={10}>
-              <Text style={styles.skipText}>Se connecter</Text>
+        {step === STEP.NOTIFICATIONS ? (
+          <View style={styles.footer}>
+            <Pressable style={{ flex: 1 }} onPress={requestNotifications}>
+              <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.nextBtn}>
+                <Text style={styles.nextBtnText}>Autoriser les notifications</Text>
+              </LinearGradient>
             </Pressable>
-          ) : (
-            step < STEP.SIGNUP && (
-              <Pressable onPress={() => setStep((s) => s - 1)} style={styles.skipBtn} hitSlop={10}>
-                <Text style={styles.skipText}>Précédent</Text>
+          </View>
+        ) : step === STEP.TRIAL ? (
+          <View style={styles.footer}>
+            <Pressable style={{ flex: 1 }} onPress={() => setStep((s) => s + 1)}>
+              <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.nextBtn}>
+                <Text style={styles.nextBtnText}>Commencer mon essai gratuit</Text>
+              </LinearGradient>
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.footer}>
+            {step === STEP.HOOK ? (
+              <Pressable onPress={() => setMode('signin')} style={styles.skipBtn} hitSlop={10}>
+                <Text style={styles.skipText}>Se connecter</Text>
               </Pressable>
-            )
-          )}
-          <Pressable
-            style={{ flex: 1 }}
-            disabled={blocked}
-            onPress={() => {
-              if (step === STEP.SIGNUP) {
-                submitSignUp();
-              } else {
-                setStep((s) => s + 1);
-              }
-            }}
-          >
-            <LinearGradient
-              colors={chargeGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={[styles.nextBtn, blocked && styles.btnDisabled]}
+            ) : (
+              step < STEP.SIGNUP && (
+                <Pressable onPress={() => setStep((s) => s - 1)} style={styles.skipBtn} hitSlop={10}>
+                  <Text style={styles.skipText}>Précédent</Text>
+                </Pressable>
+              )
+            )}
+            <Pressable
+              style={{ flex: 1 }}
+              disabled={blocked}
+              onPress={() => {
+                if (step === STEP.SIGNUP) {
+                  submitSignUp();
+                } else {
+                  setStep((s) => s + 1);
+                }
+              }}
             >
-              <Text style={styles.nextBtnText}>{nextButtonLabel(step, submitting, firstName)}</Text>
-            </LinearGradient>
+              <LinearGradient
+                colors={chargeGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[styles.nextBtn, blocked && styles.btnDisabled]}
+              >
+                <Text style={styles.nextBtnText}>{nextButtonLabel(step, submitting, firstName)}</Text>
+              </LinearGradient>
+            </Pressable>
+          </View>
+        )}
+        {isCustomFooterStep && (
+          <Pressable onPress={() => setStep((s) => s + 1)} style={styles.notifSkip} hitSlop={10}>
+            <Text style={styles.skipText}>Plus tard</Text>
           </Pressable>
-        </View>
+        )}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-// Illustrative mockup of a projected week, not real data. Shows what the
-// calendar will actually look like instead of describing it: bars trace a
-// battery level per day, and a dot marks the two days with a hard event.
-const WEEK_PREVIEW_DAYS = [
-  { label: 'L', level: 82 },
-  { label: 'M', level: 88 },
-  { label: 'M', level: 55, event: true },
-  { label: 'J', level: 40, event: true },
-  { label: 'V', level: 62 },
-  { label: 'S', level: 95 },
-  { label: 'D', level: 100 },
-];
-
-function weekBarColor(level: number): string {
-  if (level < 50) return colors.coral;
-  if (level < 80) return colors.violetSoft;
-  return colors.lime;
-}
-
-function WeekPreview() {
+// Mimics a real iOS push notification (app icon, bold app name, timestamp,
+// title, body) in the app's own palette, instead of describing what a
+// notification looks like. The body uses the answer just given on the
+// MOMENT step so it reads as personalized, and is written to make tapping
+// it feel worth it rather than just informative.
+function NotificationMock({ momentLabel }: { momentLabel: string }) {
   return (
-    <View style={styles.weekPreview}>
-      {WEEK_PREVIEW_DAYS.map((d, i) => (
-        <View key={i} style={styles.weekCol}>
-          <View style={styles.weekDotSlot}>{d.event && <View style={styles.weekDot} />}</View>
-          <View style={styles.weekBarTrack}>
-            <View style={[styles.weekBarFill, { height: `${d.level}%`, backgroundColor: weekBarColor(d.level) }]} />
-          </View>
-          <Text style={styles.weekDayLabel}>{d.label}</Text>
+    <View style={styles.notifCard}>
+      <View style={styles.notifCardHeader}>
+        <View style={styles.notifCardIcon}>
+          <LogoMark size={20} />
         </View>
-      ))}
-    </View>
-  );
-}
-
-function CardStackPreview() {
-  return (
-    <View style={styles.cardStack}>
-      <View style={[styles.cardStackLayer, styles.cardStackBack]} />
-      <View style={[styles.cardStackLayer, styles.cardStackFront]}>
-        <BookIcon color={colors.violetSoft} size={26} />
+        <Text style={styles.notifCardApp}>RECHARJ</Text>
+        <Text style={styles.notifCardTime}>maintenant</Text>
       </View>
+      <Text style={styles.notifCardTitle}>Grosse baisse en vue</Text>
+      <Text style={styles.notifCardBody}>Ta batterie sera basse {momentLabel.toLowerCase()}. Découvre comment t'y préparer.</Text>
     </View>
   );
 }
@@ -587,36 +731,11 @@ const styles = StyleSheet.create({
   hero: { alignItems: 'center', gap: spacing[3] },
   title: { fontFamily: fontFamily.displayBold, fontSize: 30, color: colors.text, textAlign: 'center', lineHeight: 36 },
   tagline: { fontFamily: fontFamily.textRegular, fontSize: 17, color: colors.textDim, textAlign: 'center', lineHeight: 24, maxWidth: 320 },
-
-  weekPreview: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, marginTop: spacing[3] },
-  weekCol: { alignItems: 'center', gap: 6 },
-  weekDotSlot: { height: 8, justifyContent: 'center' },
-  weekDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.coral },
-  weekBarTrack: { width: 12, height: 64, borderRadius: 6, backgroundColor: colors.borderSoft, justifyContent: 'flex-end', overflow: 'hidden' },
-  weekBarFill: { width: '100%', borderRadius: 6 },
-  weekDayLabel: { fontFamily: fontFamily.textMedium, fontSize: 11, color: colors.textFaint },
-
-  cardStack: { width: 130, height: 88, marginTop: spacing[3] },
-  cardStackLayer: {
-    position: 'absolute',
-    width: 104,
-    height: 68,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    backgroundColor: colors.surface,
-  },
-  cardStackBack: { top: 18, left: 22, transform: [{ rotate: '-6deg' }] },
-  cardStackFront: {
-    top: 0,
-    left: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surfaceRaised,
-    borderColor: colors.violet,
-  },
+  eyebrow: { fontFamily: fontFamily.textBold, fontSize: 12, color: colors.coral, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center' },
+  brandWord: { fontFamily: fontFamily.displayBold, fontSize: 20, color: colors.lime, letterSpacing: 4, textAlign: 'center', marginTop: spacing[1] },
 
   question: {},
+  withIllustration: { marginTop: spacing[4] },
   questionTitle: { fontFamily: fontFamily.displaySemiBold, fontSize: 24, color: colors.text, lineHeight: 30 },
   questionSubtitle: { fontFamily: fontFamily.textRegular, fontSize: 14, color: colors.textFaint, marginTop: spacing[2] },
 
@@ -635,6 +754,67 @@ const styles = StyleSheet.create({
   bulletSelected: { borderColor: colors.violet, backgroundColor: colors.violet },
   choiceText: { flex: 1, fontFamily: fontFamily.textMedium, fontSize: 15, color: colors.textDim },
   choiceTextSelected: { color: colors.text },
+
+  commitments: { alignSelf: 'stretch', gap: spacing[2], marginTop: spacing[5] },
+  commitmentLine: { fontFamily: fontFamily.textMedium, fontSize: 15, color: colors.textDim },
+  signLabel: { fontFamily: fontFamily.textSemiBold, fontSize: 13, color: colors.textFaint, marginTop: spacing[5], marginBottom: spacing[2] },
+  signedRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing[3] },
+  signedText: { fontFamily: fontFamily.textBold, fontSize: 14, color: colors.lime, letterSpacing: 0.4 },
+
+  notifCard: {
+    alignSelf: 'stretch',
+    backgroundColor: colors.surfaceRaised,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    borderRadius: radii.lg,
+    padding: spacing[4],
+    marginTop: spacing[4],
+    gap: 4,
+    shadowColor: '#06030E',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.45,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  notifCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  notifCardIcon: { width: 24, height: 24, borderRadius: 7, overflow: 'hidden' },
+  notifCardApp: { fontFamily: fontFamily.textBold, fontSize: 11, color: colors.textFaint, letterSpacing: 0.6, flex: 1 },
+  notifCardTime: { fontFamily: fontFamily.textMedium, fontSize: 11, color: colors.textFaint },
+  notifCardTitle: { fontFamily: fontFamily.textBold, fontSize: 15, color: colors.text, marginTop: 4 },
+  notifCardBody: { fontFamily: fontFamily.textRegular, fontSize: 14, color: colors.textDim, lineHeight: 19 },
+
+  gaugeWrap: { alignSelf: 'stretch', paddingHorizontal: spacing[2], marginTop: spacing[2] },
+  recapParagraph: { fontFamily: fontFamily.textRegular, fontSize: 16, color: colors.textDim, lineHeight: 24, textAlign: 'center', marginTop: spacing[2] },
+
+  trial: { gap: spacing[6] },
+  timeline: { marginTop: spacing[2] },
+  timelineRow: { flexDirection: 'row', gap: spacing[4] },
+  timelineIconCol: { alignItems: 'center' },
+  timelineIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timelineConnector: { flex: 1, width: 2, backgroundColor: colors.borderSoft, marginVertical: 4 },
+  timelineDay: { fontFamily: fontFamily.textBold, fontSize: 18, color: colors.text },
+  timelineText: { fontFamily: fontFamily.textRegular, fontSize: 15, color: colors.textDim, marginTop: 3 },
+
+  planCard: { gap: 6, borderWidth: 1, borderColor: colors.border, borderRadius: radii.lg, padding: spacing[4], position: 'relative' },
+  planCardSelected: { borderWidth: 1.5, borderColor: colors.coral, backgroundColor: 'rgba(255,122,107,0.06)' },
+  planRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: colors.border },
+  radioSelected: { borderColor: colors.coral, backgroundColor: colors.coral },
+  trialBadge: { alignSelf: 'flex-start', backgroundColor: colors.lime, borderRadius: radii.pill, paddingVertical: 3, paddingHorizontal: 10, marginBottom: 2 },
+  trialBadgeText: { fontFamily: fontFamily.textBold, fontSize: 11, color: colors.surfaceScreen, letterSpacing: 0.3 },
+  planName: { fontFamily: fontFamily.textBold, fontSize: 17, color: colors.text },
+  planPrice: { fontFamily: fontFamily.displaySemiBold, fontSize: 24, color: colors.text },
+  planPriceUnit: { fontFamily: fontFamily.textMedium, fontSize: 13, color: colors.textDim },
+  footnote: { fontFamily: fontFamily.textRegular, fontSize: 12, color: colors.textFaint, textAlign: 'center', lineHeight: 17 },
 
   form: { gap: spacing[4] },
   consent: { fontFamily: fontFamily.textRegular, fontSize: 12, color: colors.textFaint, lineHeight: 17 },
@@ -656,8 +836,9 @@ const styles = StyleSheet.create({
   footer: { flexDirection: 'row', gap: spacing[3], alignItems: 'center' },
   skipBtn: { paddingVertical: 16, paddingHorizontal: 6 },
   skipText: { fontFamily: fontFamily.textSemiBold, fontSize: 15, color: colors.textFaint },
-  nextBtn: { borderRadius: radii.md, paddingVertical: 17, alignItems: 'center' },
-  nextBtnText: { fontFamily: fontFamily.textBold, fontSize: 16, color: colors.surfaceScreen },
+  notifSkip: { alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 6 },
+  nextBtn: { borderRadius: radii.md, paddingVertical: 17, alignItems: 'center', paddingHorizontal: spacing[3] },
+  nextBtnText: { fontFamily: fontFamily.textBold, fontSize: 16, color: colors.surfaceScreen, textAlign: 'center' },
   btnDisabled: { opacity: 0.4 },
 
   switchMode: { alignItems: 'center', marginTop: spacing[1] },

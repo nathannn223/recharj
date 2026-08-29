@@ -9,38 +9,12 @@ import { CheckIcon, CloseIcon, LockIcon } from '@/components/icons/Icon';
 import { chargeGradient, colors, fontFamily, radii, spacing } from '@/constants/theme';
 import { PRIVACY_URL, TERMS_URL } from '@/lib/legal';
 import { safeBack } from '@/lib/navigation';
+import { PLANS, RENEWAL_TEXT, type Plan } from '@/lib/plans';
 import { supabase } from '@/lib/supabase';
-
-type Plan = {
-  id: 'monthly' | 'annual';
-  name: string;
-  // Both plans show the same unit (per month) so the gap reads at a
-  // glance, with no mental math: 2,92€ vs 8,99€ needs no calculator.
-  perMonth: string;
-  strikeThrough?: string;
-  detail: string;
-  badge?: string;
-};
 
 const PERKS = ['Bibliothèque complète', 'Projection illimitée', 'Cours liés à tes événements'];
 
-const PLANS: Plan[] = [
-  { id: 'annual', name: 'Annuel', perMonth: '2,92€', strikeThrough: '107,88€', detail: '34,99€ / an', badge: 'Le plus populaire' },
-  // The monthly total over a year (8,99€ × 12) made explicit, the same
-  // way the "cheap-looking" weekly plan gets called out elsewhere: it
-  // only looks affordable until you see the annualized cost next to it.
-  { id: 'monthly', name: 'Mensuel', perMonth: '8,99€', detail: '107,88€ / an si payé au mois' },
-];
-
 type CoursePreview = { title: string; hook: string };
-
-// Required reading before purchase, per App Store guideline 3.1.2(c):
-// duration and renewal cadence stated in plain language next to the CTA,
-// not only inside the linked Terms.
-const RENEWAL_TEXT: Record<Plan['id'], string> = {
-  annual: 'Renouvellement automatique tous les ans à 34,99€, sauf annulation.',
-  monthly: 'Renouvellement automatique tous les mois à 8,99€, sauf annulation.',
-};
 
 // TODO: wire to RevenueCat's restorePurchases() once the App Store /
 // RevenueCat accounts exist and real in-app purchases are live — this is
@@ -139,7 +113,7 @@ export default function PaywallScreen() {
 
           <Pressable onPress={() => safeBack()}>
             <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.submitBtn}>
-              <Text style={styles.submitText}>{preview ? `Débloquer ${preview.title}` : 'Devenir Premium'}</Text>
+              <Text style={styles.submitText}>{preview ? 'Débloquer ce cours' : 'Devenir Premium'}</Text>
             </LinearGradient>
           </Pressable>
           <Text style={styles.footnote}>{RENEWAL_TEXT[selected]} Gérable dans les réglages de ton compte App Store.</Text>
@@ -219,7 +193,7 @@ const styles = StyleSheet.create({
   strikeThrough: { textDecorationLine: 'line-through', color: colors.textFaint },
 
   submitBtn: { borderRadius: radii.md, paddingVertical: 18, alignItems: 'center' },
-  submitText: { fontFamily: fontFamily.textBold, fontSize: 16, color: colors.surfaceScreen },
+  submitText: { fontFamily: fontFamily.textBold, fontSize: 16, color: colors.surfaceScreen, textAlign: 'center' },
   footnote: { fontFamily: fontFamily.textRegular, fontSize: 12, color: colors.textFaint, textAlign: 'center', lineHeight: 17 },
 
   legalRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },

@@ -10,6 +10,7 @@ export type PendingOnboarding = {
   eventFrequency: string;
   rechargeMethod: string;
   anticipationStyle: string;
+  lowBatteryMoment: string;
 };
 
 // Bridges the pre-signup quiz (no session yet) to the moment a session
