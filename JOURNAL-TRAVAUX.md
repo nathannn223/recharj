@@ -887,3 +887,110 @@ faible.
 
 - réécrit : `lib/notifications.ts`
 - modifié : `app/(tabs)/index.tsx`, `app/(auth)/index.tsx`, `app/_layout.tsx`
+
+---
+
+### 2026-08-29 — Chantier 10 : check-in quotidien (mécanisme de rétention)
+
+**Contexte.** Discuté avec l'utilisateur avant d'écrire du code (voir le
+tour de conversation dédié) : un rendez-vous quotidien où l'utilisateur note
+sa journée (1-10 + commentaire optionnel), cette note remplaçant la
+projection simulée pour ce jour-là. Décisions actées avant implémentation :
+recalcul local plutôt que push serveur (déjà tranché au chantier 9),
+**check-in aujourd'hui uniquement, pas de rattrapage J-1** (évite une
+cascade de recalcul rétroactif sur tous les jours suivants — complexité
+réelle pour une fonctionnalité non demandée explicitement), streak de
+check-in séparé du streak « élite » du modèle de batterie.
+
+**Le point technique le plus délicat.** `syncBattery()`
+(`lib/batteryStore.ts`) recalcule et réécrit systématiquement le jour
+« aujourd'hui » à chaque appel (c'est ce qui permet à un événement ajouté
+en cours de journée de se refléter immédiatement). Sans précaution, un
+check-in enregistré le soir aurait été **écrasé** par le prochain appel de
+`syncBattery()` (Dashboard rouvert, focus repris), qui aurait resimulé
+« aujourd'hui » à partir des événements sans avoir connaissance du
+check-in. Résolu en rendant `syncBattery()` conscient des check-ins présents
+dans la fenêtre qu'il rejoue.
+
+**Fait.**
+
+1. **Migration 013** (`daily_checkins` : `user_id`, `day`, `score` 1-10,
+   `comment`, RLS). Table séparée de `battery_days` — contenu écrit par
+   l'utilisateur, pas le registre calculé.
+2. **`lib/battery.ts`** : nouvelle fonction pure `checkInBatteryState(previous, score)`.
+   Le niveau devient directement `score * 10` (jamais passé par la formule
+   de drain/récupération — c'est une observation réelle, pas une
+   simulation). Le streak élite est dérivé en réutilisant les mêmes seuils
+   que `stepBattery()`, appliqués à une « difficulté équivalente »
+   (`11 - score`), pour qu'un jour simulé juste après un check-in hérite
+   d'un streak cohérent. `projectBattery()` accepte un 5e paramètre optionnel
+   `checkIns` (Map date → score) : quand un jour y figure, son état vient de
+   `checkInBatteryState()` au lieu de `stepBattery()`. Rétrocompatible
+   (paramètre optionnel, tous les appels existants — projection future du
+   Dashboard/Calendrier — l'omettent, aucun jour futur n'a de check-in par
+   construction).
+3. **`lib/batteryStore.ts`** : `syncBattery()` charge maintenant
+   `daily_checkins` sur la même fenêtre que `battery_days` (best-effort — un
+   échec de cette lecture, ex. migration 013 non appliquée, ne fait pas
+   tomber la synchronisation en repli complet contrairement à un échec sur
+   `battery_days`) et passe la map à `projectBattery()`. `BatterySync`
+   expose maintenant `checkIns` (score + commentaire, pour l'affichage) en
+   plus de `history`.
+4. **`lib/checkins.ts`** (nouveau) : `submitCheckIn(userId, score, comment)`
+   (upsert sur le jour du jour, aujourd'hui uniquement) et
+   `fetchCheckInStreak(userId)` (jours consécutifs en partant d'aujourd'hui,
+   calculé côté client sur une fenêtre de 400 jours plutôt qu'une requête
+   SQL récursive).
+5. **`app/checkin.tsx`** (nouvel écran modal) : curseur 1-10 (« Épuisante »
+   / « Ressourçante », même style que le curseur de difficulté
+   d'`add-event.tsx`) + commentaire optionnel. Pré-rempli si un check-in
+   existe déjà pour aujourd'hui (upsert : sert à la fois à noter et à
+   modifier).
+6. **Dashboard** (`app/(tabs)/index.tsx`) : carte de check-in juste sous la
+   jauge (avant/après notée, avec streak 🔥 affiché si > 0). `useFocusEffect`
+   ajouté pour resynchroniser la batterie et rafraîchir le streak à chaque
+   fois que l'écran reprend le focus — nécessaire puisque le check-in est
+   écrit depuis un autre écran. La note du jour (`checkedInToday`) est
+   maintenant transmise à `scheduleDailyReminder`.
+7. **`lib/notifications.ts`** : nouvelle branche prioritaire — si pas encore
+   noté aujourd'hui **et** que l'heure programmée est ≥ 17h (sinon le
+   message « comment s'est passée ta journée » n'aurait pas de sens le
+   matin), le rappel devient l'invitation à noter, avec `data.checkin: true`.
+   L'appel initial depuis l'onboarding force `checkedInToday: true` pour
+   garantir que le premier message programmé reste bien celui promis par le
+   mock de l'écran de permission, quelle que soit l'heure choisie.
+8. **`app/_layout.tsx`** : le tap sur une notification `data.checkin`
+   redirige maintenant vers `/checkin` (en plus du cas `data.courseId` déjà
+   en place). Nouvelle route modale `checkin` enregistrée dans le `Stack`.
+9. **Calendrier** (`app/(tabs)/calendar.tsx`) : le détail d'un jour affiche
+   maintenant, dans l'ordre demandé, la note + le commentaire (s'il y en a
+   un) puis les événements de ce jour. Sur aujourd'hui sans check-in, un
+   bouton « Noter cette journée » apparaît à la même place. Petit indicateur
+   (coche) sur les cases du mois ayant un check-in ; l'estompage réservé
+   jusqu'ici à tous les jours passés (`barPast`) ne s'applique plus qu'aux
+   jours **non confirmés** par un check-in — un jour noté s'affiche en
+   couleur pleine, un jour seulement projeté reste estompé. `useFocusEffect`
+   ajouté ici aussi pour la même raison qu'au Dashboard.
+10. **Tests** (`lib/battery.test.ts`) : 7 nouveaux tests sur
+    `checkInBatteryState` et sur le paramètre `checkIns` de `projectBattery`
+    (dont un qui vérifie explicitement que le check-in écrase la simulation
+    ET que le jour suivant hérite correctement de l'état qui en résulte).
+
+**Vérifié.** `npx tsc --noEmit` propre, `npx jest --watchAll=false` :
+28/28, `npx expo lint` propre.
+
+**Non fait / limites assumées.**
+
+- Pas de rattrapage pour un jour manqué (décision actée avant
+  implémentation, voir ci-dessus) — seul aujourd'hui peut être noté.
+- Migration 013 pas encore appliquée sur Supabase — s'ajoute à 011 et 012.
+- Vérification sur appareil réel non faite (streak visuel, carte de
+  check-in, notification à 17h+, affichage du calendrier).
+
+**Fichiers touchés.**
+
+- créé : `supabase/migrations/013_daily_checkins.sql`, `lib/checkins.ts`,
+  `app/checkin.tsx`
+- modifié : `lib/battery.ts`, `lib/batteryStore.ts`, `hooks/useBattery.ts`,
+  `lib/notifications.ts`, `app/(tabs)/index.tsx`, `app/(tabs)/calendar.tsx`,
+  `app/(auth)/index.tsx`, `app/_layout.tsx`, `lib/battery.test.ts`

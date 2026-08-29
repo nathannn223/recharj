@@ -1,15 +1,18 @@
-import { Link } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { Link, router } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Path, Polyline, Stop } from 'react-native-svg';
 
 import { BatteryGauge } from '@/components/BatteryGauge';
-import { BoltIcon, ChevronRightIcon, SettingsIcon } from '@/components/icons/Icon';
+import { BoltIcon, CheckIcon, ChevronRightIcon, PencilIcon, SettingsIcon } from '@/components/icons/Icon';
 import { colors, difficultyColor, fontFamily, radii, spacing } from '@/constants/theme';
+import { useAuth } from '@/lib/auth';
 import { useBattery } from '@/hooks/useBattery';
 import { useEvents } from '@/hooks/useEvents';
 import { addDays, projectBattery, startOfToday, toDateKey } from '@/lib/battery';
+import { fetchCheckInStreak } from '@/lib/checkins';
 import { relativeDayLabel } from '@/lib/dates';
 import { tagsForEventType } from '@/lib/eventTags';
 import { scheduleDailyReminder } from '@/lib/notifications';
@@ -26,8 +29,10 @@ function levelToY(level: number) {
 }
 
 export default function DashboardScreen() {
+  const { session } = useAuth();
   const { events, loading } = useEvents();
   const now = startOfToday();
+  const todayKey = toDateKey(now);
 
   // The hero gauge reads the user's REAL carried-forward level, caught up
   // from `battery_days` (see lib/batteryStore.ts), not a fresh simulation
@@ -35,6 +40,21 @@ export default function DashboardScreen() {
   const battery = useBattery(events, !loading);
   const projection = projectBattery(events, 7, now, battery.anchor);
   const todayLevel = battery.level;
+  const todayCheckIn = battery.checkIns.get(todayKey) ?? null;
+
+  const [checkInStreak, setCheckInStreak] = useState(0);
+
+  // A check-in made from app/checkin.tsx (or an event added/edited/deleted
+  // elsewhere) happens in a different screen instance — resyncing on every
+  // focus is what picks that up here instead of showing stale state until
+  // something else happens to change `events`.
+  useFocusEffect(
+    useCallback(() => {
+      battery.resync();
+      if (session) fetchCheckInStreak(session.user.id).then(setCheckInStreak);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [session])
+  );
 
   const points = projection.map((day, i) => {
     const x = (i / (projection.length - 1)) * CHART_W;
@@ -115,6 +135,7 @@ export default function DashboardScreen() {
         upcomingEvent: difficultEvent ? { title: difficultEvent.title, type: difficultEvent.type } : null,
         matchedCourse: recommendedCourse,
         discoverCourse,
+        checkedInToday: !!todayCheckIn,
       });
     }
 
@@ -123,7 +144,7 @@ export default function DashboardScreen() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, todayLevel, difficultEvent?.id, recommendedCourse?.id]);
+  }, [loading, todayLevel, difficultEvent?.id, recommendedCourse?.id, todayCheckIn]);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -143,6 +164,29 @@ export default function DashboardScreen() {
             <Text style={styles.batteryLbl}>Batterie sociale</Text>
           </View>
         </View>
+
+        <Pressable onPress={() => router.push('/checkin')} style={[styles.checkinCard, todayCheckIn && styles.checkinCardDone]}>
+          <View style={[styles.checkinBadge, todayCheckIn && styles.checkinBadgeDone]}>
+            {todayCheckIn ? (
+              <CheckIcon color={colors.surfaceScreen} size={18} />
+            ) : (
+              <PencilIcon color={colors.surfaceScreen} size={18} />
+            )}
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.checkinTitle}>
+              {todayCheckIn ? `Journée notée · ${todayCheckIn.score}/10` : 'Comment s\'est passée ta journée ?'}
+            </Text>
+            <Text style={styles.checkinNote} numberOfLines={1}>
+              {todayCheckIn ? todayCheckIn.comment || 'Touche pour modifier' : 'Note-la pour garder un historique réel.'}
+            </Text>
+          </View>
+          {checkInStreak > 0 && (
+            <View style={styles.streakPill}>
+              <Text style={styles.streakText}>🔥 {checkInStreak}</Text>
+            </View>
+          )}
+        </Pressable>
 
         <View style={styles.card}>
           <View style={styles.row}>
@@ -240,6 +284,24 @@ const styles = StyleSheet.create({
   batteryReadout: { alignItems: 'center', gap: 4 },
   batteryPct: { fontFamily: fontFamily.displayBold, fontSize: 44, color: colors.text },
   batteryLbl: { fontFamily: fontFamily.textSemiBold, fontSize: 14, color: colors.textDim, textTransform: 'uppercase', letterSpacing: 1.4 },
+
+  checkinCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: 'rgba(255,122,107,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,122,107,0.35)',
+    borderRadius: radii.lg,
+    padding: spacing[4],
+  },
+  checkinCardDone: { backgroundColor: colors.surface, borderColor: colors.borderSoft },
+  checkinBadge: { width: 38, height: 38, borderRadius: 12, backgroundColor: colors.coral, alignItems: 'center', justifyContent: 'center' },
+  checkinBadgeDone: { backgroundColor: colors.lime },
+  checkinTitle: { fontFamily: fontFamily.textBold, fontSize: 15, color: colors.text },
+  checkinNote: { fontFamily: fontFamily.textRegular, fontSize: 13, color: colors.textDim, marginTop: 2 },
+  streakPill: { backgroundColor: colors.surfaceRaised, borderRadius: radii.pill, paddingVertical: 5, paddingHorizontal: 10 },
+  streakText: { fontFamily: fontFamily.textBold, fontSize: 13, color: colors.text },
 
   card: {
     backgroundColor: colors.surface,

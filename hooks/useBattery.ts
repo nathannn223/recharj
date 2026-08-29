@@ -54,6 +54,7 @@ export function useBattery(events: SocialEvent[], ready: boolean) {
   const anchor: BatteryState = sync?.anchor ?? initialBatteryState();
   const today: ProjectedDay | null = sync?.today ?? null;
   const history: Map<string, number> = sync?.history ?? new Map();
+  const checkIns: Map<string, { score: number; comment: string | null }> = sync?.checkIns ?? new Map();
 
   return {
     /** Closing state of yesterday — pass as `initialState` to projectBattery(). */
@@ -64,6 +65,8 @@ export function useBattery(events: SocialEvent[], ready: boolean) {
     level: today ? Math.round(today.level) : 100,
     /** Persisted closing level per past day. */
     history,
+    /** Check-ins in the same window as `history`, today included. */
+    checkIns,
     loading,
     /** True when nothing could be read from or written to Supabase. */
     degraded: sync?.degraded ?? false,

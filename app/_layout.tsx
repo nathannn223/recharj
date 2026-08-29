@@ -105,13 +105,16 @@ function RootNavigator() {
   // from a tap (the notification that launched the app is only available
   // via getLastNotificationResponseAsync, not the listener below).
   useEffect(() => {
+    const openFromNotification = (data: Record<string, unknown> | undefined) => {
+      if (!data) return;
+      if (typeof data.courseId === 'string') router.push(`/course/${data.courseId}`);
+      else if (data.checkin === true) router.push('/checkin');
+    };
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      const courseId = response.notification.request.content.data?.courseId;
-      if (typeof courseId === 'string') router.push(`/course/${courseId}`);
+      openFromNotification(response.notification.request.content.data);
     });
     Notifications.getLastNotificationResponseAsync().then((response) => {
-      const courseId = response?.notification.request.content.data?.courseId;
-      if (typeof courseId === 'string') router.push(`/course/${courseId}`);
+      openFromNotification(response?.notification.request.content.data);
     });
     return () => subscription.remove();
   }, []);
@@ -138,6 +141,7 @@ function RootNavigator() {
             state, so the redirect from app/onboarding.tsx into a course
             never races against the seen flag settling. */}
         <Stack.Screen name="add-event" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="checkin" options={{ presentation: 'modal' }} />
         <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
         <Stack.Screen name="course/[id]" />
         <Stack.Screen name="source/[id]" options={{ presentation: 'modal' }} />

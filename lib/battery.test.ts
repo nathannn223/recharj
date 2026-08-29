@@ -5,6 +5,7 @@ import {
   MIN_LEVEL,
   STREAK_MULTIPLIER,
   addDays,
+  checkInBatteryState,
   daysBetween,
   drainFor,
   fromDateKey,
@@ -112,6 +113,33 @@ describe('stepBattery', () => {
   });
 });
 
+describe('checkInBatteryState', () => {
+  it('uses the score directly as the level, ignoring the previous level entirely', () => {
+    const state = checkInBatteryState({ level: 12, eliteStreak: 0 }, 7);
+    expect(state.level).toBe(70);
+  });
+
+  it('a great score (equivalent difficulty <= elite threshold) extends the elite streak', () => {
+    const state = checkInBatteryState({ level: 50, eliteStreak: 2 }, 10); // equivalent difficulty 1
+    expect(state.eliteStreak).toBe(3);
+  });
+
+  it('a rough score (equivalent difficulty >= moderate threshold) resets the elite streak', () => {
+    const state = checkInBatteryState({ level: 50, eliteStreak: 4 }, 3); // equivalent difficulty 8
+    expect(state.eliteStreak).toBe(0);
+  });
+
+  it('a middling score neither extends nor resets the streak', () => {
+    const state = checkInBatteryState({ level: 50, eliteStreak: 4 }, 6); // equivalent difficulty 5
+    expect(state.eliteStreak).toBe(4);
+  });
+
+  it('clamps the level to the 0-100 range', () => {
+    expect(checkInBatteryState({ level: 0, eliteStreak: 0 }, 1).level).toBe(10);
+    expect(checkInBatteryState({ level: 0, eliteStreak: 0 }, 10).level).toBe(100);
+  });
+});
+
 describe('projectBattery', () => {
   it('carries state forward day over day from the given initial state', () => {
     const events = [event(8, { eventDate: '2026-01-02' })];
@@ -134,6 +162,23 @@ describe('projectBattery', () => {
     const days = projectBattery(events, 2, new Date(2026, 0, 1));
     expect(days[0].events.map((e) => e.id)).toEqual(['a']);
     expect(days[1].events.map((e) => e.id)).toEqual(['b']);
+  });
+
+  it('a check-in overrides the simulated level for that day, and the next day still carries its state forward', () => {
+    // A difficulty-9 event on day 1 would normally drain the day hard; the
+    // check-in says otherwise and wins. Day 2 (no check-in) then simulates
+    // normally from that overridden state.
+    const events = [event(9, { eventDate: '2026-01-01' }), event(8, { eventDate: '2026-01-02' })];
+    const checkIns = new Map([['2026-01-01', 8]]);
+    const days = projectBattery(events, 2, new Date(2026, 0, 1), { level: 50, eliteStreak: 0 }, checkIns);
+    expect(days[0].level).toBe(80); // 8 * 10, not the simulated drain from difficulty 9
+    expect(days[1].level).toBeCloseTo(80 - drainFor(8), 5); // day 2 drains normally from the overridden level
+  });
+
+  it('a day without a check-in in the map still simulates normally', () => {
+    const events = [event(1, { eventDate: '2026-01-01' })];
+    const days = projectBattery(events, 1, new Date(2026, 0, 1), { level: 50, eliteStreak: 0 }, new Map());
+    expect(days[0].level).toBe(50 + BASE_RECOVERY);
   });
 });
 

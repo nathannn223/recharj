@@ -170,6 +170,27 @@ export function stepBattery(state: BatteryState, dayEvents: SocialEvent[]): Batt
   return { level, eliteStreak: state.eliteStreak };
 }
 
+/**
+ * Turns a self-reported daily check-in (1-10, low = épuisante, high =
+ * ressourçante) into the day's closing BatteryState. The level IS the
+ * user's own observation — never run through the drain/recovery formula,
+ * which only ever approximates a day nobody actually lived through.
+ *
+ * The elite streak is still derived, reusing the exact same bands
+ * stepBattery() uses for event difficulty (inverted, since a high score
+ * here means the opposite of a high difficulty there): a great day behaves
+ * like an elite event, a rough one like a draining one. That keeps the
+ * streak meaningful on the day right after a check-in even if that next
+ * day goes back to being simulated from events.
+ */
+export function checkInBatteryState(previous: BatteryState, score: number): BatteryState {
+  const level = Math.max(MIN_LEVEL, Math.min(MAX_LEVEL, Math.round(score * 10)));
+  const equivalentDifficulty = 11 - score;
+  if (equivalentDifficulty >= MODERATE_THRESHOLD) return { level, eliteStreak: 0 };
+  if (equivalentDifficulty <= ELITE_THRESHOLD) return { level, eliteStreak: previous.eliteStreak + 1 };
+  return { level, eliteStreak: previous.eliteStreak };
+}
+
 /** Groups events by their 'YYYY-MM-DD' key. */
 export function groupEventsByDay(events: SocialEvent[]): Map<string, SocialEvent[]> {
   const byDay = new Map<string, SocialEvent[]>();
@@ -189,12 +210,20 @@ export function groupEventsByDay(events: SocialEvent[]): Map<string, SocialEvent
  * level. Omitting it reproduces the pre-persistence behaviour (start from a
  * full battery), which is still the right default for a user with no
  * history yet.
+ *
+ * `checkIns` (date key -> 1-10 score) overrides the simulation for any day
+ * present in it: that day's state comes from checkInBatteryState() instead
+ * of stepBattery(), and every day after it still carries that state
+ * forward as normal. Only ever populated for today or the past — future
+ * days have no check-in yet by definition, so callers that only project
+ * forward (Dashboard, Calendar) can simply omit it.
  */
 export function projectBattery(
   events: SocialEvent[],
   days: number,
   fromDate: Date = startOfToday(),
-  initialState: BatteryState = initialBatteryState()
+  initialState: BatteryState = initialBatteryState(),
+  checkIns?: Map<string, number>
 ): ProjectedDay[] {
   const eventsByDay = groupEventsByDay(events);
 
@@ -204,7 +233,8 @@ export function projectBattery(
   for (let i = 0; i < days; i++) {
     const date = toDateKey(addDays(fromDate, i));
     const dayEvents = eventsByDay.get(date) ?? [];
-    state = stepBattery(state, dayEvents);
+    const checkInScore = checkIns?.get(date);
+    state = checkInScore !== undefined ? checkInBatteryState(state, checkInScore) : stepBattery(state, dayEvents);
     result.push({ date, level: state.level, eliteStreak: state.eliteStreak, events: dayEvents });
   }
   return result;

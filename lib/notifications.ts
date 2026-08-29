@@ -26,9 +26,25 @@ export type ReminderContext = {
   // the user hasn't completed yet, so the daily touchpoint still points
   // somewhere useful instead of only ever firing on a bad day.
   discoverCourse?: ReminderCourse | null;
+  // Whether today already has a check-in (lib/checkins.ts). Takes priority
+  // over everything else — it's the retention hook — but only once the day
+  // is plausibly over; "comment s'est passée ta journée" firing at 8am
+  // would make no sense.
+  checkedInToday?: boolean;
 };
 
-function contentFor(ctx: ReminderContext): { title: string; body: string; courseId?: string } {
+// Below this hour, the day isn't over yet — the check-in prompt would read
+// as premature, so the other branches take over instead.
+const CHECKIN_PROMPT_MIN_HOUR = 17;
+
+function contentFor(ctx: ReminderContext, hour: number): { title: string; body: string; courseId?: string; checkin?: boolean } {
+  if (!ctx.checkedInToday && hour >= CHECKIN_PROMPT_MIN_HOUR) {
+    return {
+      title: "C'est l'heure du bilan",
+      body: 'Comment s’est passée ta journée ? Prends 30 secondes pour la noter.',
+      checkin: true,
+    };
+  }
   if (ctx.upcomingEvent && ctx.matchedCourse) {
     const label = ctx.upcomingEvent.title || ctx.upcomingEvent.type;
     return {
@@ -66,7 +82,7 @@ export async function scheduleDailyReminder(ctx: ReminderContext): Promise<void>
   if (status !== 'granted') return;
 
   const hour = MOMENT_HOURS[ctx.momentLabel] ?? MOMENT_HOURS['Le soir'];
-  const { title, body, courseId } = contentFor(ctx);
+  const { title, body, courseId, checkin } = contentFor(ctx, hour);
 
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
@@ -81,7 +97,7 @@ export async function scheduleDailyReminder(ctx: ReminderContext): Promise<void>
   await Notifications.cancelAllScheduledNotificationsAsync();
 
   await Notifications.scheduleNotificationAsync({
-    content: { title, body, data: courseId ? { courseId } : undefined },
+    content: { title, body, data: courseId ? { courseId } : checkin ? { checkin: true } : undefined },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DAILY,
       hour,

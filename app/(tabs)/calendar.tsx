@@ -1,9 +1,10 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { Link, router } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ChevronLeftIcon, ChevronRightIcon, PencilIcon, PlusIcon, TrashIcon } from '@/components/icons/Icon';
+import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, PencilIcon, PlusIcon, TrashIcon } from '@/components/icons/Icon';
 import { colors, difficultyColor, fontFamily, radii, spacing } from '@/constants/theme';
 import { useBattery } from '@/hooks/useBattery';
 import { useEvents } from '@/hooks/useEvents';
@@ -63,6 +64,17 @@ export default function CalendarScreen() {
   const now = startOfToday();
   const todayKey = toDateKey(now);
 
+  // A check-in made from app/checkin.tsx (or an event change on another
+  // screen) happens in a different screen instance — resyncing on every
+  // focus is what picks that up instead of showing stale state until
+  // something else happens to change `events`.
+  useFocusEffect(
+    useCallback(() => {
+      battery.resync();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+  );
+
   // First of the displayed month. Kept as its own state so paging never
   // touches `now`, which stays the real "today" for highlighting and for the
   // projection's starting point.
@@ -103,6 +115,7 @@ export default function CalendarScreen() {
 
   const upcomingEvents = events.filter((e) => e.eventDate >= todayKey).slice(0, 8);
   const selectedEvents = selectedDateKey ? eventsByDate.get(selectedDateKey) ?? [] : [];
+  const selectedCheckIn = selectedDateKey ? battery.checkIns.get(selectedDateKey) ?? null : null;
 
   const selectEventDay = (dateKey: string) => {
     const [y, m] = dateKey.split('-').map(Number);
@@ -186,6 +199,7 @@ export default function CalendarScreen() {
                   const isSelected = key === selectedDateKey;
                   const dayEvents = eventsByDate.get(key) ?? [];
                   const primaryEvent = dayEvents[0];
+                  const hasCheckIn = battery.checkIns.has(key);
                   // Past days read the level actually recorded that day;
                   // today and later read the live projection.
                   const level = isPast ? battery.history.get(key) : projectedByDate.get(key)?.level;
@@ -199,12 +213,19 @@ export default function CalendarScreen() {
                         {date.getDate()}
                       </Text>
                       {primaryEvent && <View style={[styles.dot, { backgroundColor: difficultyColor(primaryEvent.difficulty) }]} />}
+                      {hasCheckIn && (
+                        <View style={styles.checkinDot}>
+                          <CheckIcon color={isToday ? colors.surfaceScreen : colors.lime} size={8} />
+                        </View>
+                      )}
                       {!isToday && level !== undefined && (
                         <View
                           style={[
                             styles.bar,
                             { backgroundColor: BAND_COLOR[levelBand(level)] },
-                            isPast && styles.barPast,
+                            // A level nobody actually confirmed reads dimmer
+                            // — "what's projected" vs. "what was noted".
+                            isPast && !hasCheckIn && styles.barPast,
                           ]}
                         />
                       )}
@@ -238,6 +259,27 @@ export default function CalendarScreen() {
                 <Text style={styles.dayDetailClose}>Fermer</Text>
               </Pressable>
             </View>
+
+            {selectedCheckIn ? (
+              <View style={styles.checkinNoteBox}>
+                <View style={styles.row}>
+                  <Text style={styles.checkinNoteScore}>{selectedCheckIn.score}/10</Text>
+                  {selectedDateKey === todayKey && (
+                    <Pressable onPress={() => router.push('/checkin')} hitSlop={8}>
+                      <Text style={styles.checkinNoteEdit}>Modifier</Text>
+                    </Pressable>
+                  )}
+                </View>
+                {selectedCheckIn.comment && <Text style={styles.checkinNoteComment}>{selectedCheckIn.comment}</Text>}
+              </View>
+            ) : (
+              selectedDateKey === todayKey && (
+                <Pressable onPress={() => router.push('/checkin')} style={styles.checkinNotePrompt}>
+                  <Text style={styles.checkinNotePromptText}>Noter cette journée</Text>
+                </Pressable>
+              )
+            )}
+
             {selectedEvents.length === 0 ? (
               <Text style={styles.emptyText}>Aucun événement ce jour-là.</Text>
             ) : (
@@ -361,6 +403,7 @@ const styles = StyleSheet.create({
   cellTextToday: { color: colors.surfaceScreen, fontFamily: fontFamily.textBold },
   cellTextPast: { color: colors.textFaint },
   dot: { position: 'absolute', top: 6, right: 6, width: 5, height: 5, borderRadius: 3 },
+  checkinDot: { position: 'absolute', top: 5, left: 5, alignItems: 'center', justifyContent: 'center' },
   bar: { position: 'absolute', left: 4, right: 4, bottom: 4, height: 4, borderRadius: 2 },
   // Recorded history is shown dimmer than the live projection, so the eye
   // reads "what happened" and "what is coming" as two different things.
@@ -384,6 +427,27 @@ const styles = StyleSheet.create({
   },
   dayDetailTitle: { flex: 1, fontFamily: fontFamily.textBold, fontSize: 15, color: colors.text },
   dayDetailClose: { fontFamily: fontFamily.textSemiBold, fontSize: 13, color: colors.textFaint },
+
+  checkinNoteBox: {
+    backgroundColor: colors.surfaceRaised,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    borderRadius: radii.md,
+    padding: spacing[3],
+    gap: 4,
+  },
+  checkinNoteScore: { fontFamily: fontFamily.displaySemiBold, fontSize: 18, color: colors.lime },
+  checkinNoteEdit: { fontFamily: fontFamily.textSemiBold, fontSize: 13, color: colors.violetSoft },
+  checkinNoteComment: { fontFamily: fontFamily.textRegular, fontSize: 14, color: colors.textDim, lineHeight: 20 },
+  checkinNotePrompt: {
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.violet,
+    borderRadius: radii.md,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  checkinNotePromptText: { fontFamily: fontFamily.textSemiBold, fontSize: 14, color: colors.violetSoft },
 
   eventRow: {
     flexDirection: 'row',

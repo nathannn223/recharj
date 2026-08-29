@@ -38,6 +38,12 @@ type BatteryDayRow = {
   elite_streak: number;
 };
 
+type DailyCheckInRow = {
+  day: string; // 'YYYY-MM-DD'
+  score: number;
+  comment: string | null;
+};
+
 export type BatterySync = {
   /** Closing state of YESTERDAY — the starting point for projecting today onward. */
   anchor: BatteryState;
@@ -45,6 +51,8 @@ export type BatterySync = {
   today: ProjectedDay;
   /** Persisted closing level per past day ('YYYY-MM-DD' -> 0-100). Excludes today. */
   history: Map<string, number>;
+  /** Check-ins in the same window as `history`, today included — for display (see app/(tabs)/calendar.tsx's day detail). */
+  checkIns: Map<string, { score: number; comment: string | null }>;
   /**
    * True when the state could not be read from or written to Supabase (table
    * not migrated yet, offline, RLS issue). The returned values are still
@@ -61,6 +69,7 @@ function inMemoryFallback(events: SocialEvent[]): BatterySync {
     anchor: initialBatteryState(),
     today: todayDay,
     history: new Map(),
+    checkIns: new Map(),
     degraded: true,
   };
 }
@@ -78,12 +87,20 @@ export async function syncBattery(userId: string, events: SocialEvent[]): Promis
   const todayKey = toDateKey(today);
   const windowStartKey = toDateKey(addDays(today, -HISTORY_WINDOW_DAYS));
 
-  const { data, error } = await supabase
-    .from('battery_days')
-    .select('day, level, elite_streak')
-    .gte('day', windowStartKey)
-    .lte('day', todayKey)
-    .order('day', { ascending: true });
+  const [{ data, error }, { data: checkInData }] = await Promise.all([
+    supabase
+      .from('battery_days')
+      .select('day, level, elite_streak')
+      .gte('day', windowStartKey)
+      .lte('day', todayKey)
+      .order('day', { ascending: true }),
+    // Best-effort and never lets a failure here fall back to
+    // inMemoryFallback() the way the battery_days read does: this table
+    // (migration 013) may not exist yet on every project, and a user
+    // without it should still get ordinary simulated battery behaviour
+    // instead of losing persistence entirely over a missing check-ins table.
+    supabase.from('daily_checkins').select('day, score, comment').gte('day', windowStartKey).lte('day', todayKey),
+  ]);
 
   if (error) return inMemoryFallback(events);
 
@@ -92,6 +109,14 @@ export async function syncBattery(userId: string, events: SocialEvent[]): Promis
   for (const row of rows) {
     if (row.day < todayKey) history.set(row.day, row.level);
   }
+
+  const checkInRows = (checkInData ?? []) as DailyCheckInRow[];
+  const checkIns = new Map<string, { score: number; comment: string | null }>(
+    checkInRows.map((r) => [r.day, { score: r.score, comment: r.comment }])
+  );
+  // Score-only view for the replay below — checkInBatteryState() only needs
+  // the number, keeping lib/battery.ts's pure model unaware of `comment`.
+  const checkInScores = new Map<string, number>(checkInRows.map((r) => [r.day, r.score]));
 
   // The anchor is the most recent CLOSED day, i.e. strictly before today.
   // A row for today itself is ignored on purpose: today is always recomputed
@@ -115,7 +140,7 @@ export async function syncBattery(userId: string, events: SocialEvent[]): Promis
   const replayFrom = span === rawSpan ? addDays(anchorDay, 1) : addDays(today, -(span - 1));
   const replayState = span === rawSpan ? anchorState : initialBatteryState();
 
-  const replayed = projectBattery(events, span, replayFrom, replayState);
+  const replayed = projectBattery(events, span, replayFrom, replayState, checkInScores);
   const todayDay = replayed[replayed.length - 1];
   const yesterdayState: BatteryState =
     replayed.length >= 2
@@ -141,6 +166,7 @@ export async function syncBattery(userId: string, events: SocialEvent[]): Promis
     anchor: yesterdayState,
     today: todayDay,
     history,
+    checkIns,
     degraded: !!upsertError,
   };
 }
