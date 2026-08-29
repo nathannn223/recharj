@@ -2,6 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { PencilIcon } from '@/components/icons/Icon';
 import { colors, fontFamily, radii, spacing } from '@/constants/theme';
 
 type CheckIn = { score: number; comment: string | null };
@@ -25,6 +26,7 @@ const URGENT_HOUR = 22;
 export function CheckInCard({ checkedIn, streak, onPress }: Props) {
   const pending = !checkedIn;
   const urgent = pending && streak > 0 && new Date().getHours() >= URGENT_HOUR;
+  const calm = pending && !urgent;
   const scale = useRef(new Animated.Value(1)).current;
 
   const pressIn = () => Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, speed: 40, bounciness: 4 }).start();
@@ -46,15 +48,8 @@ export function CheckInCard({ checkedIn, streak, onPress }: Props) {
 
   const showStat = !pending || urgent;
 
-  const content = (
+  const textBlock = (
     <>
-      {urgent && <View style={styles.stripe} />}
-      {showStat && (
-        <View style={styles.statRow}>
-          <Text style={[styles.statNum, !pending && styles.statNumDone]}>{streak}</Text>
-          <Text style={styles.statUnit}>jour{streak === 1 ? '' : 's'} d'affilée</Text>
-        </View>
-      )}
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.note} numberOfLines={2}>
         {note}
@@ -72,10 +67,37 @@ export function CheckInCard({ checkedIn, streak, onPress }: Props) {
             end={{ x: 1, y: 1 }}
             style={[styles.card, styles.cardUrgent]}
           >
-            {content}
+            <View style={styles.stripe} />
+            {showStat && (
+              <View style={styles.statRow}>
+                <Text style={styles.statNum}>{streak}</Text>
+                <Text style={styles.statUnit}>jour{streak === 1 ? '' : 's'} d'affilée</Text>
+              </View>
+            )}
+            {textBlock}
           </LinearGradient>
+        ) : calm ? (
+          // Reuses the exact "violet wash + lime badge" recipe the
+          // Dashboard's own recommended-course card already uses to stand
+          // out against the grey surface cards around it — colorful and
+          // inviting rather than alarming, since nothing is actually at
+          // risk yet at this point in the day.
+          <View style={[styles.card, styles.cardCalm]}>
+            <View style={styles.calmBadge}>
+              <PencilIcon color={colors.surfaceScreen} size={18} />
+            </View>
+            <View style={{ flex: 1 }}>{textBlock}</View>
+          </View>
         ) : (
-          <View style={[styles.card, styles.cardNeutral]}>{content}</View>
+          <View style={[styles.card, styles.cardDone]}>
+            {showStat && (
+              <View style={styles.statRow}>
+                <Text style={[styles.statNum, styles.statNumDone]}>{streak}</Text>
+                <Text style={styles.statUnit}>jour{streak === 1 ? '' : 's'} d'affilée</Text>
+              </View>
+            )}
+            {textBlock}
+          </View>
         )}
       </Animated.View>
     </Pressable>
@@ -91,7 +113,16 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   cardUrgent: { borderColor: 'rgba(255,122,107,0.4)' },
-  cardNeutral: { backgroundColor: colors.surface, borderColor: colors.borderSoft },
+  cardDone: { backgroundColor: colors.surface, borderColor: colors.borderSoft },
+
+  cardCalm: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: 'rgba(108,79,224,0.16)',
+    borderColor: 'rgba(139,114,238,0.4)',
+  },
+  calmBadge: { width: 40, height: 40, borderRadius: 12, backgroundColor: colors.lime, alignItems: 'center', justifyContent: 'center' },
 
   stripe: {
     position: 'absolute',

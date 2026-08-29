@@ -118,9 +118,15 @@ export default function DashboardScreen() {
     let cancelled = false;
 
     async function refreshReminder() {
-      const { data: profile } = await supabase.from('profiles').select('first_name, low_battery_moment').maybeSingle();
+      // Split on purpose: low_battery_moment (migration 012) may not exist
+      // yet on every Supabase project, and a combined select fails
+      // entirely over a single unknown column (the exact bug already found
+      // twice before with free_course_id) — which would have taken
+      // first_name down with it and silently left the greeting blank.
+      const { data: profile } = await supabase.from('profiles').select('first_name').maybeSingle();
       if (!cancelled) setFirstName(profile?.first_name || '');
-      const momentLabel = profile?.low_battery_moment || 'Le soir';
+      const { data: momentProfile } = await supabase.from('profiles').select('low_battery_moment').maybeSingle();
+      const momentLabel = momentProfile?.low_battery_moment || 'Le soir';
 
       let discoverCourse: { id: string; title: string } | null = null;
       if (!difficultEvent || !recommendedCourse) {

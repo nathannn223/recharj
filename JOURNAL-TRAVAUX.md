@@ -1243,3 +1243,57 @@ message de repli « Prêt à explorer ») pour trancher entre « la résolution
 échoue toujours » et « autre chose empêchait l'affichage ».
 
 **Fichiers touchés.** modifié : `app/onboarding.tsx`, `app/(auth)/index.tsx`
+
+---
+
+### 2026-08-29 — Chantier 16 : le vrai bug du prénom manquant, retouches de taille, CTA plus visible
+
+**Contexte.** Suite de retours : titre du récap encore trop petit et trop
+bas, textes des deux derniers écrans d'onboarding trop petits, le prénom
+n'apparaît toujours pas sur le Dashboard, et la carte de check-in ne
+ressort pas assez visuellement le reste de la journée.
+
+**Bug du prénom trouvé (haute confiance, contrairement au chantier 15).**
+Auto-infligé au chantier précédent : en ajoutant la récupération du prénom
+pour l'en-tête (`app/(tabs)/index.tsx`), le `select` a été combiné avec
+`low_battery_moment` (`select('first_name, low_battery_moment')`) — exactement
+le même piège que celui déjà rencontré deux fois (`free_course_id` +
+colonne de migration non appliquée) : si la migration 012 n'est pas encore
+appliquée sur ce Supabase, **toute la requête échoue**, donc `first_name`
+ne revient jamais, même s'il est bien enregistré en base. Corrigé en
+séparant à nouveau les deux `select`.
+
+**Fait.**
+
+1. **`app/(tabs)/index.tsx`** : `select('first_name')` et
+   `select('low_battery_moment')` redevenus deux requêtes best-effort
+   séparées.
+2. **`app/onboarding.tsx`** : garde supplémentaire (`hasStartedRef`) pour
+   que `prepare()` ne démarre qu'une seule fois par montage, même si
+   `session` change plusieurs fois de référence juste après l'inscription
+   (`onAuthStateChange` peut émettre plusieurs événements) — sans ça,
+   `readAndClearPendingOnboarding()` (qui vide son propre AsyncStorage à la
+   lecture) pourrait être appelée une deuxième fois et ne plus rien trouver.
+   Amélioration défensive, pas une cause confirmée pour l'écran de cours qui
+   ne s'affichait pas.
+3. **Écran récap** (`app/(auth)/index.tsx`) : titre 28→36px, remonté
+   (`marginTop: -spacing[6]` sur le conteneur), les trois lignes 21→23px.
+4. **Écrans « Merci » et « Ton premier cours »** (`app/onboarding.tsx`) :
+   titre 28→33px, texte 17→19px, eyebrow 12→13px.
+5. **`components/CheckInCard.tsx`** — état neutre (le plus visible de la
+   journée) : recherche menée via `/ui-ux-pro-max` (bases de patterns
+   dashboard sombre) et `/design`, puis réutilisation délibérée d'un motif
+   déjà présent sur ce même Dashboard (la carte « cours recommandé » :
+   fond violet translucide + badge circulaire lime) plutôt qu'un nouveau
+   langage visuel — cohérent avec l'app, et clairement distinct du dégradé
+   corail/lime réservé à l'état urgent. Ajout d'un badge avec `PencilIcon`,
+   passage en disposition ligne (badge + texte) pour cet état seulement ;
+   les états urgent et notée ne changent pas.
+
+**Vérifié.** `npx tsc --noEmit` propre, `npx jest --watchAll=false` :
+28/28, `npx expo lint` propre.
+
+**Fichiers touchés.**
+
+- modifié : `app/(tabs)/index.tsx`, `app/onboarding.tsx`,
+  `app/(auth)/index.tsx`, `components/CheckInCard.tsx`

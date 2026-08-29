@@ -507,7 +507,7 @@ export default function AuthScreen() {
           )}
 
           {step === STEP.RECAP && (
-            <View style={styles.hero}>
+            <View style={[styles.hero, styles.recapHero]}>
               <Text style={styles.recapHeading}>Voici ce que Recharj a identifié</Text>
               <View style={styles.recapLines}>
                 <Text style={styles.recapBig}>
@@ -899,9 +899,10 @@ const styles = StyleSheet.create({
   notifCardTitle: { fontFamily: fontFamily.textBold, fontSize: 15, color: colors.text, marginTop: 4 },
   notifCardBody: { fontFamily: fontFamily.textRegular, fontSize: 14, color: colors.textDim, lineHeight: 19 },
 
-  recapHeading: { fontFamily: fontFamily.displayBold, fontSize: 28, color: colors.coral, textAlign: 'center', lineHeight: 34 },
-  recapLines: { gap: spacing[4], marginTop: spacing[3] },
-  recapBig: { fontFamily: fontFamily.textSemiBold, fontSize: 21, color: colors.textDim, textAlign: 'center', lineHeight: 28 },
+  recapHero: { marginTop: -spacing[6] },
+  recapHeading: { fontFamily: fontFamily.displayBold, fontSize: 36, color: colors.coral, textAlign: 'center', lineHeight: 42 },
+  recapLines: { gap: spacing[4], marginTop: spacing[4] },
+  recapBig: { fontFamily: fontFamily.textSemiBold, fontSize: 23, color: colors.textDim, textAlign: 'center', lineHeight: 30 },
   recapHlCoral: { color: colors.coral, fontFamily: fontFamily.displaySemiBold },
   recapHlViolet: { color: colors.violetSoft, fontFamily: fontFamily.displaySemiBold },
   recapHlLime: { color: colors.lime, fontFamily: fontFamily.displaySemiBold },

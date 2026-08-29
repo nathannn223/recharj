@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -32,9 +32,18 @@ export default function OnboardingWelcomeScreen() {
   const [preparing, setPreparing] = useState(true);
   const [freeCourseId, setFreeCourseId] = useState<string | null>(null);
   const [courseTitle, setCourseTitle] = useState<string | null>(null);
+  // Supabase's onAuthStateChange fires more than once right after a fresh
+  // signup (SIGNED_IN, then possibly others), each with a new session
+  // object reference — which would re-run this effect and call
+  // readAndClearPendingOnboarding() again. That function clears its
+  // AsyncStorage key on every read, so only the first call actually sees
+  // the quiz answers; this ref makes sure prepare() only ever starts once
+  // per mount, no matter how many times `session` changes identity.
+  const hasStartedRef = useRef(false);
 
   useEffect(() => {
-    if (!session) return;
+    if (!session || hasStartedRef.current) return;
+    hasStartedRef.current = true;
     let cancelled = false;
 
     async function prepare() {
@@ -222,9 +231,9 @@ const styles = StyleSheet.create({
   centered: { alignItems: 'center', justifyContent: 'center' },
   content: { flex: 1, padding: spacing[6] },
 
-  eyebrow: { fontFamily: fontFamily.textBold, fontSize: 12, color: colors.coral, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center' },
-  title: { fontFamily: fontFamily.displayBold, fontSize: 28, color: colors.text, lineHeight: 34, textAlign: 'center', marginTop: spacing[3] },
-  tagline: { fontFamily: fontFamily.textRegular, fontSize: 17, color: colors.textDim, lineHeight: 24, textAlign: 'center', marginTop: spacing[3] },
+  eyebrow: { fontFamily: fontFamily.textBold, fontSize: 13, color: colors.coral, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center' },
+  title: { fontFamily: fontFamily.displayBold, fontSize: 33, color: colors.text, lineHeight: 39, textAlign: 'center', marginTop: spacing[3] },
+  tagline: { fontFamily: fontFamily.textRegular, fontSize: 19, color: colors.textDim, lineHeight: 27, textAlign: 'center', marginTop: spacing[3] },
 
   startBtn: { borderRadius: radii.md, paddingVertical: 17, alignItems: 'center' },
   startBtnText: { fontFamily: fontFamily.textBold, fontSize: 16, color: colors.surfaceScreen, textAlign: 'center' },
