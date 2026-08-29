@@ -261,11 +261,12 @@ export default function AuthScreen() {
       const { status } = await Notifications.requestPermissionsAsync();
       if (status === 'granted') {
         // Forces the same low-battery message the mock on this screen just
-        // showed (checkedInToday:true skips the check-in-prompt branch,
-        // which would otherwise win for anyone whose chosen hour is 17:00
-        // or later). Real day-to-day content takes over the first time the
-        // Dashboard loads with real data.
-        await scheduleDailyReminder({ momentLabel: momentLabel ?? 'Le soir', batteryLevel: 0, checkedInToday: true });
+        // showed. Real day-to-day content takes over the first time the
+        // Dashboard loads with real data. No streak exists yet at this
+        // point, so scheduleCheckInReminder() isn't called here — the
+        // Dashboard's own refresh (app/(tabs)/index.tsx) sets it up the
+        // first time real streak data exists.
+        await scheduleDailyReminder({ momentLabel: momentLabel ?? 'Le soir', batteryLevel: 0 });
       }
     } catch {
       // Permission prompt or scheduling failing (simulator, already denied

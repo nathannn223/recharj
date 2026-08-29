@@ -3,6 +3,14 @@ import { Platform } from 'react-native';
 
 const CHANNEL_ID = 'battery-reminder';
 
+const DAILY_REMINDER_ID = 'daily-reminder';
+const CHECKIN_REMINDER_ID = 'checkin-reminder';
+
+// Matches the CheckInCard's URGENT_HOUR (components/CheckInCard.tsx) so the
+// card and this notification never disagree about when the streak actually
+// becomes urgent — 2 hours before it dies at midnight.
+const CHECKIN_REMINDER_HOUR = 22;
+
 // Matches lib/momentOfDay.ts's MOMENT_OPTIONS labels. An unrecognized label
 // (shouldn't happen — it's always one of these four) falls back to evening.
 const MOMENT_HOURS: Record<string, number> = {
@@ -11,6 +19,14 @@ const MOMENT_HOURS: Record<string, number> = {
   'Le soir': 19,
   'La nuit': 22,
 };
+
+async function ensureChannel(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
+    name: 'Rappel de batterie sociale',
+    importance: Notifications.AndroidImportance.DEFAULT,
+  });
+}
 
 export type ReminderCourse = { id: string; title: string };
 export type ReminderEvent = { title: string | null; type: string };
@@ -26,25 +42,9 @@ export type ReminderContext = {
   // the user hasn't completed yet, so the daily touchpoint still points
   // somewhere useful instead of only ever firing on a bad day.
   discoverCourse?: ReminderCourse | null;
-  // Whether today already has a check-in (lib/checkins.ts). Takes priority
-  // over everything else — it's the retention hook — but only once the day
-  // is plausibly over; "comment s'est passée ta journée" firing at 8am
-  // would make no sense.
-  checkedInToday?: boolean;
 };
 
-// Below this hour, the day isn't over yet — the check-in prompt would read
-// as premature, so the other branches take over instead.
-const CHECKIN_PROMPT_MIN_HOUR = 17;
-
-function contentFor(ctx: ReminderContext, hour: number): { title: string; body: string; courseId?: string; checkin?: boolean } {
-  if (!ctx.checkedInToday && hour >= CHECKIN_PROMPT_MIN_HOUR) {
-    return {
-      title: "C'est l'heure du bilan",
-      body: 'Comment s’est passée ta journée ? Prends 30 secondes pour la noter.',
-      checkin: true,
-    };
-  }
+function contentFor(ctx: ReminderContext): { title: string; body: string; courseId?: string } {
   if (ctx.upcomingEvent && ctx.matchedCourse) {
     const label = ctx.upcomingEvent.title || ctx.upcomingEvent.type;
     return {
@@ -69,38 +69,70 @@ function contentFor(ctx: ReminderContext, hour: number): { title: string; body: 
   return { title: 'Reste sur la bonne voie', body: 'Prends deux minutes pour toi aujourd’hui.' };
 }
 
-// Reschedules the single daily reminder with content reflecting the user's
-// actual state right now — a hard event to prepare for, a real battery dip,
-// or (when neither applies) a nudge toward the next course they haven't
-// tried. Called once during onboarding (with a forced low-battery context,
-// matching what the permission screen promised) and again every time the
-// Dashboard has fresh data, so the notification a user gets tonight reflects
-// today, not whatever was true when they signed up. No-ops silently if
-// permission was never granted or was later revoked — never re-prompts.
+// Reschedules the daily reminder with content reflecting the user's actual
+// state right now — a hard event to prepare for, a real battery dip, or
+// (when neither applies) a nudge toward the next course they haven't tried.
+// Fires at the hour chosen during onboarding (MOMENT_HOURS). Called once
+// during onboarding and again every time the Dashboard has fresh data, so
+// the notification a user gets tonight reflects today, not whatever was
+// true when they signed up. No-ops silently if permission was never
+// granted or was later revoked — never re-prompts.
+//
+// Uses a fixed identifier and cancels only that identifier before
+// rescheduling, so it never touches scheduleCheckInReminder()'s own
+// notification below — the two are independent and can coexist.
 export async function scheduleDailyReminder(ctx: ReminderContext): Promise<void> {
   const { status } = await Notifications.getPermissionsAsync();
   if (status !== 'granted') return;
 
   const hour = MOMENT_HOURS[ctx.momentLabel] ?? MOMENT_HOURS['Le soir'];
-  const { title, body, courseId, checkin } = contentFor(ctx, hour);
+  const { title, body, courseId } = contentFor(ctx);
 
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-      name: 'Rappel de batterie sociale',
-      importance: Notifications.AndroidImportance.DEFAULT,
-    });
-  }
-
-  // Only one of these is ever meant to be live at a time — clearing first
-  // keeps this idempotent without needing to track an identifier across
-  // app restarts.
-  await Notifications.cancelAllScheduledNotificationsAsync();
+  await ensureChannel();
+  await Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_ID).catch(() => {});
 
   await Notifications.scheduleNotificationAsync({
-    content: { title, body, data: courseId ? { courseId } : checkin ? { checkin: true } : undefined },
+    identifier: DAILY_REMINDER_ID,
+    content: { title, body, data: courseId ? { courseId } : undefined },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DAILY,
       hour,
+      minute: 0,
+      channelId: Platform.OS === 'android' ? CHANNEL_ID : undefined,
+    },
+  });
+}
+
+// Fires at a fixed hour (22:00, 2 hours before the streak would actually
+// die at midnight) regardless of the user's chosen moment-of-day — this one
+// is tied to a deadline, not a preference. Content depends on whether
+// there's a streak actually at risk: urgent "it's about to die" copy when
+// there is, a plain "how was your day" prompt when there isn't (no streak
+// yet, or it's someone's first day). Cancels itself outright once today is
+// already checked in — nothing left to warn about.
+export async function scheduleCheckInReminder(streak: number, checkedInToday: boolean): Promise<void> {
+  const { status } = await Notifications.getPermissionsAsync();
+  if (status !== 'granted') return;
+
+  if (checkedInToday) {
+    await Notifications.cancelScheduledNotificationAsync(CHECKIN_REMINDER_ID).catch(() => {});
+    return;
+  }
+
+  const { title, body } =
+    streak > 0
+      ? { title: 'Ta série va s’éteindre', body: `Il te reste 2h pour protéger tes ${streak} jour${streak === 1 ? '' : 's'} d'affilée.` }
+      : { title: 'Comment s’est passée ta journée ?', body: 'Où en est ta batterie ?' };
+
+  await ensureChannel();
+  await Notifications.cancelScheduledNotificationAsync(CHECKIN_REMINDER_ID).catch(() => {});
+
+  await Notifications.scheduleNotificationAsync({
+    identifier: CHECKIN_REMINDER_ID,
+    content: { title, body, data: { checkin: true } },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DAILY,
+      hour: CHECKIN_REMINDER_HOUR,
       minute: 0,
       channelId: Platform.OS === 'android' ? CHANNEL_ID : undefined,
     },

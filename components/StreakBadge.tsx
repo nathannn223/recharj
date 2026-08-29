@@ -37,7 +37,7 @@ export function StreakBadge({ streak, onPress }: Props) {
     <Pressable onPress={onPress} hitSlop={10} accessibilityLabel={`Série de ${streak} jours notés`}>
       <View style={[styles.badge, tier === 'zero' && styles.badgeZero, tier === 'high' && styles.badgeHigh]}>
         {tier === 'high' && <Animated.View pointerEvents="none" style={[styles.flicker, { opacity: glowOpacity }]} />}
-        <BoltIcon color={color} size={13} />
+        <BoltIcon color={color} size={20} />
         <Text style={[styles.num, { color }]}>{streak}</Text>
       </View>
     </Pressable>
@@ -48,9 +48,9 @@ const styles = StyleSheet.create({
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
+    gap: 7,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
     borderRadius: radii.pill,
     backgroundColor: colors.surface,
     borderWidth: 1,
@@ -60,5 +60,5 @@ const styles = StyleSheet.create({
   badgeZero: { opacity: 0.6 },
   badgeHigh: { borderColor: 'rgba(232,255,94,0.4)' },
   flicker: { ...StyleSheet.absoluteFillObject, backgroundColor: colors.lime },
-  num: { fontFamily: fontFamily.displaySemiBold, fontSize: 13 },
+  num: { fontFamily: fontFamily.displayBold, fontSize: 21 },
 });

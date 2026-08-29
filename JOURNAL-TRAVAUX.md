@@ -1045,3 +1045,60 @@ modèle sous-jacent), `npx expo lint` propre.
 
 - créé : `components/StreakBadge.tsx`, `components/CheckInCard.tsx`
 - modifié : `app/(tabs)/index.tsx`, `lib/checkins.ts` (fix du streak)
+
+---
+
+### 2026-08-29 — Chantier 12 : badge plus visible, urgence à 2h de minuit, notification dédiée
+
+**Contexte.** Retours après le chantier 11 : le badge de streak restait
+trop discret en haut à droite, et le message « ne laisse pas ta série
+s'éteindre » de la carte s'affichait tout le temps — trop tôt dans la
+journée pour avoir un sens (rien n'est encore réellement en jeu à 10h du
+matin). Demandé : le message urgent réservé aux 2 dernières heures avant
+minuit, couplé à une notification dédiée au même moment ; le reste de la
+journée, un message neutre (« comment s'est passée ta journée » / « où en
+est ta batterie »).
+
+**Fait.**
+
+1. **`components/StreakBadge.tsx`** : icône et chiffre agrandis (13→20px et
+   13→21px), padding augmenté.
+2. **`components/CheckInCard.tsx`** : nouvelle logique à trois états au lieu
+   de deux — noté (inchangé), en attente **urgent** (streak > 0 et heure
+   locale ≥ 22h : visuel dégradé + bandeau, gros chiffre, « Ne laisse pas ta
+   série s'éteindre »/« Touche pour la protéger avant minuit »), en attente
+   **neutre** (le reste du temps, y compris tout le premier jour sans
+   streak : carte calme, « Comment s'est passée ta journée ? »/« Où en est
+   ta batterie ? »). Le seuil (`URGENT_HOUR = 22`) est le même que celui de
+   la notification dédiée, volontairement dupliqué en constante nommée dans
+   les deux fichiers plutôt que partagé — le calcul dépend de l'heure locale
+   de l'appareil au moment du rendu, recalculé à chaque affichage plutôt que
+   suivi par un minuteur (cohérent avec le choix déjà fait de tout
+   recalculer à l'ouverture de l'app plutôt que de faire tourner quelque
+   chose en tâche de fond).
+3. **`lib/notifications.ts`** : scindé en deux notifications programmées
+   indépendantes plutôt qu'une seule qui changeait de contenu selon
+   l'heure :
+   - `scheduleDailyReminder` (inchangé dans son rôle, simplifié) : reste à
+     l'heure choisie par l'utilisateur (`low_battery_moment`), a perdu sa
+     branche « pas encore noté » (remplacée par la notification dédiée
+     ci-dessous).
+   - `scheduleCheckInReminder(streak, checkedInToday)` (nouveau) : fixe à
+     22h (2h avant minuit), contenu « ta série va s'éteindre » si un streak
+     est en jeu, sinon la même question neutre que la carte. S'annule
+     elle-même si le check-in du jour est déjà fait.
+   - Chacune des deux a maintenant son propre `identifier` et n'annule que
+     sa propre notification (`cancelScheduledNotificationAsync`) au lieu de
+     tout annuler (`cancelAllScheduledNotificationsAsync`, comportement
+     précédent) — sans ça, reprogrammer l'une aurait supprimé l'autre.
+4. **Points d'appel mis à jour** : `app/(auth)/index.tsx` (onboarding,
+   simplifié — plus besoin de forcer `checkedInToday`), `app/(tabs)/index.tsx`
+   (Dashboard, appelle maintenant les deux fonctions à chaque focus).
+
+**Vérifié.** `npx tsc --noEmit` propre, `npx jest --watchAll=false` :
+28/28, `npx expo lint` propre.
+
+**Fichiers touchés.**
+
+- modifié : `components/StreakBadge.tsx`, `components/CheckInCard.tsx`,
+  `lib/notifications.ts`, `app/(auth)/index.tsx`, `app/(tabs)/index.tsx`

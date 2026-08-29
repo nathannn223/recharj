@@ -17,7 +17,7 @@ import { addDays, projectBattery, startOfToday, toDateKey } from '@/lib/battery'
 import { fetchCheckInStreak } from '@/lib/checkins';
 import { relativeDayLabel } from '@/lib/dates';
 import { tagsForEventType } from '@/lib/eventTags';
-import { scheduleDailyReminder } from '@/lib/notifications';
+import { scheduleCheckInReminder, scheduleDailyReminder } from '@/lib/notifications';
 import { supabase } from '@/lib/supabase';
 
 const WEEKDAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S']; // Date#getDay(): 0=dimanche
@@ -137,8 +137,8 @@ export default function DashboardScreen() {
         upcomingEvent: difficultEvent ? { title: difficultEvent.title, type: difficultEvent.type } : null,
         matchedCourse: recommendedCourse,
         discoverCourse,
-        checkedInToday: !!todayCheckIn,
       });
+      await scheduleCheckInReminder(checkInStreak, !!todayCheckIn);
     }
 
     refreshReminder();
@@ -146,7 +146,7 @@ export default function DashboardScreen() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, todayLevel, difficultEvent?.id, recommendedCourse?.id, todayCheckIn]);
+  }, [loading, todayLevel, difficultEvent?.id, recommendedCourse?.id, todayCheckIn, checkInStreak]);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>

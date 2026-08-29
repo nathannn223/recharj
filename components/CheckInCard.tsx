@@ -12,67 +12,70 @@ type Props = {
   onPress: () => void;
 };
 
-// "The streak in play": leads with the number the user has to lose, not a
-// neutral question, because loss aversion converts far better than a plain
-// prompt ever will (the same mechanic behind Duolingo's and Snapchat's
-// streaks) — the point isn't to describe the day, it's to make not tapping
-// feel like the wrong choice.
+// The streak dying is genuinely urgent only in the last 2 hours before it
+// does (midnight) — matches lib/notifications.ts's dedicated warning,
+// scheduled for the same hour, so the card and the notification never
+// disagree about when things turn urgent.
+const URGENT_HOUR = 22;
+
+// Most of the day this is a calm, neutral prompt — loss-aversion copy this
+// early would be both premature (nothing is actually at risk yet) and, over
+// many hours a day, exhausting. It only leads with the streak once there's
+// a real deadline behind it.
 export function CheckInCard({ checkedIn, streak, onPress }: Props) {
   const pending = !checkedIn;
+  const urgent = pending && streak > 0 && new Date().getHours() >= URGENT_HOUR;
   const scale = useRef(new Animated.Value(1)).current;
 
   const pressIn = () => Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, speed: 40, bounciness: 4 }).start();
   const pressOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 8 }).start();
 
-  const title = pending
-    ? streak > 0
-      ? 'Ne laisse pas ta série s\'éteindre.'
-      : 'Comment s\'est passée ta journée ?'
-    : streak > 1
+  const title = !pending
+    ? streak > 1
       ? `Série protégée · ${checkedIn.score}/10`
-      : `Journée notée · ${checkedIn.score}/10`;
+      : `Journée notée · ${checkedIn.score}/10`
+    : urgent
+      ? 'Ne laisse pas ta série s\'éteindre.'
+      : 'Comment s\'est passée ta journée ?';
 
-  const note = pending
-    ? streak > 0
-      ? 'Touche pour la protéger ce soir.'
-      : 'Commence ta série aujourd\'hui.'
-    : checkedIn.comment || 'Rendez-vous demain.';
+  const note = !pending
+    ? checkedIn.comment || 'Rendez-vous demain.'
+    : urgent
+      ? 'Touche pour la protéger avant minuit.'
+      : 'Où en est ta batterie ?';
 
-  const showStat = streak > 0;
+  const showStat = !pending || urgent;
+
+  const content = (
+    <>
+      {urgent && <View style={styles.stripe} />}
+      {showStat && (
+        <View style={styles.statRow}>
+          <Text style={[styles.statNum, !pending && styles.statNumDone]}>{streak}</Text>
+          <Text style={styles.statUnit}>jour{streak === 1 ? '' : 's'} d'affilée</Text>
+        </View>
+      )}
+      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.note} numberOfLines={2}>
+        {note}
+      </Text>
+    </>
+  );
 
   return (
     <Pressable onPress={onPress} onPressIn={pressIn} onPressOut={pressOut}>
       <Animated.View style={{ transform: [{ scale }] }}>
-        {pending ? (
+        {urgent ? (
           <LinearGradient
             colors={['rgba(255,122,107,0.16)', 'rgba(232,255,94,0.05)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={[styles.card, styles.cardPending]}
+            style={[styles.card, styles.cardUrgent]}
           >
-            <View style={styles.stripe} />
-            {showStat && (
-              <View style={styles.statRow}>
-                <Text style={styles.statNum}>{streak}</Text>
-                <Text style={styles.statUnit}>jour{streak === 1 ? '' : 's'} d'affilée</Text>
-              </View>
-            )}
-            <Text style={styles.title}>{title}</Text>
-            <Text style={styles.note}>{note}</Text>
+            {content}
           </LinearGradient>
         ) : (
-          <View style={[styles.card, styles.cardDone]}>
-            {showStat && (
-              <View style={styles.statRow}>
-                <Text style={[styles.statNum, styles.statNumDone]}>{streak}</Text>
-                <Text style={styles.statUnit}>jour{streak === 1 ? '' : 's'} d'affilée</Text>
-              </View>
-            )}
-            <Text style={styles.title}>{title}</Text>
-            <Text style={styles.note} numberOfLines={2}>
-              {note}
-            </Text>
-          </View>
+          <View style={[styles.card, styles.cardNeutral]}>{content}</View>
         )}
       </Animated.View>
     </Pressable>
@@ -87,8 +90,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     gap: 2,
   },
-  cardPending: { borderColor: 'rgba(255,122,107,0.4)' },
-  cardDone: { backgroundColor: colors.surface, borderColor: colors.borderSoft },
+  cardUrgent: { borderColor: 'rgba(255,122,107,0.4)' },
+  cardNeutral: { backgroundColor: colors.surface, borderColor: colors.borderSoft },
 
   stripe: {
     position: 'absolute',
