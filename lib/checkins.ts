@@ -18,10 +18,18 @@ export async function submitCheckIn(userId: string, score: number, comment: stri
 const STREAK_WINDOW_DAYS = 400;
 
 /**
- * Consecutive days checked in, counting back from today. Computed
- * client-side from a bounded window rather than a recursive SQL query —
- * simple, and a streak longer than this window is already well past the
- * point where showing the exact number still matters.
+ * Consecutive days checked in. Computed client-side from a bounded window
+ * rather than a recursive SQL query — simple, and a streak longer than this
+ * window is already well past the point where showing the exact number
+ * still matters.
+ *
+ * Counts back from today if today is already checked in, otherwise from
+ * yesterday — so the streak a user still has "at risk" (built on prior
+ * days, not yet broken, but not yet extended either) reads correctly
+ * *before* they check in today, not just after. Starting from today
+ * unconditionally would show 0 the moment midnight passes, which is wrong:
+ * the streak isn't broken until a day is skipped entirely, not merely
+ * because today hasn't happened yet.
  */
 export async function fetchCheckInStreak(userId: string): Promise<number> {
   const today = startOfToday();
@@ -36,8 +44,8 @@ export async function fetchCheckInStreak(userId: string): Promise<number> {
   if (!data || data.length === 0) return 0;
   const days = new Set(data.map((row) => row.day as string));
 
+  let cursor = days.has(toDateKey(today)) ? today : addDays(today, -1);
   let streak = 0;
-  let cursor = today;
   while (days.has(toDateKey(cursor))) {
     streak++;
     cursor = addDays(cursor, -1);

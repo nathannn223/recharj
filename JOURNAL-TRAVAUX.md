@@ -994,3 +994,54 @@ dans la fenêtre qu'il rejoue.
 - modifié : `lib/battery.ts`, `lib/batteryStore.ts`, `hooks/useBattery.ts`,
   `lib/notifications.ts`, `app/(tabs)/index.tsx`, `app/(tabs)/calendar.tsx`,
   `app/(auth)/index.tsx`, `app/_layout.tsx`, `lib/battery.test.ts`
+
+---
+
+### 2026-08-29 — Chantier 11 : refonte du CTA de check-in et badge de streak
+
+**Contexte.** La carte de check-in du chantier 10 ne donnait pas envie
+d'être touchée (même forme grise que le reste du Dashboard), et l'icône en
+haut à droite (un engrenage) ne faisait rien au tap. Trois pistes de carte
+et trois pistes de badge proposées via une maquette HTML dans la vraie
+palette de l'app (`/design` + `/ui-ux-pro-max`), publiée en Artifact pour
+choix visuel avant d'écrire du code React Native. L'utilisateur a choisi
+« Concept B — la série en jeu » (aversion à la perte : le chiffre du streak
+est mis en avant, menace de le perdre) et « Badge 3 — éclair-flamme »
+(reprend le réflexe visuel du streak façon Duolingo, traduit en éclair pour
+rester dans le vocabulaire de charge de l'app plutôt qu'une flamme littérale).
+
+**Bug trouvé en préparant la maquette.** `fetchCheckInStreak()`
+(chantier 10) comptait toujours à partir d'aujourd'hui — si le check-in du
+jour n'était pas encore fait, le streak retombait à 0 immédiatement à
+minuit, même après 12 jours d'affilée. Concept B a justement besoin
+d'afficher le streak *en danger* avant le check-in pour que le message
+« ne le laisse pas s'éteindre » ait un sens. Corrigé : compte à partir
+d'aujourd'hui s'il est déjà noté, sinon à partir d'hier.
+
+**Fait.**
+
+1. **`components/StreakBadge.tsx`** (nouveau) : remplace l'icône réglages
+   décorative. Trois paliers selon le streak — 0 (estompé), 1-9 (corail),
+   ≥10 (lime, avec un halo qui respire en boucle via `Animated`). Tap →
+   `/checkin`, comme tous les autres points d'entrée du check-in.
+2. **`components/CheckInCard.tsx`** (nouveau) : remplace la carte inline du
+   Dashboard. Réutilise le pattern de pression à ressort déjà présent dans
+   `BatteryGauge.tsx` (scale 0.97 au press). État « en attente » avec streak
+   > 0 : gros chiffre + « Ne laisse pas ta série s'éteindre » sur fond
+   dégradé corail→lime (`LinearGradient`) avec un bandeau diagonal décoratif.
+   État « en attente » sans streak (premier jour) : retombe sur la question
+   neutre d'origine, pas de menace vide de sens. État « notée » : streak mis
+   à jour + score + commentaire.
+3. **`app/(tabs)/index.tsx`** : branchement des deux nouveaux composants,
+   suppression du JSX et des styles de l'ancienne carte inline et de
+   l'import `SettingsIcon` (plus utilisé nulle part).
+
+**Vérifié.** `npx tsc --noEmit` propre, `npx jest --watchAll=false` :
+28/28 (le fix du streak n'a pas de test dédié — logique simple, déjà
+couverte fonctionnellement par les tests de check-in existants sur le
+modèle sous-jacent), `npx expo lint` propre.
+
+**Fichiers touchés.**
+
+- créé : `components/StreakBadge.tsx`, `components/CheckInCard.tsx`
+- modifié : `app/(tabs)/index.tsx`, `lib/checkins.ts` (fix du streak)

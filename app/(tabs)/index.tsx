@@ -6,7 +6,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Path, Polyline, Stop } from 'react-native-svg';
 
 import { BatteryGauge } from '@/components/BatteryGauge';
-import { BoltIcon, CheckIcon, ChevronRightIcon, PencilIcon, SettingsIcon } from '@/components/icons/Icon';
+import { CheckInCard } from '@/components/CheckInCard';
+import { StreakBadge } from '@/components/StreakBadge';
+import { BoltIcon, ChevronRightIcon } from '@/components/icons/Icon';
 import { colors, difficultyColor, fontFamily, radii, spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { useBattery } from '@/hooks/useBattery';
@@ -154,7 +156,7 @@ export default function DashboardScreen() {
             <Text style={styles.sub}>Bonjour</Text>
             <Text style={styles.h1}>Ta semaine</Text>
           </View>
-          <SettingsIcon color={colors.textDim} size={24} />
+          <StreakBadge streak={checkInStreak} onPress={() => router.push('/checkin')} />
         </View>
 
         <View style={styles.batteryWrap}>
@@ -165,28 +167,7 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        <Pressable onPress={() => router.push('/checkin')} style={[styles.checkinCard, todayCheckIn && styles.checkinCardDone]}>
-          <View style={[styles.checkinBadge, todayCheckIn && styles.checkinBadgeDone]}>
-            {todayCheckIn ? (
-              <CheckIcon color={colors.surfaceScreen} size={18} />
-            ) : (
-              <PencilIcon color={colors.surfaceScreen} size={18} />
-            )}
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.checkinTitle}>
-              {todayCheckIn ? `Journée notée · ${todayCheckIn.score}/10` : 'Comment s\'est passée ta journée ?'}
-            </Text>
-            <Text style={styles.checkinNote} numberOfLines={1}>
-              {todayCheckIn ? todayCheckIn.comment || 'Touche pour modifier' : 'Note-la pour garder un historique réel.'}
-            </Text>
-          </View>
-          {checkInStreak > 0 && (
-            <View style={styles.streakPill}>
-              <Text style={styles.streakText}>🔥 {checkInStreak}</Text>
-            </View>
-          )}
-        </Pressable>
+        <CheckInCard checkedIn={todayCheckIn} streak={checkInStreak} onPress={() => router.push('/checkin')} />
 
         <View style={styles.card}>
           <View style={styles.row}>
@@ -284,24 +265,6 @@ const styles = StyleSheet.create({
   batteryReadout: { alignItems: 'center', gap: 4 },
   batteryPct: { fontFamily: fontFamily.displayBold, fontSize: 44, color: colors.text },
   batteryLbl: { fontFamily: fontFamily.textSemiBold, fontSize: 14, color: colors.textDim, textTransform: 'uppercase', letterSpacing: 1.4 },
-
-  checkinCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: 'rgba(255,122,107,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,122,107,0.35)',
-    borderRadius: radii.lg,
-    padding: spacing[4],
-  },
-  checkinCardDone: { backgroundColor: colors.surface, borderColor: colors.borderSoft },
-  checkinBadge: { width: 38, height: 38, borderRadius: 12, backgroundColor: colors.coral, alignItems: 'center', justifyContent: 'center' },
-  checkinBadgeDone: { backgroundColor: colors.lime },
-  checkinTitle: { fontFamily: fontFamily.textBold, fontSize: 15, color: colors.text },
-  checkinNote: { fontFamily: fontFamily.textRegular, fontSize: 13, color: colors.textDim, marginTop: 2 },
-  streakPill: { backgroundColor: colors.surfaceRaised, borderRadius: radii.pill, paddingVertical: 5, paddingHorizontal: 10 },
-  streakText: { fontFamily: fontFamily.textBold, fontSize: 13, color: colors.text },
 
   card: {
     backgroundColor: colors.surface,
