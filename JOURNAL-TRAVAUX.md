@@ -1205,3 +1205,41 @@ préférence) sur la signature.
 - modifié : `components/onboarding/SignaturePad.tsx`,
   `components/onboarding/FeatureCarousel.tsx`, `app/(auth)/index.tsx`,
   `app/onboarding.tsx`
+
+---
+
+### 2026-08-29 — Chantier 15 : le bouton « C'est parti » post-connexion ne montrait toujours rien
+
+**Contexte.** Signalé une troisième fois : après le bouton « C'est parti »
+de l'écran post-connexion, aucun écran ne s'affichait. Le chantier 14 avait
+ajouté un écran intermédiaire nommant le cours, mais seulement si
+`freeCourseId && courseTitle` — si la résolution échouait encore (cause
+exacte non confirmée : trigger `handle_new_user` vérifié présent dans
+`supabase/schema.sql`, donc la ligne `profiles` existe bien dès
+l'inscription — la cause reste donc ailleurs, non identifiée faute de logs
+disponibles depuis cette session), le bouton retombait silencieusement sur
+`/(tabs)`, ce qui pouvait se lire comme « le bouton ne fait rien ».
+
+**Fait — rendu le symptôme impossible plutôt que de retenter un diagnostic
+à l'aveugle.** `app/onboarding.tsx` : le bouton « C'est parti ! » de l'écran
+« Merci » passe maintenant **toujours** à l'écran suivant (`STEP.COURSE`),
+plus de branche silencieuse vers `/(tabs)`. Cet écran gère lui-même les deux
+cas : cours résolu → titre réel affiché ; rien résolu → « Prêt à explorer »
++ « Découvre la bibliothèque de cours », et son bouton mène alors vers
+`/(tabs)/library` plutôt que vers un cours qui n'existe pas. Un écran
+s'affiche désormais dans tous les cas après le tap.
+Aussi : titre « Voici ce que Recharj a identifié » (écran récap) agrandi
+(nouveau style dédié, 28px, gras, au lieu du petit label `eyebrow` partagé
+avec l'écran d'essai gratuit).
+
+**Vérifié.** `npx tsc --noEmit` propre, `npx jest --watchAll=false` :
+28/28, `npx expo lint` propre.
+
+**Non résolu.** La cause racine exacte de l'échec de résolution du cours
+gratuit reste inconnue. Si le problème persiste, il faudra soit un accès
+aux logs Supabase/l'app en direct, soit que l'utilisateur relève ce qui
+s'affiche précisément sur le nouvel écran (le vrai titre du cours, ou le
+message de repli « Prêt à explorer ») pour trancher entre « la résolution
+échoue toujours » et « autre chose empêchait l'affichage ».
+
+**Fichiers touchés.** modifié : `app/onboarding.tsx`, `app/(auth)/index.tsx`

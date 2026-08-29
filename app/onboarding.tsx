@@ -145,21 +145,17 @@ export default function OnboardingWelcomeScreen() {
     };
   }, [session]);
 
-  // From THANKS: if a course genuinely resolved, show it by name before
-  // navigating anywhere; otherwise there's nothing to reveal, so go
-  // straight to the dashboard exactly like the explicit skip button does.
-  const goNext = async () => {
-    if (freeCourseId && courseTitle) {
-      setStep(STEP.COURSE);
-    } else {
-      await markSeen();
-      router.replace('/(tabs)');
-    }
-  };
+  // Always moves to STEP.COURSE — never straight to a router.replace() from
+  // this button. A previous version skipped this screen and redirected
+  // silently whenever no course had resolved, which is indistinguishable
+  // from the button doing nothing at all if that resolution ever fails
+  // unexpectedly. This way tapping "C'est parti !" always produces a
+  // visible next screen, whatever the course-matching logic above did.
+  const goNext = () => setStep(STEP.COURSE);
 
   const enterCourse = async () => {
     await markSeen();
-    router.replace(freeCourseId ? `/course/${freeCourseId}` : '/(tabs)');
+    router.replace(freeCourseId ? `/course/${freeCourseId}` : '/(tabs)/library');
   };
 
   const goToDashboard = async () => {
@@ -179,8 +175,17 @@ export default function OnboardingWelcomeScreen() {
     return (
       <SafeAreaView style={styles.screen} edges={['top']}>
         <View style={[styles.content, styles.centered]}>
-          <Text style={styles.eyebrow}>Ton premier cours</Text>
-          <Text style={styles.title}>{courseTitle}</Text>
+          {courseTitle ? (
+            <>
+              <Text style={styles.eyebrow}>Ton premier cours</Text>
+              <Text style={styles.title}>{courseTitle}</Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.eyebrow}>Prêt à explorer</Text>
+              <Text style={styles.title}>Découvre la bibliothèque de cours.</Text>
+            </>
+          )}
           <Pressable onPress={enterCourse} style={{ alignSelf: 'stretch', marginTop: spacing[6] }}>
             <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.startBtn}>
               <Text style={styles.startBtnText}>C'est parti</Text>

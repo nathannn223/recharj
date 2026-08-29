@@ -508,7 +508,7 @@ export default function AuthScreen() {
 
           {step === STEP.RECAP && (
             <View style={styles.hero}>
-              <Text style={styles.eyebrow}>Voici ce que Recharj a identifié</Text>
+              <Text style={styles.recapHeading}>Voici ce que Recharj a identifié</Text>
               <View style={styles.recapLines}>
                 <Text style={styles.recapBig}>
                   Ton point faible : <Text style={styles.recapHlCoral}>{pain ? pain.label.toLowerCase() : 'ça'}</Text>.
@@ -899,6 +899,7 @@ const styles = StyleSheet.create({
   notifCardTitle: { fontFamily: fontFamily.textBold, fontSize: 15, color: colors.text, marginTop: 4 },
   notifCardBody: { fontFamily: fontFamily.textRegular, fontSize: 14, color: colors.textDim, lineHeight: 19 },
 
+  recapHeading: { fontFamily: fontFamily.displayBold, fontSize: 28, color: colors.coral, textAlign: 'center', lineHeight: 34 },
   recapLines: { gap: spacing[4], marginTop: spacing[3] },
   recapBig: { fontFamily: fontFamily.textSemiBold, fontSize: 21, color: colors.textDim, textAlign: 'center', lineHeight: 28 },
   recapHlCoral: { color: colors.coral, fontFamily: fontFamily.displaySemiBold },
