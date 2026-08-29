@@ -1297,3 +1297,42 @@ séparant à nouveau les deux `select`.
 
 - modifié : `app/(tabs)/index.tsx`, `app/onboarding.tsx`,
   `app/(auth)/index.tsx`, `components/CheckInCard.tsx`
+
+---
+
+### 2026-08-29 — Chantier 17 : première vraie icône d'app
+
+**Contexte.** Cinq pistes d'icône proposées via un artefact HTML comparatif
+(`/design` + `/ui-ux-pro-max`), toutes construites sur la palette exacte de
+l'app et l'éclair déjà utilisé partout dans l'interface. L'utilisateur a
+choisi le concept 1 : fond encre uni + éclair lime plein, la plus sobre des
+cinq.
+
+**Fait.** SVG source construit à la main (mêmes coordonnées de path que
+`BoltIcon`/`LogoMark` déjà dans le code, pas une nouvelle forme), rendu en
+PNG via `resvg-cli` (installé à la volée par `npx`, pas ajouté aux
+dépendances du projet).
+
+- `assets/images/icon.png` : 1024×1024, fond `#0F0B1A` plein cadre + éclair
+  `#E8FF5E` centré. **Canal alpha retiré** (converti en RGB via Pillow) —
+  Apple rejette une icône App Store avec canal alpha, même totalement
+  opaque.
+- `assets/images/adaptive-icon.png` : même éclair sur fond transparent,
+  mis à l'échelle pour tenir dans la zone de sécurité (~45% du canevas)
+  qu'Android peut recadrer selon la forme de masque du lanceur.
+  `app.json` pointe déjà dessus avec `backgroundColor: "#0F0B1A"`, inchangé.
+- `assets/images/favicon.png` : même image que l'icône principale,
+  redimensionnée en 256×256 (usage web marginal pour cette app, mais autant
+  rester cohérent).
+
+**Non fait, volontairement.** `assets/images/splash-icon.png` n'a pas été
+touché — toujours le placeholder Expo par défaut. Pas demandé dans ce
+chantier ; à traiter séparément si besoin, sinon l'écran de démarrage va
+maintenant jurer visuellement avec la nouvelle icône.
+
+**Vérifié.** Rendu inspecté visuellement (bolt bien centré, contraste net,
+pas de résidu de transparence sur l'icône principale). Aucun changement de
+code, `app.json` déjà correctement configuré depuis un chantier précédent.
+
+**Fichiers touchés.** modifié (binaire) : `assets/images/icon.png`,
+`assets/images/adaptive-icon.png`, `assets/images/favicon.png`
