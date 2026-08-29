@@ -1146,3 +1146,62 @@ interactive de la flamme de streak.
 
 - modifié : `components/icons/Icon.tsx`,
   `components/onboarding/FeatureCarousel.tsx`, `app/(auth)/index.tsx`
+
+---
+
+### 2026-08-29 — Chantier 14 : retours détaillés sur l'onboarding + bug réel de signature
+
+**Contexte.** Nouvelle vague de retours utilisateur après usage réel, sur
+plusieurs écrans distincts de l'onboarding, plus un vrai bug (pas juste une
+préférence) sur la signature.
+
+**Fait.**
+
+1. **Bug de signature corrigé** (`components/onboarding/SignaturePad.tsx`).
+   Cause exacte trouvée : `onChange?.(true)` était appelé **à l'intérieur**
+   de l'updater passé à `setStrokes()`, ce qui viole la règle React « un
+   updater doit être pur, sans effet de bord ». Ça produisait littéralement
+   l'erreur *Cannot update a component while rendering a different
+   component*, et dans certains cas un remontage qui effaçait le trait
+   qu'on venait de dessiner. Corrigé en sortant l'appel de l'updater — la
+   signature reste maintenant affichée normalement jusqu'au bouton
+   « Confirmer mon engagement », plus d'erreur.
+2. **Écran d'affirmation « autorité »** : illustration retirée, le mot
+   « RECHARJ » passe de 20 à 40px.
+3. **Slide 3 du carrousel** (cours) : phrase « Touche la carte pour
+   essayer » retirée (le `body` du slide est devenu optionnel dans le type
+   `Slide`).
+4. **Écran de la flamme** (`STEP.STREAK`) : passe d'un simple tap à un
+   appui maintenu (~1,8s). Un anneau de progression en SVG
+   (`react-native-svg`, `AnimatedCircle`) se remplit pendant l'appui ;
+   relâcher avant la fin annule et réinitialise l'anneau ; à la fin, la
+   flamme s'allume avec le même rebond à ressort + halo qu'avant.
+5. **Écran de notification** : « Reste sur la bonne voie » retiré, « Profite
+   au maximum de Recharj » remonte à sa place, passe de 30 à 34px et prend
+   la couleur corail qu'avait l'eyebrow supprimé.
+6. **Écran récapitulatif** : la grosse jauge centrale est retirée : le
+   score s'affiche maintenant dans la petite jauge du haut (déjà présente
+   sur toutes les pages, calculée normalement à 100% après la question du
+   moment — cas spécial ajouté juste pour `STEP.RECAP`). Le paragraphe long
+   devient trois phrases courtes et plus grosses (21px), chacune avec
+   l'élément identifié coloré (point faible en corail, fréquence/moment en
+   violet, méthode de récupération en lime).
+7. **Écran post-connexion restructuré** (`app/onboarding.tsx`) : au lieu
+   d'un redirect direct et silencieux vers `/course/{id}` (qui, en cas
+   d'échec de résolution, ne montrait littéralement rien et donnait
+   l'impression que le bouton ne faisait rien), un nouvel écran intermédiaire
+   nomme explicitement le cours (« Ton premier cours » + titre réel) avec
+   son propre bouton « C'est parti » qui déclenche la navigation réelle, et
+   garde l'option « Aller sur le dashboard ». Si aucun cours ne se résout
+   (cas déjà géré par la vérification du chantier 7), cet écran est
+   simplement sauté et l'utilisateur atterrit directement sur le dashboard,
+   comme avant.
+
+**Vérifié.** `npx tsc --noEmit` propre, `npx jest --watchAll=false` :
+28/28, `npx expo lint` propre.
+
+**Fichiers touchés.**
+
+- modifié : `components/onboarding/SignaturePad.tsx`,
+  `components/onboarding/FeatureCarousel.tsx`, `app/(auth)/index.tsx`,
+  `app/onboarding.tsx`

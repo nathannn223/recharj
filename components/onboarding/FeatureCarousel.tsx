@@ -15,7 +15,7 @@ const SLIDE_WIDTH = SCREEN_WIDTH - spacing[6] * 2;
 // within the same height instead of each page having its own size.
 const CAROUSEL_HEIGHT = 380;
 
-type Slide = { title: string; body: string; illustration: React.ReactNode };
+type Slide = { title: string; body?: string; illustration: React.ReactNode };
 
 // A real card from the course content, tried hands-on right here instead of
 // described — the "aha moment" for the courses half of the app. Uses the
@@ -88,7 +88,6 @@ const SLIDES: Slide[] = [
   { title: 'Chaque soir, fais le point.', body: 'Ta note devient ta batterie.', illustration: <CheckInPreview /> },
   {
     title: 'Progresse avec de vrais cours.',
-    body: 'Touche la carte pour essayer.',
     // FlipCard sizes its faces absolutely (see components/course/FlipCard),
     // so it needs an ancestor with an explicit width to stretch into —
     // this slide's own alignItems:'center' only hugs intrinsic-width
@@ -124,7 +123,7 @@ export function FeatureCarousel() {
           <View key={i} style={[styles.slide, { width: SLIDE_WIDTH, height: CAROUSEL_HEIGHT }]}>
             {slide.illustration}
             <Text style={styles.slideTitle}>{slide.title}</Text>
-            <Text style={styles.slideBody}>{slide.body}</Text>
+            {slide.body && <Text style={styles.slideBody}>{slide.body}</Text>}
           </View>
         ))}
       </ScrollView>

@@ -33,11 +33,17 @@ export function SignaturePad({ onChange }: { onChange?: (hasSignature: boolean) 
         },
         onPanResponderRelease: () => {
           if (currentStroke.current.length > 1) {
-            setStrokes((prev) => {
-              const next = [...prev, currentStroke.current];
-              onChange?.(true);
-              return next;
-            });
+            const stroke = currentStroke.current;
+            // onChange runs here, as a plain side effect after the state
+            // update — not inside setStrokes' updater function. Calling a
+            // different component's setState from within an updater
+            // (setSignatureGiven, via onChange) breaks React's "updaters
+            // must be pure" rule; it produced a real "Cannot update a
+            // component while rendering a different component" error and,
+            // with it, a remount that wiped the stroke that had just been
+            // drawn.
+            setStrokes((prev) => [...prev, stroke]);
+            onChange?.(true);
           }
           currentStroke.current = [];
         },

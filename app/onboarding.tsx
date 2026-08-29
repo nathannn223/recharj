@@ -11,18 +11,27 @@ import { PAIN_TYPES } from '@/lib/painTypes';
 import { readAndClearPendingOnboarding } from '@/lib/pendingOnboarding';
 import { supabase } from '@/lib/supabase';
 
+const STEP = { THANKS: 0, COURSE: 1 } as const;
+
 // Signup, and the quiz/recap/trial screens that lead to it, all happen
 // before an account exists (see app/(auth)/index.tsx). This screen runs
-// right after — the account is real now — and has one job: match the free
-// course to the pain point the user picked, grant it on their profile, and
-// hand them a single clean "go" moment into the app, regardless of whether
-// they started the trial or skipped it on the previous screen.
+// right after — the account is real now — and has two jobs: match the free
+// course to the pain point the user picked and grant it on their profile,
+// then hand them a single clean "go" moment into the app. The course is
+// named explicitly on its own screen before the actual navigation happens
+// (STEP.COURSE) rather than jumping straight there — a silent redirect
+// that resolves to nothing visible reads as "nothing happened" when it
+// fails, whereas naming the course first makes a successful resolution
+// obvious and a failed one diagnosable instead of just quietly landing on
+// the dashboard.
 export default function OnboardingWelcomeScreen() {
   const { session } = useAuth();
   const { markSeen } = useOnboarding();
 
+  const [step, setStep] = useState<number>(STEP.THANKS);
   const [preparing, setPreparing] = useState(true);
   const [freeCourseId, setFreeCourseId] = useState<string | null>(null);
+  const [courseTitle, setCourseTitle] = useState<string | null>(null);
 
   useEffect(() => {
     if (!session) return;
@@ -93,20 +102,19 @@ export default function OnboardingWelcomeScreen() {
       }
 
       // Confirm the grant actually landed before promising direct entry
-      // into it. A course reached this way is either free_tier_included
-      // (always accessible, nothing to confirm) or depends entirely on
-      // profiles.free_course_id having been written — and a silent write
-      // failure has broken exactly that column before (see migration 012
-      // above). Re-reading it here turns a broken grant into "land on the
-      // dashboard" instead of the locked-course paywall surprising the
-      // user straight after signup.
+      // into it, and fetch the title in the same pass — the COURSE screen
+      // needs it to name the course, and a title that fails to resolve here
+      // is itself the signal that the grant isn't real.
+      let resolvedTitle: string | null = null;
       if (resolvedFreeCourseId) {
         const { data: resolvedCourse } = await supabase
           .from('courses')
-          .select('free_tier_included')
+          .select('title, free_tier_included')
           .eq('id', resolvedFreeCourseId)
           .maybeSingle();
-        if (!resolvedCourse?.free_tier_included) {
+        if (!resolvedCourse) {
+          resolvedFreeCourseId = null;
+        } else if (!resolvedCourse.free_tier_included) {
           const { data: confirmProfile } = await supabase
             .from('profiles')
             .select('free_course_id')
@@ -114,12 +122,17 @@ export default function OnboardingWelcomeScreen() {
             .maybeSingle();
           if (confirmProfile?.free_course_id !== resolvedFreeCourseId) {
             resolvedFreeCourseId = null;
+          } else {
+            resolvedTitle = resolvedCourse.title;
           }
+        } else {
+          resolvedTitle = resolvedCourse.title;
         }
       }
 
       if (cancelled) return;
       setFreeCourseId(resolvedFreeCourseId);
+      setCourseTitle(resolvedTitle);
       setPreparing(false);
     }
 
@@ -132,7 +145,19 @@ export default function OnboardingWelcomeScreen() {
     };
   }, [session]);
 
-  const start = async () => {
+  // From THANKS: if a course genuinely resolved, show it by name before
+  // navigating anywhere; otherwise there's nothing to reveal, so go
+  // straight to the dashboard exactly like the explicit skip button does.
+  const goNext = async () => {
+    if (freeCourseId && courseTitle) {
+      setStep(STEP.COURSE);
+    } else {
+      await markSeen();
+      router.replace('/(tabs)');
+    }
+  };
+
+  const enterCourse = async () => {
     await markSeen();
     router.replace(freeCourseId ? `/course/${freeCourseId}` : '/(tabs)');
   };
@@ -150,12 +175,31 @@ export default function OnboardingWelcomeScreen() {
     );
   }
 
+  if (step === STEP.COURSE) {
+    return (
+      <SafeAreaView style={styles.screen} edges={['top']}>
+        <View style={[styles.content, styles.centered]}>
+          <Text style={styles.eyebrow}>Ton premier cours</Text>
+          <Text style={styles.title}>{courseTitle}</Text>
+          <Pressable onPress={enterCourse} style={{ alignSelf: 'stretch', marginTop: spacing[6] }}>
+            <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.startBtn}>
+              <Text style={styles.startBtnText}>C'est parti</Text>
+            </LinearGradient>
+          </Pressable>
+          <Pressable onPress={goToDashboard} style={styles.dashboardBtn}>
+            <Text style={styles.dashboardText}>Aller sur le dashboard</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <View style={[styles.content, styles.centered]}>
         <Text style={styles.title}>Merci de nous faire confiance.</Text>
         <Text style={styles.tagline}>Tu peux découvrir ton premier cours dès maintenant.</Text>
-        <Pressable onPress={start} style={{ alignSelf: 'stretch', marginTop: spacing[6] }}>
+        <Pressable onPress={goNext} style={{ alignSelf: 'stretch', marginTop: spacing[6] }}>
           <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.startBtn}>
             <Text style={styles.startBtnText}>C'est parti !</Text>
           </LinearGradient>
@@ -173,7 +217,8 @@ const styles = StyleSheet.create({
   centered: { alignItems: 'center', justifyContent: 'center' },
   content: { flex: 1, padding: spacing[6] },
 
-  title: { fontFamily: fontFamily.displayBold, fontSize: 28, color: colors.text, lineHeight: 34, textAlign: 'center' },
+  eyebrow: { fontFamily: fontFamily.textBold, fontSize: 12, color: colors.coral, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center' },
+  title: { fontFamily: fontFamily.displayBold, fontSize: 28, color: colors.text, lineHeight: 34, textAlign: 'center', marginTop: spacing[3] },
   tagline: { fontFamily: fontFamily.textRegular, fontSize: 17, color: colors.textDim, lineHeight: 24, textAlign: 'center', marginTop: spacing[3] },
 
   startBtn: { borderRadius: radii.md, paddingVertical: 17, alignItems: 'center' },

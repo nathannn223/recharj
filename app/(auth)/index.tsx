@@ -4,7 +4,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { useRef, useState } from 'react';
 import { Animated, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Defs, LinearGradient as SvgLinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
 import { BatteryGauge } from '@/components/BatteryGauge';
 import {
@@ -17,7 +17,6 @@ import {
   HeartIcon,
   LockIcon,
   MoonIcon,
-  ShieldIcon,
   StarIcon,
   SunIcon,
   UserIcon,
@@ -329,7 +328,11 @@ export default function AuthScreen() {
     );
   }
 
-  const batteryLevel = batteryLevelForStep(step);
+  // The RECAP screen is the one place the top gauge shows the real
+  // identified state instead of the "always full past MOMENT" placeholder
+  // — it's the whole point of that screen, so the battery it shows here
+  // finally means something again.
+  const batteryLevel = step === STEP.RECAP && score !== null ? score * 10 : batteryLevelForStep(step);
   const isCustomFooterStep = step === STEP.NOTIFICATIONS || step === STEP.TRIAL;
 
   return (
@@ -446,8 +449,7 @@ export default function AuthScreen() {
 
           {step === STEP.AUTHORITY && (
             <View style={styles.hero}>
-              <IllustrationBadge icon={<ShieldIcon color={colors.lime} size={40} />} accent={colors.lime} size={92} />
-              <Text style={styles.brandWord}>RECHARJ</Text>
+              <Text style={styles.brandWordBig}>RECHARJ</Text>
               <Text style={styles.title}>N'est pas une app de plus.</Text>
               <Text style={styles.tagline}>Conçu pour les introvertis.</Text>
               <Text style={styles.tagline}>Basé sur de vraies études.</Text>
@@ -468,8 +470,7 @@ export default function AuthScreen() {
 
           {step === STEP.NOTIFICATIONS && (
             <View style={styles.hero}>
-              <Text style={styles.eyebrow}>Reste sur la bonne voie</Text>
-              <Text style={styles.title}>Profite au maximum de Recharj</Text>
+              <Text style={styles.notifHeroTitle}>Profite au maximum de Recharj</Text>
               <Text style={styles.tagline}>Autorise les notifications pour rester régulier.</Text>
               <NotificationMock momentLabel={momentLabel ?? 'ce soir'} />
             </View>
@@ -508,15 +509,19 @@ export default function AuthScreen() {
           {step === STEP.RECAP && (
             <View style={styles.hero}>
               <Text style={styles.eyebrow}>Voici ce que Recharj a identifié</Text>
-              <View style={styles.gaugeWrap}>
-                <BatteryGauge level={score !== null ? score * 10 : 50} size="lg" />
+              <View style={styles.recapLines}>
+                <Text style={styles.recapBig}>
+                  Ton point faible : <Text style={styles.recapHlCoral}>{pain ? pain.label.toLowerCase() : 'ça'}</Text>.
+                </Text>
+                <Text style={styles.recapBig}>
+                  Ça revient <Text style={styles.recapHlViolet}>{frequencyIndex !== null ? EVENT_FREQUENCY_OPTIONS[frequencyIndex].toLowerCase() : 'souvent'}</Text>,
+                  surtout <Text style={styles.recapHlViolet}>{momentLabel?.toLowerCase()}</Text>.
+                </Text>
+                <Text style={styles.recapBig}>
+                  Tu récupères mieux grâce à{' '}
+                  <Text style={styles.recapHlLime}>{rechargeIndex !== null ? RECHARGE_OPTIONS[rechargeIndex].toLowerCase() : 'ce qui te fait du bien'}</Text>.
+                </Text>
               </View>
-              <Text style={styles.recapParagraph}>
-                {firstName ? `${firstName}, tu` : 'Tu'} pars d'un score de {score}/10, et {pain ? pain.label.toLowerCase() : 'ça'} est ce
-                qui te coûte le plus d'énergie aujourd'hui. Cette fatigue est plus forte {momentLabel?.toLowerCase()}, et revient{' '}
-                {frequencyIndex !== null ? EVENT_FREQUENCY_OPTIONS[frequencyIndex].toLowerCase() : 'souvent'}. Recharj va t'aider à
-                l'anticiper, et à récupérer grâce à {rechargeIndex !== null ? RECHARGE_OPTIONS[rechargeIndex].toLowerCase() : 'ce qui te fait du bien'}.
-              </Text>
             </View>
           )}
 
@@ -659,35 +664,74 @@ export default function AuthScreen() {
 // daily habit — filling in a day — instead of describing it. Nothing here
 // is wired to real data (this runs before signup); tapping just proves out
 // the payoff the real check-in delivers every night.
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+const HOLD_DURATION = 1800;
+const RING_SIZE = 120;
+const RING_RADIUS = 52;
+const RING_STROKE = 6;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+
+// Requires holding, not tapping — a single tap doesn't carry the same
+// "effort → payoff" feeling a real nightly check-in does, and it's that
+// feeling this demo exists to give a preview of, not just the end state.
 function StreakDemo() {
   const [lit, setLit] = useState(false);
+  const fill = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(1)).current;
   const glow = useRef(new Animated.Value(0)).current;
+  const holdAnim = useRef<Animated.CompositeAnimation | null>(null);
 
-  const fillDay = () => {
+  const startHold = () => {
     if (lit) return;
-    setLit(true);
-    Animated.parallel([
-      Animated.sequence([
-        Animated.spring(scale, { toValue: 1.35, useNativeDriver: true, speed: 24, bounciness: 14 }),
-        Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 16, bounciness: 8 }),
-      ]),
-      Animated.timing(glow, { toValue: 1, duration: 450, useNativeDriver: true }),
-    ]).start();
+    holdAnim.current = Animated.timing(fill, { toValue: 1, duration: HOLD_DURATION, useNativeDriver: false });
+    holdAnim.current.start(({ finished }) => {
+      if (!finished) return;
+      setLit(true);
+      Animated.parallel([
+        Animated.sequence([
+          Animated.spring(scale, { toValue: 1.35, useNativeDriver: true, speed: 24, bounciness: 14 }),
+          Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 16, bounciness: 8 }),
+        ]),
+        Animated.timing(glow, { toValue: 1, duration: 450, useNativeDriver: true }),
+      ]).start();
+    });
+  };
+
+  const cancelHold = () => {
+    if (lit) return;
+    holdAnim.current?.stop();
+    Animated.timing(fill, { toValue: 0, duration: 250, useNativeDriver: false }).start();
   };
 
   const glowOpacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0, 0.35] });
+  const strokeDashoffset = fill.interpolate({ inputRange: [0, 1], outputRange: [RING_CIRCUMFERENCE, 0] });
 
   return (
     <View style={{ alignItems: 'center' }}>
-      <Pressable onPress={fillDay} hitSlop={16}>
+      <Pressable onPressIn={startHold} onPressOut={cancelHold} hitSlop={16} disabled={lit}>
         <Animated.View style={[styles.flameWrap, lit && styles.flameWrapLit, { transform: [{ scale }] }]}>
           {lit && <Animated.View pointerEvents="none" style={[styles.flameGlow, { opacity: glowOpacity }]} />}
+          <Svg width={RING_SIZE} height={RING_SIZE} style={[StyleSheet.absoluteFill, { transform: [{ rotate: '-90deg' }] }]}>
+            <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={RING_RADIUS} stroke={colors.borderSoft} strokeWidth={RING_STROKE} fill="none" />
+            {!lit && (
+              <AnimatedCircle
+                cx={RING_SIZE / 2}
+                cy={RING_SIZE / 2}
+                r={RING_RADIUS}
+                stroke={colors.coral}
+                strokeWidth={RING_STROKE}
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray={`${RING_CIRCUMFERENCE} ${RING_CIRCUMFERENCE}`}
+                strokeDashoffset={strokeDashoffset}
+              />
+            )}
+          </Svg>
           <FlameIcon color={lit ? colors.coral : colors.textFaint} size={56} />
         </Animated.View>
       </Pressable>
       <Text style={styles.title}>{lit ? 'Ta série a commencé.' : 'Chaque soir, fais le point.'}</Text>
-      <Text style={styles.tagline}>{lit ? "Reviens chaque jour pour l'entretenir." : 'Touche la flamme pour remplir ta journée.'}</Text>
+      <Text style={styles.tagline}>{lit ? "Reviens chaque jour pour l'entretenir." : 'Reste appuyé pour remplir ta journée.'}</Text>
     </View>
   );
 }
@@ -789,7 +833,8 @@ const styles = StyleSheet.create({
   title: { fontFamily: fontFamily.displayBold, fontSize: 30, color: colors.text, textAlign: 'center', lineHeight: 36 },
   tagline: { fontFamily: fontFamily.textRegular, fontSize: 17, color: colors.textDim, textAlign: 'center', lineHeight: 24, maxWidth: 320 },
   eyebrow: { fontFamily: fontFamily.textBold, fontSize: 12, color: colors.coral, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center' },
-  brandWord: { fontFamily: fontFamily.displayBold, fontSize: 20, color: colors.lime, letterSpacing: 4, textAlign: 'center', marginTop: spacing[1] },
+  notifHeroTitle: { fontFamily: fontFamily.displayBold, fontSize: 34, color: colors.coral, textAlign: 'center', lineHeight: 40 },
+  brandWordBig: { fontFamily: fontFamily.displayBold, fontSize: 40, color: colors.lime, letterSpacing: 5, textAlign: 'center' },
 
   question: {},
   withIllustration: { marginTop: spacing[4] },
@@ -854,8 +899,11 @@ const styles = StyleSheet.create({
   notifCardTitle: { fontFamily: fontFamily.textBold, fontSize: 15, color: colors.text, marginTop: 4 },
   notifCardBody: { fontFamily: fontFamily.textRegular, fontSize: 14, color: colors.textDim, lineHeight: 19 },
 
-  gaugeWrap: { alignSelf: 'stretch', paddingHorizontal: spacing[2], marginTop: spacing[2] },
-  recapParagraph: { fontFamily: fontFamily.textRegular, fontSize: 16, color: colors.textDim, lineHeight: 24, textAlign: 'center', marginTop: spacing[2] },
+  recapLines: { gap: spacing[4], marginTop: spacing[3] },
+  recapBig: { fontFamily: fontFamily.textSemiBold, fontSize: 21, color: colors.textDim, textAlign: 'center', lineHeight: 28 },
+  recapHlCoral: { color: colors.coral, fontFamily: fontFamily.displaySemiBold },
+  recapHlViolet: { color: colors.violetSoft, fontFamily: fontFamily.displaySemiBold },
+  recapHlLime: { color: colors.lime, fontFamily: fontFamily.displaySemiBold },
 
   trial: { gap: spacing[6] },
   timeline: { marginTop: spacing[2] },
