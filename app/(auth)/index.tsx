@@ -28,6 +28,7 @@ import { chargeGradient, colors, fontFamily, radii, spacing } from '@/constants/
 import { useAuth } from '@/lib/auth';
 import { PRIVACY_URL, TERMS_URL } from '@/lib/legal';
 import { MOMENT_OPTIONS } from '@/lib/momentOfDay';
+import { scheduleLowBatteryReminder } from '@/lib/notifications';
 import { OBSTACLES } from '@/lib/obstacles';
 import { useOnboarding } from '@/lib/onboarding';
 import { PAIN_TYPES } from '@/lib/painTypes';
@@ -257,10 +258,13 @@ export default function AuthScreen() {
 
   const requestNotifications = async () => {
     try {
-      await Notifications.requestPermissionsAsync();
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status === 'granted') {
+        await scheduleLowBatteryReminder(momentLabel ?? 'Le soir');
+      }
     } catch {
-      // Permission prompt failing (simulator, already denied at OS level,
-      // etc.) should never block onboarding — just move on.
+      // Permission prompt or scheduling failing (simulator, already denied
+      // at OS level, etc.) should never block onboarding — just move on.
     }
     setStep((s) => s + 1);
   };

@@ -9,7 +9,7 @@ import { CheckIcon, CloseIcon, LockIcon } from '@/components/icons/Icon';
 import { chargeGradient, colors, fontFamily, radii, spacing } from '@/constants/theme';
 import { PRIVACY_URL, TERMS_URL } from '@/lib/legal';
 import { safeBack } from '@/lib/navigation';
-import { PLANS, RENEWAL_TEXT, type Plan } from '@/lib/plans';
+import { PLANS, TRIAL_DAYS, TRIAL_RENEWAL_TEXT, type Plan } from '@/lib/plans';
 import { supabase } from '@/lib/supabase';
 
 const PERKS = ['Bibliothèque complète', 'Projection illimitée', 'Cours liés à tes événements'];
@@ -93,6 +93,9 @@ export default function PaywallScreen() {
                       <Text style={styles.badgeText}>{plan.badge}</Text>
                     </View>
                   )}
+                  <View style={styles.trialBadge}>
+                    <Text style={styles.trialBadgeText}>{TRIAL_DAYS} jours offerts</Text>
+                  </View>
                   <View style={styles.planRow}>
                     <View style={[styles.radio, isSelected && styles.radioSelected]} />
                     <Text style={styles.planName}>{plan.name}</Text>
@@ -111,12 +114,17 @@ export default function PaywallScreen() {
             })}
           </View>
 
+          {/* TODO: this always offers the trial, because there's no
+              purchase history yet to check against. Once RevenueCat is
+              wired, gate this on trial eligibility so a user who already
+              consumed their 7 days from the onboarding offer sees the
+              regular renewal text instead. */}
           <Pressable onPress={() => safeBack()}>
             <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.submitBtn}>
-              <Text style={styles.submitText}>{preview ? 'Débloquer ce cours' : 'Devenir Premium'}</Text>
+              <Text style={styles.submitText}>{preview ? 'Débloquer ce cours' : "Commencer mon essai gratuit"}</Text>
             </LinearGradient>
           </Pressable>
-          <Text style={styles.footnote}>{RENEWAL_TEXT[selected]} Gérable dans les réglages de ton compte App Store.</Text>
+          <Text style={styles.footnote}>{TRIAL_RENEWAL_TEXT[selected]} Gérable dans les réglages de ton compte App Store.</Text>
           <View style={styles.legalRow}>
             <Pressable onPress={restorePurchases}>
               <Text style={styles.legalLink}>Restaurer mes achats</Text>
@@ -185,6 +193,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   badgeText: { fontFamily: fontFamily.textBold, fontSize: 11, color: colors.surfaceScreen, letterSpacing: 0.4 },
+  trialBadge: { alignSelf: 'flex-start', backgroundColor: colors.lime, borderRadius: radii.pill, paddingVertical: 3, paddingHorizontal: 10, marginBottom: 2 },
+  trialBadgeText: { fontFamily: fontFamily.textBold, fontSize: 11, color: colors.surfaceScreen, letterSpacing: 0.3 },
   planName: { fontFamily: fontFamily.textBold, fontSize: 16, color: colors.text },
   planPrice: { fontFamily: fontFamily.displaySemiBold, fontSize: 20, color: colors.text },
   planPriceUnit: { fontFamily: fontFamily.textMedium, fontSize: 13, color: colors.textDim },

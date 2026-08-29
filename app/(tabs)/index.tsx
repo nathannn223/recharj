@@ -78,6 +78,10 @@ export default function DashboardScreen() {
     return () => {
       cancelled = true;
     };
+    // difficultEvent is a fresh object every render (derived via .find()
+    // above); depending on it directly would refetch on every render
+    // instead of only when the underlying event actually changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [difficultEvent?.id]);
 
   return (

@@ -771,3 +771,64 @@ cours) ou aucun cours du tout.
 **Vérifié.** `npx tsc --noEmit` propre.
 
 **Fichiers touchés.** modifié : `app/onboarding.tsx`
+
+---
+
+### 2026-08-29 — Chantier 8 : EAS Build, essai gratuit sur le paywall classique, notification réelle, linter
+
+**Contexte.** Suite à « fais tout » sur les trois pistes proposées après le
+chantier 7, plus le commit du chantier onboarding (5-7) qui était resté en
+attente jusqu'ici.
+
+**Fait.**
+
+1. **Commit du chantier onboarding** (5 à 7, 14 fichiers, resté non commité
+   depuis plusieurs tours de conversation — risque de perte de travail
+   réel, corrigé en premier).
+2. **`eas.json`** (nouveau) : profils `development` / `preview` /
+   `production` standards. **`expo.extra.eas.projectId` n'est PAS
+   configuré** — ça nécessite `eas login` (compte Expo de l'utilisateur) et
+   `eas init`, que je ne peux pas exécuter à sa place. Reste une étape
+   manuelle avant le premier vrai build.
+3. **Notification planifiée réelle** (`lib/notifications.ts`, nouveau) :
+   `scheduleLowBatteryReminder(momentLabel)` programme un rappel local
+   quotidien (`Notifications.scheduleNotificationAsync`, trigger `DAILY`) à
+   une heure dérivée de la réponse à la question du moment de la journée
+   (matin 8h / après-midi 14h / soir 19h / nuit 22h), avec le canal Android
+   requis. Appelée depuis `STEP.NOTIFICATIONS`
+   (`app/(auth)/index.tsx`) seulement si la permission est réellement
+   accordée. Un handler global (`Notifications.setNotificationHandler`)
+   ajouté dans `app/_layout.tsx` pour que la notif s'affiche normalement si
+   l'app est déjà ouverte au moment où elle se déclenche.
+4. **Paywall classique** (`app/paywall.tsx`) : mentionne maintenant l'essai
+   gratuit comme l'écran d'onboarding — badge « 7 jours offerts » sur
+   chaque plan, CTA « Commencer mon essai gratuit » (au lieu de « Devenir
+   Premium »), texte de renouvellement basé sur `TRIAL_RENEWAL_TEXT`
+   (`lib/plans.ts`, déjà partagé). TODO explicite ajouté : ceci offre
+   l'essai à tout le monde sans condition, faute de pouvoir vérifier s'il a
+   déjà été consommé — à corriger une fois RevenueCat branché.
+5. **Linter** : `npx expo lint` (config Expo SDK 54 recommandée,
+   `eslint-config-expo`, format flat). Désactivé `react/no-unescaped-entities`
+   (bruyant sur une app entièrement en français, où l'apostrophe simple est
+   partout — pas un vrai bug). Corrigé au passage : import `Link` inutilisé
+   dans `app/course/[id].tsx`, dépendance manquante d'un `useEffect` dans
+   `app/(tabs)/index.tsx` documentée comme volontaire (dépendre de l'objet
+   entier au lieu de son `id` aurait refait l'appel à chaque rendu).
+
+**Vérifié.** `npx tsc --noEmit` propre, `npx jest --watchAll=false` : 21/21,
+`npx expo lint` : aucune erreur.
+
+**Non fait / reste à la charge de l'utilisateur.**
+
+- `eas login` + `eas init` pour obtenir un vrai `projectId` EAS.
+- RevenueCat + compte Apple Developer (bloqué comme avant).
+- Vérifier sur appareil réel que la notification planifiée se déclenche
+  bien à l'heure attendue (impossible à tester depuis cette session).
+
+**Fichiers touchés.**
+
+- créé : `eas.json`, `lib/notifications.ts`, `eslint.config.js` (généré par
+  `expo lint`)
+- modifié : `app/paywall.tsx`, `app/(auth)/index.tsx`, `app/_layout.tsx`,
+  `app/course/[id].tsx`, `app/(tabs)/index.tsx`, `package.json` (script
+  `lint` + deps `eslint`/`eslint-config-expo`)

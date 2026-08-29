@@ -1,6 +1,7 @@
 import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
+import * as Notifications from 'expo-notifications';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -26,6 +27,19 @@ import { OnboardingProvider, useOnboarding } from '@/lib/onboarding';
 export { ErrorBoundary } from 'expo-router';
 
 SplashScreen.preventAutoHideAsync();
+
+// Governs how the daily low-battery reminder (lib/notifications.ts) behaves
+// if it fires while the app is already open — shown as a normal banner
+// instead of being silently swallowed, which is expo-notifications' default
+// foreground behavior without an explicit handler.
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
+  }),
+});
 
 const navTheme = {
   ...DarkTheme,
