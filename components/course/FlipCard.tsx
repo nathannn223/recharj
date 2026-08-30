@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BoltIcon, ChevronRightIcon } from '@/components/icons/Icon';
@@ -17,6 +18,7 @@ type Props = {
 // tapping flips it to reveal the advice on the back. Mounted fresh per
 // card (parent keys it by index) so it always starts front-side-up.
 export function FlipCard({ card, index, total, sourceLabel, onSourcePress }: Props) {
+  const { t } = useTranslation();
   const [flipped, setFlipped] = useState(false);
   const flip = useRef(new Animated.Value(0)).current;
 
@@ -47,11 +49,9 @@ export function FlipCard({ card, index, total, sourceLabel, onSourcePress }: Pro
         <View style={styles.accentBolt}>
           <BoltIcon color={colors.surfaceScreen} size={20} />
         </View>
-        <Text style={styles.eyebrow}>
-          Carte {index + 1}/{total}
-        </Text>
+        <Text style={styles.eyebrow}>{t('course.cardLabel', { index: index + 1, total })}</Text>
         <Text style={styles.frontTitle}>{card.title}</Text>
-        <Text style={styles.hint}>Touche la carte pour voir le conseil</Text>
+        <Text style={styles.hint}>{t('course.flipHint')}</Text>
       </Animated.View>
 
       <Animated.View
@@ -65,7 +65,7 @@ export function FlipCard({ card, index, total, sourceLabel, onSourcePress }: Pro
         <Text style={styles.advice}>{card.advice}</Text>
         {sourceLabel && (
           <Pressable onPress={onSourcePress} style={styles.sourceLink} hitSlop={8}>
-            <Text style={styles.sourceLinkText}>Source : {sourceLabel}</Text>
+            <Text style={styles.sourceLinkText}>{t('course.sourceLabel', { label: sourceLabel })}</Text>
             <ChevronRightIcon color={colors.violetSoft} size={14} />
           </Pressable>
         )}

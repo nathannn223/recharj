@@ -3,6 +3,11 @@
 // need no manual SQL escaping), then serialized to INSERT statements.
 // Re-read the generated SQL before running it, per
 // consignes-implementation-cours.md's own recommendation for this step.
+//
+// Bilingual: every course carries both `title`/`content` (French) and
+// `title_en`/`content_en` (English) — see migration 014. Consumers pick
+// one or the other based on i18n.language (lib/courses.ts's
+// localizedCourseTitle/localizedCourseContent).
 
 import { writeFileSync } from 'node:fs';
 
@@ -11,7 +16,7 @@ const C = (n) => `b0000000-0000-0000-0000-${String(n).padStart(12, '0')}`;
 
 const courses = [
   {
-    id: C(1), slug: 'demarrer-conversation', title: 'Démarrer une conversation',
+    id: C(1), slug: 'demarrer-conversation', title: 'Démarrer une conversation', title_en: 'Starting a conversation',
     order_index: 1, tags: ['conversation', 'debuter'], free_tier_included: true,
     level: 1, parent_course_id: null, required_tier: 'free',
     content: {
@@ -36,9 +41,31 @@ const courses = [
       },
       personalization: { condition: '<=4', reorderCardIndexFirst: 0 },
     },
+    content_en: {
+      hook: "You're at a party. You see a small group laughing near the buffet. Your brain whispers: \"They look busy, don't bother.\" Your body freezes. Almost every introvert knows this scene. What your brain just told you is scientifically predictable. One study showed it's wrong every single time.",
+      diagnostic: { kind: 'slider', question: "How comfortable do you feel approaching someone you don't know?", min: 1, max: 10, minLabel: 'Terrified', maxLabel: 'No problem at all' },
+      cards: [
+        { title: 'The liking gap', advice: 'The person in front of you almost always came away from the exchange feeling better about it than you imagine afterward.', sourceId: S(1) },
+        { title: 'The FORD method', advice: "When you don't know what to say, think Family, Occupation, Recreation, Dreams: the 4 topics that open a conversation naturally.", sourceId: S(2) },
+        { title: 'Open question, not closed', advice: '"What brings you here tonight?" gives real room to answer; "Having fun?" kills the conversation in one word.', sourceId: S(3) },
+        { title: 'The context comment', advice: 'The simplest way to start: comment on what\'s around you, here and now.', sourceId: S(2) },
+        { title: 'Ask, then actually stay quiet', advice: "Really listen to the answer, don't already be preparing your next line.", sourceId: S(4) },
+        { title: 'Recap', advice: 'Context or FORD to open, an open question to leave room, the liking gap to reassure yourself.', sourceId: null },
+      ],
+      exercise: {
+        kind: 'predict-compare',
+        prompt: 'Coffee line, 10 seconds before your turn. What would you say?',
+        examples: [
+          '"This coffee shop looks really popular, do you come here often?" (context comment)',
+          '"Do you work around here?" (FORD, occupation)',
+          '"What do you recommend here?" (open question)',
+        ],
+      },
+      personalization: { condition: '<=4', reorderCardIndexFirst: 0 },
+    },
   },
   {
-    id: C(2), slug: 'gerer-silence-genant', title: 'Gérer un silence gênant',
+    id: C(2), slug: 'gerer-silence-genant', title: 'Gérer un silence gênant', title_en: 'Handling an awkward silence',
     order_index: 2, tags: ['conversation'], free_tier_included: false,
     level: 1, parent_course_id: null, required_tier: 'premium',
     content: {
@@ -62,9 +89,30 @@ const courses = [
       },
       personalization: { condition: '>=7', reorderCardIndexFirst: 0 },
     },
+    content_en: {
+      hook: "You're one-on-one, the conversation slows, then stops. Three seconds pass. Your heart races, you desperately search for something, anything, to say. This discomfort has a precise explanation: researchers measured, down to a tenth of a second, exactly when a silence starts to hurt, and why.",
+      diagnostic: { kind: 'slider', question: 'How uncomfortable does a few seconds of silence in a conversation make you?', min: 1, max: 10, minLabel: 'Not at all', maxLabel: 'Total panic' },
+      cards: [
+        { title: 'The silence threatens a specific need, not your ego', advice: "A few seconds of silence between strangers activates a specific social worry, the need to belong, not a real judgment of you. Understanding that is often enough to lower the panic.", sourceId: S(5) },
+        { title: 'The threshold is about 4 seconds', advice: 'Below that, a silence goes completely unnoticed. Mentally counting "one, two, three" before reacting keeps you from filling a gap that, for the other person, didn\'t exist yet.', sourceId: S(5) },
+        { title: 'The "callback" follow-up', advice: 'Bring up a detail mentioned 2 minutes earlier ("You were saying earlier that..."): it\'s the most natural way back in, it doesn\'t come out of nowhere.', sourceId: S(2) },
+        { title: "A silence isn't always something to fill", advice: "Once the relationship is established, silence stops being read negatively. It can even become a sign of mutual comfort: it's the stage of the relationship that explains this discomfort with a stranger, not your social skill.", sourceId: S(6) },
+        { title: 'Recap', advice: "Silence threatens a specific need (not your worth), the real discomfort threshold is shorter than you think you need to fill, the callback is your most reliable way back in.", sourceId: null },
+      ],
+      exercise: {
+        kind: 'mcq-nuanced',
+        prompt: 'A 5-second silence just settled in during coffee with a recent acquaintance. Which of these follow-ups works best?',
+        options: [
+          { text: 'Bring up something she said 5 minutes earlier and ask about it', feedback: "It's the most effective: it revives a thread already underway rather than opening a topic cold or pointing out the discomfort, which would only reinforce it.", isBest: true },
+          { text: 'Comment on the weather to fill the gap immediately', feedback: 'Opening a totally new topic cold is less natural than picking up a thread already underway in the conversation.', isBest: false },
+          { text: 'Apologize for "going blank"', feedback: 'Pointing out the discomfort out loud tends to reinforce it rather than defuse it.', isBest: false },
+        ],
+      },
+      personalization: { condition: '>=7', reorderCardIndexFirst: 0 },
+    },
   },
   {
-    id: C(3), slug: 'sortir-conversation', title: "Sortir poliment d'une conversation",
+    id: C(3), slug: 'sortir-conversation', title: "Sortir poliment d'une conversation", title_en: 'Politely leaving a conversation',
     order_index: 3, tags: ['conversation'], free_tier_included: false,
     level: 1, parent_course_id: null, required_tier: 'premium',
     content: {
@@ -87,9 +135,29 @@ const courses = [
         ],
       },
     },
+    content_en: {
+      hook: "You've spent ten minutes looking for a polite way out, and haven't found one. You feel guilty at the idea of \"offending\" the other person by leaving. A study tracked thousands of real conversations to answer a simple question: who, really, wants it to end?",
+      diagnostic: { kind: 'slider', question: 'How guilty do you feel when you want to end a conversation?', min: 1, max: 10, minLabel: 'Not at all', maxLabel: 'Enormously' },
+      cards: [
+        { title: "You're almost never the only one who wants to leave", advice: 'In a study of thousands of conversations, both people agreed on the right moment to stop in fewer than 2% of cases. And nearly one conversation in three ends too late in the eyes of at least one of the two people.', sourceId: S(7) },
+        { title: "No one is tracking this as closely as you are", advice: "Researchers observed it directly: everyone keeps their wish to leave secret. The other person isn't \"counting\" your exit signals, they're probably not even looking for them.", sourceId: S(7) },
+        { title: 'The 3-step exit', advice: 'An observation ("I have to get going"), a short reason without over-justifying, a warm closing line ("Great talking to you!"). Nothing more is needed.', sourceId: S(8) },
+        { title: 'The myth of the perfect exit', advice: 'There\'s no universal "right" moment. Research shows that moment doesn\'t even exist objectively, everyone perceives it differently. Aiming for a "decent" exit rather than a "perfect" one is enough.', sourceId: S(7) },
+        { title: 'Recap', advice: 'Statistically, the other person probably also wants it to end; a 3-step exit is enough; there\'s no objective "right moment" to look for.', sourceId: null },
+      ],
+      exercise: {
+        kind: 'predict-compare',
+        prompt: "You've been stuck in a conversation for 15 minutes at an afterwork event, and you need to leave in 5 minutes. What would you say to leave politely?",
+        examples: [
+          '"I have to get going, early start tomorrow. Great talking to you!"',
+          '"I\'m going to go say hi to some other people before I head out, see you soon!"',
+          '"This was really nice, I\'m off, but let\'s catch up again soon."',
+        ],
+      },
+    },
   },
   {
-    id: C(4), slug: 'recuperer-energie', title: 'Récupérer son énergie après un événement social',
+    id: C(4), slug: 'recuperer-energie', title: 'Récupérer son énergie après un événement social', title_en: 'Recovering your energy after a social event',
     order_index: 4, tags: ['recuperation', 'energie'], free_tier_included: false,
     level: 1, parent_course_id: null, required_tier: 'premium',
     content: {
@@ -112,9 +180,29 @@ const courses = [
         ],
       },
     },
+    content_en: {
+      hook: "The event ended an hour ago. You're home, the door is closed, and yet you feel drained, almost groggy, unable to move on to anything else. This fatigue is nothing mental: it can be measured in your nervous system, and there's a precise method for recovering from it faster.",
+      diagnostic: { kind: 'slider', question: 'On a scale of 1 to 10, how socially exhausted do you feel right now?', min: 1, max: 10, minLabel: 'Not at all', maxLabel: 'Completely drained' },
+      cards: [
+        { title: 'Your nervous system, not your character', advice: 'Introverted people start from an already-higher baseline level of cortical arousal at rest; a social event pushes them past their optimal threshold faster, which triggers the fatigue. It\'s physiological, not a lack of willpower.', sourceId: S(9) },
+        { title: 'The "restorative niche"', advice: 'After acting "out of character" (smiling, making conversation, staying stimulated), the brain needs a space that matches its baseline nature to recover: quiet, reduced stimulation, alone.', sourceId: S(10) },
+        { title: 'Negotiate your recovery in advance', advice: 'Telling the people around you ("I need an hour alone when I get back") before the event even happens, rather than justifying yourself afterward, lowers the guilt and actually protects that time.', sourceId: S(10) },
+        { title: 'Active recharge, not just passive', advice: 'Not every "break" recharges the same way: a low-sensory-stimulation activity (silence, nature, reading) recharges better than one that keeps demanding attention (social media, a gripping show).', sourceId: S(9) },
+        { title: 'Recap', advice: "Post-event fatigue is physiological, not a flaw; your restorative niche needs to be planned, not improvised; not all breaks are equal.", sourceId: null },
+      ],
+      exercise: {
+        kind: 'predict-compare',
+        prompt: 'What could you put in place in the 2 hours after your next social event to recover effectively?',
+        examples: [
+          'Total silence and dim lighting for 30 minutes when you get home, no screens.',
+          'A walk alone, no podcast or music, to let your mind empty out.',
+          'Reading instead of a show or social media.',
+        ],
+      },
+    },
   },
   {
-    id: C(5), slug: 'gerer-anxiete-avant-evenement', title: "Gérer l'anxiété avant un événement",
+    id: C(5), slug: 'gerer-anxiete-avant-evenement', title: "Gérer l'anxiété avant un événement", title_en: 'Managing anxiety before an event',
     order_index: 5, tags: ['anxiete'], free_tier_included: false,
     level: 1, parent_course_id: null, required_tier: 'premium',
     content: {
@@ -133,9 +221,25 @@ const courses = [
         followUp: 'Maintenant, reformule-la comme une prédiction testable plutôt qu\'un fait ("Je prédis que... mais je ne le sais pas encore").',
       },
     },
+    content_en: {
+      hook: "The event is in three days. You're already thinking about it on a loop: what if I have nothing to say, what if it's awkward, what if... The anxiety you feel right now, before anything has even happened, has a precise name in clinical psychology. It's often this, not the event itself, that does the most damage.",
+      diagnostic: { kind: 'slider-double', questions: ['Out of 10, how anxious are you about this event, right now?', 'In your opinion, out of 10, how badly will the event actually go?'] },
+      cards: [
+        { title: 'The real culprit: "before" rumination', advice: 'The reference model in cognitive behavioral therapy for social anxiety identifies anticipatory rumination (replaying negative scenarios on a loop before the event) as a central driver that sustains anxiety, regardless of what actually happens.', sourceId: S(11) },
+        { title: 'Spot the automatic thought', advice: '"I\'m going to be awkward," "no one will want to talk to me": these are predictions, not facts. Naming them as such ("this is a thought, not a certainty") already reduces their grip.', sourceId: S(11) },
+        { title: 'Stop "rehearsing" on a loop', advice: 'The same model identifies safety behaviors (mentally rehearsing what you\'ll say, avoiding eye contact, over-preparing) as strategies that, paradoxically, sustain anxiety instead of reducing it.', sourceId: S(11) },
+        { title: 'Compare afterward', advice: 'Write down your prediction before the event, then revisit it afterward: the gap between what you feared and what actually happened is often the most convincing argument against anticipatory anxiety, more than any advice.', sourceId: S(11) },
+        { title: 'Recap', advice: '"Before" anxiety mostly comes from rumination, not the event; spot your automatic thoughts; stop over-preparing; compare prediction and reality afterward.', sourceId: null },
+      ],
+      exercise: {
+        kind: 'guided-response',
+        prompt: "Write down the thought that's looping before this event.",
+        followUp: 'Now rephrase it as a testable prediction rather than a fact ("I predict that... but I don\'t know that yet").',
+      },
+    },
   },
   {
-    id: C(6), slug: 'repondre-blanc-mental', title: 'Répondre lors d\'un blanc mental',
+    id: C(6), slug: 'repondre-blanc-mental', title: 'Répondre lors d\'un blanc mental', title_en: 'Responding during a mental blank',
     order_index: 6, tags: ['conversation'], free_tier_included: false,
     level: 1, parent_course_id: null, required_tier: 'premium',
     content: {
@@ -158,9 +262,29 @@ const courses = [
         ],
       },
     },
+    content_en: {
+      hook: "Someone just asked you a question. And nothing. Your mind is empty, the seconds stretch out, you feel the panic rising. Good news: responding \"on the spot\" without a prepared script is a specific skill, and it can be trained with methods that are already tested.",
+      diagnostic: { kind: 'slider', question: 'How much does the fear of going blank stop you from starting a conversation?', min: 1, max: 10, minLabel: 'Not at all', maxLabel: 'It blocks me completely' },
+      cards: [
+        { title: 'Aim for "good enough," not "perfect"', advice: 'Searching for the ideal answer overloads your mental bandwidth and blocks you even more. Aiming for a "sufficient" answer frees up cognitive space to simply speak.', sourceId: S(12) },
+        { title: 'Improv can be trained (and it works), with evidence', advice: 'A controlled experiment showed that people trained in improv theater, even briefly, developed better tolerance for uncertainty and measurably better emotional well-being, compared to a control group.', sourceId: S(13) },
+        { title: "Say the blank, don't hide it", advice: 'A core principle of improv: accept what\'s happening instead of fighting it. Simply saying "wait, let me think for a second" is smoother, and more human, than a frozen silence followed by panic.', sourceId: S(13) },
+        { title: 'Keep bridge phrases in reserve', advice: '"That\'s a good question, let me think about it," "that makes me think of...," "actually I hadn\'t thought about it that way": memorizing 2-3 bridge phrases buys you time without an awkward silence.', sourceId: S(12) },
+        { title: 'Recap', advice: 'Aim for "good enough" rather than perfect, train uncertainty like a skill, say the blank out loud instead of hiding it, keep bridge phrases in reserve.', sourceId: null },
+      ],
+      exercise: {
+        kind: 'predict-compare',
+        prompt: 'Someone asks "So what do you think?" about a topic you don\'t know at all. Your mind is blank. What would you say?',
+        examples: [
+          '"That\'s a good question, let me think about it for a second."',
+          '"That makes me think of... actually I hadn\'t thought about it that way before."',
+          '"Honestly I don\'t know much about this, what do you think?"',
+        ],
+      },
+    },
   },
   {
-    id: C(7), slug: 'repas-reunions-famille', title: 'Gérer les repas et réunions de famille',
+    id: C(7), slug: 'repas-reunions-famille', title: 'Gérer les repas et réunions de famille', title_en: 'Handling family meals and gatherings',
     order_index: 7, tags: ['famille', 'repas'], free_tier_included: false,
     level: 1, parent_course_id: null, required_tier: 'premium',
     content: {
@@ -183,9 +307,29 @@ const courses = [
         ],
       },
     },
+    content_en: {
+      hook: "The meal has barely started and your uncle is already making the comment about your life you were dreading. You feel your jaw tighten. What's going to happen in the next 3 minutes is, statistically, almost entirely predictable based on decades of research on how tensions start, and whether or not they escalate.",
+      diagnostic: { kind: 'slider', question: 'How much do you dread a specific topic coming up at the next family gathering?', min: 1, max: 10, minLabel: 'Not at all', maxLabel: "I'm already thinking about it on a loop" },
+      cards: [
+        { title: 'The first 3 minutes decide almost everything', advice: 'Research based on decades of filmed discussions shows that how an exchange starts predicts, with very high accuracy, how it will end. If a topic starts on an accusatory tone, defuse it right away instead of engaging with the substance.', sourceId: S(14) },
+        { title: 'The repair attempt', advice: "Families who handle tension well don't try to avoid all disagreement. They know how to defuse it along the way, with a line, a gesture, or even a touch of humor, before it escalates.", sourceId: S(14) },
+        { title: 'Change the subject without direct confrontation', advice: 'A neutral redirection ("Oh, speaking of that, did you see...") diverts the thread without openly declaring that you\'re refusing the topic. It\'s a simple de-escalation technique, proven in practice.', sourceId: S(15) },
+        { title: "You don't have to win the argument", advice: 'At a family meal, the goal is to preserve the relationship, not to be right. Letting go of the need to convince completely changes the level of tension.', sourceId: S(14) },
+        { title: 'Recap', advice: 'Defuse from the first seconds, use a repair attempt before it escalates, redirect without confronting, let go of the need to be right.', sourceId: null },
+      ],
+      exercise: {
+        kind: 'mcq-nuanced',
+        prompt: 'Your aunt makes a snide remark about one of your life choices at the table. Which of these responses best defuses it without making it worse?',
+        options: [
+          { text: 'Respond with humor and then redirect the conversation to another topic', feedback: 'Defuses without escalating or sacrificing your dignity: it\'s a genuine repair attempt.', isBest: true },
+          { text: "Explain in detail and with passion why she's wrong", feedback: 'Fuels the conflict from the first seconds instead of defusing it.', isBest: false },
+          { text: 'Ignore it completely and change your expression', feedback: 'Can be read as a sign of unresolved tension rather than a real de-escalation.', isBest: false },
+        ],
+      },
+    },
   },
   {
-    id: C(8), slug: 'amis-age-adulte', title: 'Se faire des amis à l\'âge adulte',
+    id: C(8), slug: 'amis-age-adulte', title: 'Se faire des amis à l\'âge adulte', title_en: 'Making friends as an adult',
     order_index: 8, tags: ['amitie'], free_tier_included: false,
     level: 1, parent_course_id: null, required_tier: 'premium',
     content: {
@@ -208,9 +352,29 @@ const courses = [
         ],
       },
     },
+    content_en: {
+      hook: "You look at your contacts: coworkers, acquaintances, no one to text \"just to talk.\" Making friends as an adult seems impossible. And yet, a study precisely measured how many hours it takes to turn a stranger into a friend. The answer is reassuring: cumulative time matters more than luck.",
+      diagnostic: { kind: 'slider', question: 'How socially lonely do you feel right now?', min: 1, max: 10, minLabel: 'Not at all', maxLabel: 'Enormously' },
+      cards: [
+        { title: "It's not you, it's the missing hours", advice: 'It takes about 40 to 60 hours spent together to become "casual" friends, 80 to 100 hours to become real friends, and more than 200 hours for a close friend. Adult friendship has nothing magic about it: it accumulates.', sourceId: S(16) },
+        { title: 'Repetition matters more than depth, at first', advice: 'In the early hours, it\'s repeated interactions, even short and light ones, that move the relationship forward, not a single "deep" conversation.', sourceId: S(16) },
+        { title: 'Work barely counts', advice: 'Hours spent working together contribute much less than hours of shared leisure or simple informal moments. A coworker you laugh with at break counts more, for friendship, than a shared project.', sourceId: S(16) },
+        { title: 'Aim for recurrence, not a one-off', advice: 'Joining a weekly or monthly activity (club, sport, class) accumulates the necessary hours much faster than a series of isolated meetings, even many of them.', sourceId: S(16) },
+        { title: 'Recap', advice: 'Adult friendship is a matter of accumulated hours, not luck; favor recurrence over one-off events; informal settings count more than professional ones.', sourceId: null },
+      ],
+      exercise: {
+        kind: 'free-plan',
+        prompt: 'Identify a recurring activity (weekly or monthly) you could join to build up time with the same people.',
+        examples: [
+          'A group class (sport, language, art) that happens every week.',
+          'A club or association tied to an interest you already have.',
+          'A regular game group or activity with coworkers or acquaintances.',
+        ],
+      },
+    },
   },
   {
-    id: C(9), slug: 'small-talk-travail', title: 'Gérer les petites conversations au travail (small talk)',
+    id: C(9), slug: 'small-talk-travail', title: 'Gérer les petites conversations au travail (small talk)', title_en: 'Handling small talk at work',
     order_index: 9, tags: ['travail'], free_tier_included: false,
     level: 1, parent_course_id: null, required_tier: 'premium',
     content: {
@@ -233,9 +397,29 @@ const courses = [
         ],
       },
     },
+    content_en: {
+      hook: 'The coffee machine. Again. You can already feel the "how was your weekend?" question coming, and the hollow exchange that follows. Small talk feels like a waste of time and energy to you. And yet, a study of hundreds of employees measured what it actually gives you, beyond appearances.',
+      diagnostic: { kind: 'slider', question: 'How much does small talk at work feel like a waste of time and energy to you?', min: 1, max: 10, minLabel: 'Not at all', maxLabel: 'Completely' },
+      cards: [
+        { title: "Small talk isn't superficial, it funds your day", advice: 'A study of more than 150 employees showed that daily small talk increases positive emotions and end-of-day well-being, and makes people more likely to help their coworkers.', sourceId: S(17) },
+        { title: 'But it has a real cognitive cost', advice: 'The same study shows a double effect, "uplifting yet distracting": small talk can break your focus. The solution isn\'t to avoid it, but to keep it time-boxed (2-3 minutes is enough).', sourceId: S(17) },
+        { title: "It's a ritual, not a test", advice: 'The exchange itself matters more than the depth or originality of the content, like a social ritual. That takes the pressure off having to be "interesting."', sourceId: S(17) },
+        { title: 'FORD, office edition', advice: 'Reuse the FORD method from course 1, but skip "Family" (too personal in a work setting) and favor Occupation and neutral leisure: "What are you working on these days?", "Seen any good movies lately?"', sourceId: S(2) },
+        { title: 'Recap', advice: 'Small talk genuinely improves your well-being at work, keep it time-boxed to limit its cognitive cost, and treat it as a ritual rather than a personality test.', sourceId: null },
+      ],
+      exercise: {
+        kind: 'predict-compare',
+        prompt: 'You run into a coworker at the coffee machine. What would you say to start a short, natural conversation?',
+        examples: [
+          '"What are you working on these days?"',
+          '"Seen any good movies or shows lately?"',
+          '"This machine is being temperamental today, huh?" (context comment)',
+        ],
+      },
+    },
   },
   {
-    id: C(10), slug: 'poser-limite-sociale', title: 'Poser une limite sociale sans culpabiliser',
+    id: C(10), slug: 'poser-limite-sociale', title: 'Poser une limite sociale sans culpabiliser', title_en: 'Setting a social boundary without guilt',
     order_index: 10, tags: ['limites'], free_tier_included: false,
     level: 1, parent_course_id: null, required_tier: 'premium',
     content: {
@@ -257,9 +441,28 @@ const courses = [
         ],
       },
     },
+    content_en: {
+      hook: "You just said \"yes\" to something you didn't want to do. Again. The knot in your stomach is already forming. Setting a boundary seems impossible without feeling selfish, yet a review of several controlled trials shows that this ability can be trained, with a measurable effect.",
+      diagnostic: { kind: 'slider', question: 'How guilty do you feel when you say no to a social request?', min: 1, max: 10, minLabel: 'Not at all', maxLabel: 'Enormously' },
+      cards: [
+        { title: 'It can be trained, with evidence', advice: 'A review of 12 randomized controlled trials covering more than 500 people showed that assertiveness training produces a real, measurable effect on assertive behavior and social anxiety.', sourceId: S(18) },
+        { title: 'The DESC formula', advice: "Describe the facts, Express what you feel, Specify what you're proposing, state the positive Consequences. A simple structure for setting a boundary without aggression or excessive justification.", sourceId: S(19) },
+        { title: 'Say no without justifying yourself for 5 minutes', advice: 'A short sentence is enough: "I\'m not available that evening." Over-explaining gives the other person more room to negotiate your boundary.', sourceId: S(20) },
+        { title: "Guilt isn't a sign you did something wrong", advice: "The initial discomfort after setting a boundary is normal, and it decreases with practice, as shown by the training effect in the meta-analysis. It's not a sign that you acted wrongly.", sourceId: S(18) },
+        { title: 'Recap', advice: 'Setting boundaries is a trainable, proven skill; use DESC; a short sentence is enough; initial guilt is normal and temporary.', sourceId: null },
+      ],
+      exercise: {
+        kind: 'predict-compare',
+        prompt: "You're asked to do something you don't want to do. Write your response using the DESC structure.",
+        examples: [
+          '"I\'m already booked this weekend (D). It matters to me to get some real downtime (E). Could we meet the following week instead (S)? We\'ll have more time to enjoy it (C)."',
+          '"I\'m not available that evening (D). I\'d rather be upfront than cancel later (E). I\'ll suggest another date (S), so we can actually make the most of it (C)."',
+        ],
+      },
+    },
   },
   {
-    id: C(11), slug: 'rejoindre-groupe', title: 'Rejoindre un groupe déjà en pleine conversation',
+    id: C(11), slug: 'rejoindre-groupe', title: 'Rejoindre un groupe déjà en pleine conversation', title_en: 'Joining a group already deep in conversation',
     order_index: 11, tags: ['groupe', 'conversation'], free_tier_included: false,
     level: 1, parent_course_id: null, required_tier: 'premium',
     content: {
@@ -282,9 +485,29 @@ const courses = [
         ],
       },
     },
+    content_en: {
+      hook: "You arrive at a party. A small group is already talking in a circle, animated, no one sees you. You stand off to the side, not knowing how to join in without seeming to interrupt. This exact moment has been studied in detail by researchers who analyze how groups physically organize themselves in space during a conversation.",
+      diagnostic: { kind: 'slider', question: 'How comfortable do you feel joining a group already deep in conversation?', min: 1, max: 10, minLabel: 'Terrified', maxLabel: 'No problem at all' },
+      cards: [
+        { title: 'An "open" circle is a real invitation', advice: 'Groups in conversation naturally form spatial arrangements studied in social science: a slightly open circle (not fully closed) is a recognized configuration that acts as an implicit invitation to approach. It\'s not a coincidence that some groups "leave you room" and others don\'t.', sourceId: S(25) },
+        { title: 'Position yourself before speaking', advice: 'Move toward the opening in the circle, make brief eye contact, nod slightly. Let the group visually take you in before you say anything: positioning comes before speaking.', sourceId: S(25) },
+        { title: 'Listen for 10 seconds before jumping in', advice: 'Catching the current topic avoids a "blind" entry that breaks the dynamic. Once you\'ve identified the topic, your entry feels natural instead of forced.', sourceId: S(26) },
+        { title: 'Enter with a question, not a statement', advice: 'An open question tied to what was just said ("Wait, how did you get to that?") fits in more naturally than an unrelated remark, and immediately hands the floor to someone in the group.', sourceId: S(3) },
+        { title: 'Recap', advice: 'Look for an open circle rather than a closed one, position yourself before speaking, listen a few seconds to catch the topic, enter with a question rather than a statement.', sourceId: null },
+      ],
+      exercise: {
+        kind: 'mcq-nuanced',
+        prompt: 'You spot a group of 4 people in a slightly open circle at an event. Which of these approaches works best?',
+        options: [
+          { text: 'Move toward the opening, listen for a few seconds, then ask a question tied to the current topic', feedback: 'Respects both the spatial positioning and the thread of the conversation.', isBest: true },
+          { text: 'Walk up and introduce yourself to the whole group before they finish their sentence', feedback: 'Breaks the ongoing dynamic.', isBest: false },
+          { text: 'Wait for total silence from the group before daring to approach', feedback: 'Risks never happening, since total silence is rare in an animated group.', isBest: false },
+        ],
+      },
+    },
   },
   {
-    id: C(12), slug: 'ecouter-vraiment', title: 'Écouter pour de vrai',
+    id: C(12), slug: 'ecouter-vraiment', title: 'Écouter pour de vrai', title_en: 'Really listening',
     order_index: 12, tags: ['ecoute'], free_tier_included: false,
     level: 1, parent_course_id: null, required_tier: 'premium',
     content: {
@@ -307,9 +530,29 @@ const courses = [
         ],
       },
     },
+    content_en: {
+      hook: "A friend is telling you about their day. You nod, but part of you is already preparing what you're going to say back. You're only half listening, and they can probably tell too. Several lab studies have measured what changes, in the person speaking, when they feel truly listened to.",
+      diagnostic: { kind: 'slider', question: 'How much are you already thinking about your response while the other person is talking?', min: 1, max: 10, minLabel: 'Never', maxLabel: 'Almost always' },
+      cards: [
+        { title: 'Listening changes the other person, not just you', advice: 'High-quality listening (empathetic, attentive, non-judgmental) measurably reduces the social anxiety and defensiveness of the person speaking, across several controlled lab experiments.', sourceId: S(27) },
+        { title: 'The 3 ingredients of good listening', advice: 'Researchers identify three key components: empathy, real attention, and the absence of judgment. Removing just one of the three is enough to reduce the effect.', sourceId: S(27) },
+        { title: 'It also makes you more likeable', advice: 'People who feel well listened to report a stronger sense of connection to the person they\'re talking with. Listening well benefits you too, it\'s not just a social sacrifice.', sourceId: S(27) },
+        { title: 'The reflection technique', advice: 'Before responding or giving your opinion, briefly rephrase what you just heard ("if I understand right, what\'s frustrating you most is..."): it forces real listening and shows the other person they were heard.', sourceId: S(28) },
+        { title: 'Recap', advice: "Quality listening reduces the speaker's anxiety, rests on 3 precise ingredients (empathy, attention, non-judgment), and makes you more likeable yourself.", sourceId: null },
+      ],
+      exercise: {
+        kind: 'predict-compare',
+        prompt: 'A friend shares a problem with you. What would you say right after they finish talking?',
+        examples: [
+          '"If I understand right, what\'s weighing on you most is... is that it?"',
+          '"That sounds really hard to go through, thanks for telling me."',
+          '"Wait, so concretely, is it more X or Y that\'s bothering you?"',
+        ],
+      },
+    },
   },
   {
-    id: C(13), slug: 'rejet-social', title: 'Le rejet social, ça fait vraiment mal',
+    id: C(13), slug: 'rejet-social', title: 'Le rejet social, ça fait vraiment mal', title_en: 'Social rejection really does hurt',
     order_index: 13, tags: ['rejet'], free_tier_included: false,
     level: 1, parent_course_id: null, required_tier: 'premium',
     content: {
@@ -328,9 +571,25 @@ const courses = [
         followUp: 'Réécris-la en tenant compte du fait que c\'est une douleur réelle, pas une preuve que tu as fait quelque chose de mal.',
       },
     },
+    content_en: {
+      hook: "You got ignored in a group conversation, or worse, excluded from something everyone else was invited to. The hurt feels disproportionate for \"just\" a social rejection, as if you were overreacting. A brain-imaging study showed your reaction isn't exaggerated at all: your brain literally processes it as physical pain.",
+      diagnostic: { kind: 'slider', question: 'How much does the fear of being ignored or rejected stop you from reaching out to others?', min: 1, max: 10, minLabel: 'Not at all', maxLabel: 'It blocks me completely' },
+      cards: [
+        { title: "Your brain doesn't tell the difference", advice: 'An fMRI study showed that social exclusion activates the anterior cingulate cortex, the same brain region involved in physical pain, and that this activation is correlated with the distress reported.', sourceId: S(29) },
+        { title: 'So your reaction isn\'t "exaggerated"', advice: 'This pain is neurologically real: having a strong reaction to rejection is how a normal human brain works, not a sign of oversensitivity. That removes an unnecessary layer of shame on top of the initial pain.', sourceId: S(29) },
+        { title: 'Social pain is a signal, not a sentence', advice: "Researchers describe this pain as an alarm: it signals a broken bond that needs repair, not proof that you don't deserve to belong somewhere.", sourceId: S(29) },
+        { title: 'Reconnect rather than avoid', advice: 'Systematically avoiding any situation where a new rejection might occur keeps the pain going long-term; a small step toward reconnecting, even a minor one, is more protective than complete avoidance.', sourceId: S(30) },
+        { title: 'Recap', advice: "Rejection activates a real brain pain circuit; your reaction isn't exaggerated; it's a signal to act on, not a sentence; reconnect rather than avoid.", sourceId: null },
+      ],
+      exercise: {
+        kind: 'guided-response',
+        prompt: 'Think back to a recent moment when you felt ignored or excluded. Write down the thing you told yourself about yourself in that moment.',
+        followUp: "Rewrite it knowing that this is real pain, not proof that you did something wrong.",
+      },
+    },
   },
   {
-    id: C(14), slug: 'reseauter-sans-se-forcer', title: 'Réseauter sans se forcer',
+    id: C(14), slug: 'reseauter-sans-se-forcer', title: 'Réseauter sans se forcer', title_en: 'Networking without forcing it',
     order_index: 14, tags: ['travail', 'reseau'], free_tier_included: false,
     level: 1, parent_course_id: null, required_tier: 'premium',
     content: {
@@ -352,9 +611,28 @@ const courses = [
         ],
       },
     },
+    content_en: {
+      hook: "A professional event in two days. Just thinking about it, you already feel the fatigue: smiling politely, pretending any of this leads somewhere, trading business cards with people you'll never see again. Except a landmark sociology study, still one of the most cited in its field, shows exactly the opposite: it's these light connections that matter most.",
+      diagnostic: { kind: 'slider', question: 'How artificial or pointless does professional networking feel to you?', min: 1, max: 10, minLabel: 'Not at all', maxLabel: 'Completely' },
+      cards: [
+        { title: 'Weak ties are what open doors', advice: 'A study that became a sociology landmark asked hundreds of people how they found their job: their distant, occasional acquaintances turned out to be statistically more useful than their close ones for accessing new opportunities.', sourceId: S(31) },
+        { title: "Why it works: information doesn't repeat", advice: 'Your close circle already knows what you know. Your distant acquaintances, on the other hand, move in different circles, and bring you information your close circle can\'t.', sourceId: S(31) },
+        { title: 'Aim for 1 connection, not 20', advice: 'Since the value comes from the weak ties themselves, not their number or intensity, a realistic goal for an event isn\'t "network with everyone" but leaving with a single connection that\'s light but real.', sourceId: S(31) },
+        { title: 'Follow-up matters more than the event itself', advice: 'A weak tie stays alive with minimal periodic contact (a message every few months is enough). No need for intensity or frequency for it to stay useful.', sourceId: S(32) },
+        { title: 'Recap', advice: 'Weak ties are statistically more useful than strong ties for opportunities; aim for one real connection per event rather than quantity; maintain it with minimal but regular contact.', sourceId: null },
+      ],
+      exercise: {
+        kind: 'free-plan',
+        prompt: 'Pick someone you met recently at a professional event. What short message could you send them this week to stay in touch?',
+        examples: [
+          '"Great chatting the other day, I keep thinking about what you said about [topic], it really got me thinking!"',
+          '"Just a quick note to stay in touch after our chat at [event], let me know if I can ever help."',
+        ],
+      },
+    },
   },
   {
-    id: C(15), slug: 'compliment-sincere', title: 'Faire un compliment sincère sans que ce soit bizarre',
+    id: C(15), slug: 'compliment-sincere', title: 'Faire un compliment sincère sans que ce soit bizarre', title_en: 'Giving a sincere compliment without it being weird',
     order_index: 15, tags: ['compliment'], free_tier_included: false,
     level: 1, parent_course_id: null, required_tier: 'premium',
     content: {
@@ -376,10 +654,29 @@ const courses = [
         ],
       },
     },
+    content_en: {
+      hook: "You're thinking a genuine compliment about someone: the way they present things, a choice they made, a detail you appreciate about them. And you keep it to yourself, imagining it would sound fake or awkward. Nine experiments on this exact instinct show you're wrong, and always in the same direction.",
+      diagnostic: { kind: 'slider', question: 'How often do you hold back a sincere compliment for fear it would be awkward?', min: 1, max: 10, minLabel: 'Never', maxLabel: 'Almost always' },
+      cards: [
+        { title: 'You underestimate the effect, in both directions', advice: 'Across nine experiments, people giving a compliment consistently underestimated how happy it would make the other person, while overestimating how awkward it would be. Both errors point the same way: the way that stops you from acting.', sourceId: S(33) },
+        { title: "It doesn't wear out", advice: "Contrary to intuition, repeating sincere compliments to the same person doesn't make them any less sincere or less appreciated, the effect doesn't fade with repetition.", sourceId: S(33) },
+        { title: 'Be specific, not generic', advice: 'A specific compliment ("the way you explained that point was really clear") is perceived as more sincere and has more impact than a vague one ("you\'re nice").', sourceId: S(33) },
+        { title: 'Say it in the moment', advice: 'The longer you wait, the more the window closes and the more your hesitation grows: a compliment given in the moment takes less courage than one prepared afterward.', sourceId: S(34) },
+        { title: 'Recap', advice: "You underestimate a compliment's positive impact and overestimate its awkwardness; it doesn't wear out with repetition; be specific rather than vague; say it in the moment.", sourceId: null },
+      ],
+      exercise: {
+        kind: 'predict-compare',
+        prompt: 'Think of someone you see regularly. Write a specific, sincere compliment you could give them this week.',
+        examples: [
+          '"The way you explained that report was really clear, I got it right away."',
+          '"I thought your comment in the meeting yesterday was really sharp, it changed how I see the problem."',
+        ],
+      },
+    },
   },
   // Level 2 modules — always required_tier: 'premium'.
   {
-    id: C(16), slug: 'faire-monter-conversation', title: 'Faire monter une conversation',
+    id: C(16), slug: 'faire-monter-conversation', title: 'Faire monter une conversation', title_en: 'Taking a conversation deeper',
     order_index: 16, tags: ['conversation'], free_tier_included: false,
     level: 2, parent_course_id: C(1), required_tier: 'premium',
     content: {
@@ -400,9 +697,27 @@ const courses = [
         ],
       },
     },
+    content_en: {
+      hook: "The conversation has been going for ten minutes. Weather, work, weekend. You sense it could go further, but a slightly more personal question feels risky, like you'd make the other person uncomfortable. A study of more than 1,800 people tested this fear, by having strangers ask each other questions far deeper than the weather.",
+      diagnostic: { kind: 'slider', question: 'How afraid are you that a more personal question would make the other person uncomfortable?', min: 1, max: 10, minLabel: 'Not at all', maxLabel: 'Enormously' },
+      cards: [
+        { title: 'Your estimate is wrong, in the good way', advice: 'Across 12 experiments with more than 1,800 participants, deep conversations between strangers consistently turned out to be less awkward, more connecting, and more enjoyable than both sides had predicted going in.', sourceId: S(21) },
+        { title: 'Go up one notch, not ten', advice: 'No need to jump straight to an intimate question, one slightly more personal than average ("What motivates you in what you do?" rather than "Where do you work?") is enough to shift a conversation toward more connection.', sourceId: S(21) },
+        { title: 'Share at the same depth', advice: 'In the study, the most connecting exchanges were reciprocal: after asking a more personal question, share something about yourself at a comparable level of depth.', sourceId: S(21) },
+        { title: 'Recap', advice: 'You significantly overestimate the awkwardness caused by a more personal question; go up one notch at a time; share at the same depth you\'re asking for.', sourceId: null },
+      ],
+      exercise: {
+        kind: 'predict-compare',
+        prompt: "Think of someone you know a little (a coworker, an acquaintance) you'd like to get to know better. What slightly more personal question than usual could you ask them?",
+        examples: [
+          '"What actually motivates you in what you do?"',
+          '"What\'s something you\'re genuinely proud of lately?"',
+        ],
+      },
+    },
   },
   {
-    id: C(17), slug: 'arreter-ruminations', title: 'Après l\'événement : arrêter les ruminations',
+    id: C(17), slug: 'arreter-ruminations', title: 'Après l\'événement : arrêter les ruminations', title_en: 'After the event: stopping the rumination',
     order_index: 17, tags: ['anxiete', 'recuperation'], free_tier_included: false,
     level: 2, parent_course_id: C(5), required_tier: 'premium',
     content: {
@@ -421,9 +736,25 @@ const courses = [
         followUp: 'Colonne 2 : ce que tu en déduis sur toi.',
       },
     },
+    content_en: {
+      hook: "The event ended hours ago, but you're still in it: replaying that phrase you worded badly, that odd silence, that look you might have misread. This phenomenon has a precise name in clinical research, and it's been measured: the more you ruminate, the more your memory of the event distorts in a negative direction.",
+      diagnostic: { kind: 'slider', question: 'After a social event, how much do you mentally replay what was said or what you should have said?', min: 1, max: 10, minLabel: 'Not at all', maxLabel: 'On a loop for hours' },
+      cards: [
+        { title: 'It\'s called "post-event processing"', advice: "It's a measured phenomenon correlated with social anxiety: recurring, intrusive memories of the event that interfere with concentration and push you to avoid similar situations.", sourceId: S(22) },
+        { title: 'The memory distorts while you ruminate', advice: "It's not a neutral replay: the more you go over the event, the more your memory skews toward the negative details, even if the event objectively went fine. Rumination manufactures the memory it claims to be analyzing.", sourceId: S(22) },
+        { title: 'Set a window, not unlimited access', advice: 'Give yourself 10 minutes, at a specific time of day, to think back on the event, then consciously stop outside that window. Containing the rumination to a limited slot reduces its grip on the rest of the day.', sourceId: S(23) },
+        { title: "Separate the facts from the story you're telling yourself", advice: '"I said something weird" is an interpretation, not a fact. Write down what objectively happened, then next to it what you conclude about yourself. The two columns are rarely as connected as your rumination suggests.', sourceId: S(11) },
+        { title: 'Recap', advice: "Post-event processing is an identified, measurable phenomenon; rumination distorts the memory more than it analyzes it; limit it to a time window; separate facts from interpretations.", sourceId: null },
+      ],
+      exercise: {
+        kind: 'guided-response',
+        prompt: "Think of a recent social event that's still on your mind. Column 1: what objectively happened, factually.",
+        followUp: 'Column 2: what you conclude about yourself from that.',
+      },
+    },
   },
   {
-    id: C(18), slug: 'entretenir-amitie', title: 'Entretenir une amitié dans la durée',
+    id: C(18), slug: 'entretenir-amitie', title: 'Entretenir une amitié dans la durée', title_en: 'Maintaining a friendship over time',
     order_index: 18, tags: ['amitie'], free_tier_included: false,
     level: 2, parent_course_id: C(8), required_tier: 'premium',
     content: {
@@ -442,6 +773,25 @@ const courses = [
         examples: [
           'Programme un appel hebdomadaire avec ton ami le plus proche, même court.',
           'Envoie un message simple à quelqu\'un que tu n\'as pas contacté depuis plus d\'un mois : "Je pensais à toi, comment tu vas ?"',
+        ],
+      },
+    },
+    content_en: {
+      hook: "You spent dozens of hours truly getting close to someone. Then life takes over, weeks go by without news, and the bond frays without any argument ever happening. An 18-month longitudinal study tracked this phenomenon. Good news: it follows precise rules, not chance.",
+      diagnostic: { kind: 'slider', question: 'How many of your close friends have you reached out to this month?', min: 0, max: 10, minLabel: 'None', maxLabel: 'All of them' },
+      cards: [
+        { title: 'Friendship decays without contact, unlike family', advice: 'An 18-month longitudinal study shows that family ties hold up despite a lack of contact, but friendships measurably decay without regular active upkeep.', sourceId: S(24) },
+        { title: 'The right pace depends on how close the circle is', advice: 'The closer a friendship, the more frequency it needs: near-daily contact for your innermost circle, weekly for close friends, monthly for wider circles.', sourceId: S(24) },
+        { title: 'Not the same lever for everyone', advice: 'The same study found a difference: decline is avoided mainly through frequency of contact (talking) for some relationships, and through shared activities for others. Identify what works best with each friend rather than applying the same recipe to everyone.', sourceId: S(24) },
+        { title: "Schedule it, don't leave it to chance", advice: 'Since the decay is passive (it happens without any conflict), the only effective protection is active: planning contact in advance rather than counting on spontaneous desire.', sourceId: S(24) },
+        { title: 'Recap', advice: 'A friendship needs active upkeep, unlike family; match the frequency to how close the bond is; figure out whether conversation or shared activity matters more for each friend; plan ahead rather than waiting to feel like it.', sourceId: null },
+      ],
+      exercise: {
+        kind: 'free-plan',
+        prompt: 'List 3 close friends. For each, when did you last reach out to them?',
+        examples: [
+          'Schedule a weekly call with your closest friend, even a short one.',
+          'Send a simple message to someone you haven\'t contacted in over a month: "Was thinking of you, how are you doing?"',
         ],
       },
     },
@@ -470,21 +820,22 @@ function sqlJsonb(obj) {
 
 const lines = [
   '-- Recharj — seed 002: courses',
-  '-- Run after 001_sources.sql (courses.content references source ids).',
+  '-- Run after 001_sources.sql (courses.content references source ids) and',
+  '-- migration 014 (title_en, content_en columns).',
   '-- Generated from contenu-cours-mvp.md via generate-courses-seed.mjs, review before executing.',
   '',
-  'insert into courses (id, slug, title, order_index, tags, free_tier_included, level, parent_course_id, required_tier, content) values',
+  'insert into courses (id, slug, title, title_en, order_index, tags, free_tier_included, level, parent_course_id, required_tier, content, content_en) values',
 ];
 
 const rows = courses.map((c) => {
   const parent = c.parent_course_id ? `'${c.parent_course_id}'` : 'null';
-  return `('${c.id}', '${c.slug}', ${sqlString(c.title)}, ${c.order_index}, ${sqlArray(c.tags)}, ${sqlBool(c.free_tier_included)}, ${c.level}, ${parent}, '${c.required_tier}', ${sqlJsonb(c.content)})`;
+  return `('${c.id}', '${c.slug}', ${sqlString(c.title)}, ${sqlString(c.title_en)}, ${c.order_index}, ${sqlArray(c.tags)}, ${sqlBool(c.free_tier_included)}, ${c.level}, ${parent}, '${c.required_tier}', ${sqlJsonb(c.content)}, ${sqlJsonb(c.content_en)})`;
 });
 
 const onConflict =
-  'on conflict (id) do update set slug = excluded.slug, title = excluded.title, order_index = excluded.order_index, ' +
+  'on conflict (id) do update set slug = excluded.slug, title = excluded.title, title_en = excluded.title_en, order_index = excluded.order_index, ' +
   'tags = excluded.tags, free_tier_included = excluded.free_tier_included, level = excluded.level, ' +
-  'parent_course_id = excluded.parent_course_id, required_tier = excluded.required_tier, content = excluded.content;';
+  'parent_course_id = excluded.parent_course_id, required_tier = excluded.required_tier, content = excluded.content, content_en = excluded.content_en;';
 
 lines.push(rows.join(',\n\n'));
 lines.push(onConflict);

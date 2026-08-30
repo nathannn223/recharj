@@ -1,16 +1,18 @@
 import * as WebBrowser from 'expo-web-browser';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CloseIcon } from '@/components/icons/Icon';
 import { colors, fontFamily, radii, spacing } from '@/constants/theme';
-import type { SourceRow } from '@/lib/courses';
+import { localizedSource, type SourceRow } from '@/lib/courses';
 import { safeBack } from '@/lib/navigation';
 import { supabase } from '@/lib/supabase';
 
 export default function SourceScreen() {
+  const { t, i18n } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [source, setSource] = useState<SourceRow | null>(null);
   const [loading, setLoading] = useState(true);
@@ -25,7 +27,7 @@ export default function SourceScreen() {
       .single()
       .then(({ data, error: fetchError }) => {
         if (cancelled) return;
-        if (fetchError || !data) setError(fetchError?.message ?? 'Source introuvable.');
+        if (fetchError || !data) setError(fetchError?.message ?? t('source.notFound'));
         else setSource(data as SourceRow);
         setLoading(false);
       });
@@ -34,11 +36,13 @@ export default function SourceScreen() {
     };
   }, [id]);
 
+  const localized = source ? localizedSource(source, i18n.language) : null;
+
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.row}>
-          <Text style={styles.h1}>Approfondir ce sujet</Text>
+          <Text style={styles.h1}>{t('source.title')}</Text>
           <Pressable onPress={() => safeBack()} hitSlop={10}>
             <CloseIcon color={colors.textDim} size={26} />
           </Pressable>
@@ -56,28 +60,24 @@ export default function SourceScreen() {
           <>
             <View style={[styles.badge, source.is_scientific ? styles.badgeScientific : styles.badgeNeutral]}>
               <Text style={[styles.badgeText, source.is_scientific ? styles.badgeTextScientific : styles.badgeTextNeutral]}>
-                {source.is_scientific ? 'Scientifique' : 'Non scientifique'}
+                {source.is_scientific ? t('source.scientific') : t('source.notScientific')}
               </Text>
             </View>
-            {!source.is_scientific && (
-              <Text style={styles.disclaimer}>
-                Recommandation d'expert reconnu — ne s'appuie pas sur une étude académique publiée.
-              </Text>
-            )}
+            {!source.is_scientific && <Text style={styles.disclaimer}>{t('source.expertDisclaimer')}</Text>}
 
             <View>
-              <Text style={styles.studyTitle}>{source.study_title}</Text>
+              <Text style={styles.studyTitle}>{localized!.study_title}</Text>
               <Text style={styles.meta}>
-                {source.authors}
+                {localized!.authors}
                 {source.year ? ` · ${source.year}` : ''}
-                {source.journal_or_publisher ? ` · ${source.journal_or_publisher}` : ''}
+                {localized!.journal_or_publisher ? ` · ${localized!.journal_or_publisher}` : ''}
               </Text>
             </View>
 
-            <Text style={styles.summary}>{source.summary}</Text>
+            <Text style={styles.summary}>{localized!.summary}</Text>
 
             <Pressable style={styles.readBtn} onPress={() => WebBrowser.openBrowserAsync(source.external_url)}>
-              <Text style={styles.readBtnText}>Lire l'étude</Text>
+              <Text style={styles.readBtnText}>{t('source.readStudy')}</Text>
             </Pressable>
           </>
         )}

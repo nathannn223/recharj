@@ -1,6 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -25,6 +26,7 @@ const STEP = { THANKS: 0, COURSE: 1 } as const;
 // obvious and a failed one diagnosable instead of just quietly landing on
 // the dashboard.
 export default function OnboardingWelcomeScreen() {
+  const { t, i18n } = useTranslation();
   const { session } = useAuth();
   const { markSeen } = useOnboarding();
 
@@ -53,7 +55,7 @@ export default function OnboardingWelcomeScreen() {
       if (pending && !cancelled) {
         // The free course this user gets is the one matching the pain point
         // they picked in the quiz, not a single fixed course for everyone.
-        const painDef = PAIN_TYPES.find((p) => p.label === pending.painType);
+        const painDef = PAIN_TYPES.find((p) => p.id === pending.painId);
         if (painDef) {
           const { data: matched } = await supabase
             .from('courses')
@@ -65,16 +67,19 @@ export default function OnboardingWelcomeScreen() {
           matchedCourseId = matched?.id ?? null;
         }
 
+        // Every *_id/*Id field here is a stable id (lib/painTypes.ts etc.),
+        // never a translated display label — so what's stored survives the
+        // user later switching the app's language.
         await supabase
           .from('profiles')
           .update({
             first_name: pending.firstName || null,
             baseline_comfort_score: pending.baselineScore,
-            primary_pain_type: pending.painType || null,
-            obstacles: pending.obstacles.length > 0 ? pending.obstacles : null,
-            event_frequency: pending.eventFrequency || null,
-            recharge_method: pending.rechargeMethod || null,
-            anticipation_style: pending.anticipationStyle || null,
+            primary_pain_type: pending.painId || null,
+            obstacles: pending.obstacleIds.length > 0 ? pending.obstacleIds : null,
+            event_frequency: pending.eventFrequencyId || null,
+            recharge_method: pending.rechargeId || null,
+            anticipation_style: pending.anticipationId || null,
             free_course_id: matchedCourseId,
           })
           .eq('id', session!.user.id);
@@ -86,8 +91,8 @@ export default function OnboardingWelcomeScreen() {
         // PostgREST — which previously broke free_course_id along with it
         // and made a genuinely unlocked course look locked. Splitting it
         // out means that failure mode can never take the grant down with it.
-        if (pending.lowBatteryMoment) {
-          await supabase.from('profiles').update({ low_battery_moment: pending.lowBatteryMoment }).eq('id', session!.user.id);
+        if (pending.momentId) {
+          await supabase.from('profiles').update({ low_battery_moment: pending.momentId }).eq('id', session!.user.id);
         }
       }
 
@@ -118,7 +123,7 @@ export default function OnboardingWelcomeScreen() {
       if (resolvedFreeCourseId) {
         const { data: resolvedCourse } = await supabase
           .from('courses')
-          .select('title, free_tier_included')
+          .select('title, title_en, free_tier_included')
           .eq('id', resolvedFreeCourseId)
           .maybeSingle();
         if (!resolvedCourse) {
@@ -132,10 +137,10 @@ export default function OnboardingWelcomeScreen() {
           if (confirmProfile?.free_course_id !== resolvedFreeCourseId) {
             resolvedFreeCourseId = null;
           } else {
-            resolvedTitle = resolvedCourse.title;
+            resolvedTitle = i18n.language === 'fr' ? resolvedCourse.title : resolvedCourse.title_en;
           }
         } else {
-          resolvedTitle = resolvedCourse.title;
+          resolvedTitle = i18n.language === 'fr' ? resolvedCourse.title : resolvedCourse.title_en;
         }
       }
 
@@ -186,22 +191,22 @@ export default function OnboardingWelcomeScreen() {
         <View style={[styles.content, styles.centered]}>
           {courseTitle ? (
             <>
-              <Text style={styles.eyebrow}>Ton premier cours</Text>
+              <Text style={styles.eyebrow}>{t('onboarding.course.eyebrow')}</Text>
               <Text style={styles.title}>{courseTitle}</Text>
             </>
           ) : (
             <>
-              <Text style={styles.eyebrow}>Prêt à explorer</Text>
-              <Text style={styles.title}>Découvre la bibliothèque de cours.</Text>
+              <Text style={styles.eyebrow}>{t('onboarding.course.fallbackEyebrow')}</Text>
+              <Text style={styles.title}>{t('onboarding.course.fallbackTitle')}</Text>
             </>
           )}
           <Pressable onPress={enterCourse} style={{ alignSelf: 'stretch', marginTop: spacing[6] }}>
             <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.startBtn}>
-              <Text style={styles.startBtnText}>C'est parti</Text>
+              <Text style={styles.startBtnText}>{t('onboarding.course.start')}</Text>
             </LinearGradient>
           </Pressable>
           <Pressable onPress={goToDashboard} style={styles.dashboardBtn}>
-            <Text style={styles.dashboardText}>Aller sur le dashboard</Text>
+            <Text style={styles.dashboardText}>{t('onboarding.thanks.dashboard')}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -211,15 +216,15 @@ export default function OnboardingWelcomeScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <View style={[styles.content, styles.centered]}>
-        <Text style={styles.title}>Merci de nous faire confiance.</Text>
-        <Text style={styles.tagline}>Tu peux découvrir ton premier cours dès maintenant.</Text>
+        <Text style={styles.title}>{t('onboarding.thanks.title')}</Text>
+        <Text style={styles.tagline}>{t('onboarding.thanks.tagline')}</Text>
         <Pressable onPress={goNext} style={{ alignSelf: 'stretch', marginTop: spacing[6] }}>
           <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.startBtn}>
-            <Text style={styles.startBtnText}>C'est parti !</Text>
+            <Text style={styles.startBtnText}>{t('onboarding.thanks.start')}</Text>
           </LinearGradient>
         </Pressable>
         <Pressable onPress={goToDashboard} style={styles.dashboardBtn}>
-          <Text style={styles.dashboardText}>Aller sur le dashboard</Text>
+          <Text style={styles.dashboardText}>{t('onboarding.thanks.dashboard')}</Text>
         </Pressable>
       </View>
     </SafeAreaView>

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BoltIcon } from '@/components/icons/Icon';
@@ -14,6 +15,7 @@ const HIGH_STREAK_THRESHOLD = 10;
 // flame — "streak = fire" is the familiar cliché, but Recharj's vocabulary
 // is charge, not fire, so a bolt is the on-brand translation of the same idea.
 export function StreakBadge({ streak, onPress }: Props) {
+  const { t } = useTranslation();
   const tier = streak === 0 ? 'zero' : streak >= HIGH_STREAK_THRESHOLD ? 'high' : 'normal';
   const color = tier === 'zero' ? colors.textFaint : tier === 'high' ? colors.lime : colors.coral;
 
@@ -34,7 +36,7 @@ export function StreakBadge({ streak, onPress }: Props) {
   const glowOpacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0, 0.22] });
 
   return (
-    <Pressable onPress={onPress} hitSlop={10} accessibilityLabel={`Série de ${streak} jours notés`}>
+    <Pressable onPress={onPress} hitSlop={10} accessibilityLabel={t('common.streakAccessibilityLabel', { count: streak })}>
       <View style={[styles.badge, tier === 'zero' && styles.badgeZero, tier === 'high' && styles.badgeHigh]}>
         {tier === 'high' && <Animated.View pointerEvents="none" style={[styles.flicker, { opacity: glowOpacity }]} />}
         <BoltIcon color={color} size={20} />

@@ -1,6 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { Link, router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Path, Polyline, Stop } from 'react-native-svg';
@@ -31,6 +32,7 @@ function levelToY(level: number) {
 }
 
 export default function DashboardScreen() {
+  const { t, i18n } = useTranslation();
   const { session } = useAuth();
   const { events, loading } = useEvents();
   const now = startOfToday();
@@ -92,12 +94,13 @@ export default function DashboardScreen() {
     let cancelled = false;
     supabase
       .from('courses')
-      .select('id, title')
+      .select('id, title, title_en')
       .contains('tags', tags)
       .order('order_index', { ascending: true })
       .limit(1)
       .then(({ data }) => {
-        if (!cancelled) setRecommendedCourse(data?.[0] ?? null);
+        const row = data?.[0];
+        if (!cancelled) setRecommendedCourse(row ? { id: row.id, title: i18n.language === 'fr' ? row.title : row.title_en } : null);
       });
     return () => {
       cancelled = true;
@@ -106,7 +109,7 @@ export default function DashboardScreen() {
     // above); depending on it directly would refetch on every render
     // instead of only when the underlying event actually changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [difficultEvent?.id]);
+  }, [difficultEvent?.id, i18n.language]);
 
   // Reschedules the daily reminder (lib/notifications.ts) with what's
   // actually true right now, every time this screen has fresh data —
@@ -126,23 +129,23 @@ export default function DashboardScreen() {
       const { data: profile } = await supabase.from('profiles').select('first_name').maybeSingle();
       if (!cancelled) setFirstName(profile?.first_name || '');
       const { data: momentProfile } = await supabase.from('profiles').select('low_battery_moment').maybeSingle();
-      const momentLabel = momentProfile?.low_battery_moment || 'Le soir';
+      const momentId = momentProfile?.low_battery_moment || 'evening';
 
       let discoverCourse: { id: string; title: string } | null = null;
       if (!difficultEvent || !recommendedCourse) {
         const { data: completedRows } = await supabase.from('course_progress').select('course_id').eq('status', 'completed');
         const completedIds = (completedRows ?? []).map((r) => r.course_id);
-        let query = supabase.from('courses').select('id, title').order('order_index', { ascending: true }).limit(1);
+        let query = supabase.from('courses').select('id, title, title_en').order('order_index', { ascending: true }).limit(1);
         if (completedIds.length > 0) query = query.not('id', 'in', `(${completedIds.join(',')})`);
         const { data: nextCourse } = await query.maybeSingle();
-        discoverCourse = nextCourse ?? null;
+        discoverCourse = nextCourse ? { id: nextCourse.id, title: i18n.language === 'fr' ? nextCourse.title : nextCourse.title_en } : null;
       }
 
       if (cancelled) return;
       await scheduleDailyReminder({
-        momentLabel,
+        momentId,
         batteryLevel: todayLevel,
-        upcomingEvent: difficultEvent ? { title: difficultEvent.title, type: difficultEvent.type } : null,
+        upcomingEvent: difficultEvent ? { title: difficultEvent.title, typeId: difficultEvent.type } : null,
         matchedCourse: recommendedCourse,
         discoverCourse,
       });
@@ -154,13 +157,13 @@ export default function DashboardScreen() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, todayLevel, difficultEvent?.id, recommendedCourse?.id, todayCheckIn, checkInStreak]);
+  }, [loading, todayLevel, difficultEvent?.id, recommendedCourse?.id, todayCheckIn, checkInStreak, i18n.language]);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.row}>
-          <Text style={styles.h1}>Bonjour{firstName ? ` ${firstName}` : ''}</Text>
+          <Text style={styles.h1}>{t('dashboard.greeting', { name: firstName ? ` ${firstName}` : '' })}</Text>
           <StreakBadge streak={checkInStreak} onPress={() => router.push('/checkin')} />
         </View>
 
@@ -168,7 +171,7 @@ export default function DashboardScreen() {
           <BatteryGauge level={todayLevel} size="lg" style={styles.battery} />
           <View style={styles.batteryReadout}>
             <Text style={styles.batteryPct}>{todayLevel}%</Text>
-            <Text style={styles.batteryLbl}>Batterie sociale</Text>
+            <Text style={styles.batteryLbl}>{t('dashboard.batteryLabel')}</Text>
           </View>
         </View>
 
@@ -176,10 +179,8 @@ export default function DashboardScreen() {
 
         <View style={styles.card}>
           <View style={styles.row}>
-            <Text style={styles.cardHead}>Projection 7 jours</Text>
-            <Text style={[styles.cardHead, { color: colors.coral }]}>
-              {eventsThisWeek} événement{eventsThisWeek === 1 ? '' : 's'}
-            </Text>
+            <Text style={styles.cardHead}>{t('dashboard.projection')}</Text>
+            <Text style={[styles.cardHead, { color: colors.coral }]}>{t('dashboard.event', { count: eventsThisWeek })}</Text>
           </View>
           <Svg viewBox="0 0 260 90" width="100%" height={100}>
             <Defs>
@@ -215,23 +216,21 @@ export default function DashboardScreen() {
 
         <View>
           <View style={styles.row}>
-            <Text style={styles.sectionLabel}>Événements à venir</Text>
+            <Text style={styles.sectionLabel}>{t('dashboard.upcomingEvents')}</Text>
             <Link href="/(tabs)/calendar" style={styles.seeAll}>
               <View style={styles.seeAllInner}>
-                <Text style={styles.seeAllText}>Voir tout</Text>
+                <Text style={styles.seeAllText}>{t('dashboard.seeAll')}</Text>
                 <ChevronRightIcon color={colors.textDim} size={14} />
               </View>
             </Link>
           </View>
-          {!loading && upcomingEvents.length === 0 && (
-            <Text style={styles.emptyText}>Aucun événement à venir. Ajoute-en un depuis le calendrier.</Text>
-          )}
+          {!loading && upcomingEvents.length === 0 && <Text style={styles.emptyText}>{t('dashboard.noUpcomingEvents')}</Text>}
           <View style={{ gap: spacing[3] }}>
             {upcomingEvents.map((ev) => (
               <View key={ev.id} style={styles.eventRow}>
                 <View style={[styles.eventDot, { backgroundColor: difficultyColor(ev.difficulty) }]} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.eventName}>{ev.title || ev.type}</Text>
+                  <Text style={styles.eventName}>{ev.title || t(`data.eventTypes.${ev.type}`)}</Text>
                   <Text style={styles.eventWhen}>{relativeDayLabel(ev.eventDate)}</Text>
                 </View>
                 <Text style={[styles.diffPill, { color: difficultyColor(ev.difficulty) }]}>{ev.difficulty}/10</Text>
@@ -247,8 +246,8 @@ export default function DashboardScreen() {
                 <BoltIcon color={colors.surfaceScreen} size={20} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.recTitle}>{recommendedCourse ? recommendedCourse.title : "Un cours pour t'y préparer"}</Text>
-                <Text style={styles.recNote}>Recommandé pour "{difficultEvent.type}"</Text>
+                <Text style={styles.recTitle}>{recommendedCourse ? recommendedCourse.title : t('dashboard.recommended.fallbackTitle')}</Text>
+                <Text style={styles.recNote}>{t('dashboard.recommended.note', { type: t(`data.eventTypes.${difficultEvent.type}`) })}</Text>
               </View>
             </Pressable>
           </Link>

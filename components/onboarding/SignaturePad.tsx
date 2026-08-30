@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
@@ -12,6 +13,7 @@ type Point = { x: number; y: number };
 // signature actually looks like: nothing is persisted or sent anywhere, this
 // is a commitment ritual, not a legal signature.
 export function SignaturePad({ onChange }: { onChange?: (hasSignature: boolean) => void }) {
+  const { t } = useTranslation();
   const [strokes, setStrokes] = useState<Point[][]>([]);
   const currentStroke = useRef<Point[]>([]);
   const [, forceRender] = useState(0);
@@ -72,7 +74,7 @@ export function SignaturePad({ onChange }: { onChange?: (hasSignature: boolean) 
       {strokes.length > 0 && (
         <View style={styles.clearRow}>
           <Pressable onPress={clear} hitSlop={8}>
-            <Text style={styles.clearText}>Effacer</Text>
+            <Text style={styles.clearText}>{t('common.clear')}</Text>
           </Pressable>
         </View>
       )}

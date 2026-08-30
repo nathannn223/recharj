@@ -44,6 +44,7 @@ export type CourseRow = {
   id: string;
   slug: string;
   title: string;
+  title_en: string;
   order_index: number;
   tags: string[];
   free_tier_included: boolean;
@@ -51,19 +52,62 @@ export type CourseRow = {
   parent_course_id: string | null;
   required_tier: SubscriptionTier;
   content: CourseContent;
+  content_en: CourseContent;
 };
 
 export type SourceRow = {
   id: string;
   short_label: string;
+  short_label_en: string;
   study_title: string;
+  study_title_en: string;
   authors: string;
+  authors_en: string;
   year: number | null;
   journal_or_publisher: string | null;
+  journal_or_publisher_en: string | null;
   summary: string;
+  summary_en: string;
   external_url: string;
   is_scientific: boolean;
 };
+
+/** Picks the French or English side of a course's title, given `i18n.language`. */
+export function localizedCourseTitle(course: Pick<CourseRow, 'title' | 'title_en'>, lang: string): string {
+  return lang === 'fr' ? course.title : course.title_en;
+}
+
+/** Picks the French or English side of a course's content, given `i18n.language`. */
+export function localizedCourseContent(course: Pick<CourseRow, 'content' | 'content_en'>, lang: string): CourseContent {
+  return lang === 'fr' ? course.content : course.content_en;
+}
+
+export type LocalizedSource = {
+  short_label: string;
+  study_title: string;
+  authors: string;
+  journal_or_publisher: string | null;
+  summary: string;
+};
+
+/** Picks the French or English side of every translatable source field, given `i18n.language`. */
+export function localizedSource(source: SourceRow, lang: string): LocalizedSource {
+  return lang === 'fr'
+    ? {
+        short_label: source.short_label,
+        study_title: source.study_title,
+        authors: source.authors,
+        journal_or_publisher: source.journal_or_publisher,
+        summary: source.summary,
+      }
+    : {
+        short_label: source.short_label_en,
+        study_title: source.study_title_en,
+        authors: source.authors_en,
+        journal_or_publisher: source.journal_or_publisher_en,
+        summary: source.summary_en,
+      };
+}
 
 /**
  * Whether `tier` unlocks `course`. A free-tier-included course is always

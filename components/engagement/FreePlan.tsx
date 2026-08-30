@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { colors, fontFamily, radii, spacing } from '@/constants/theme';
@@ -14,6 +15,7 @@ type Props = {
 // per the implementation notes, this is only a text hint for now, not wired
 // to actually creating a calendar event.
 export function FreePlan({ format, onComplete }: Props) {
+  const { t } = useTranslation();
   const [answer, setAnswer] = useState('');
   const [revealed, setRevealed] = useState(false);
 
@@ -30,24 +32,24 @@ export function FreePlan({ format, onComplete }: Props) {
       <TextInput
         value={answer}
         onChangeText={setAnswer}
-        placeholder="Écris ta réponse…"
+        placeholder={t('engagement.writeYourAnswer')}
         placeholderTextColor={colors.textFaint}
         multiline
         style={styles.input}
       />
       {!revealed ? (
         <Pressable disabled={!answer.trim()} onPress={reveal} style={[styles.compareBtn, !answer.trim() && styles.compareBtnDisabled]}>
-          <Text style={styles.compareBtnText}>Voir des exemples</Text>
+          <Text style={styles.compareBtnText}>{t('engagement.seeExamples')}</Text>
         </Pressable>
       ) : (
         <View style={styles.examples}>
-          <Text style={styles.examplesLabel}>Quelques pistes</Text>
+          <Text style={styles.examplesLabel}>{t('engagement.ideasLabel')}</Text>
           {format.examples.map((ex, i) => (
             <View key={i} style={styles.exampleRow}>
               <Text style={styles.exampleText}>{ex}</Text>
             </View>
           ))}
-          <Text style={styles.planNote}>Une bonne intention se tient mieux quand elle est planifiée — pense à la caler dans ton calendrier.</Text>
+          <Text style={styles.planNote}>{t('engagement.planNote')}</Text>
         </View>
       )}
     </View>

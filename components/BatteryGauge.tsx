@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Animated, Pressable, StyleSheet, View, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -27,6 +28,7 @@ const SIZES = {
 };
 
 export function BatteryGauge({ level, size = 'lg', onPress, style }: Props) {
+  const { t } = useTranslation();
   const clamped = Math.max(0, Math.min(100, level));
 
   const widthAnim = useRef(new Animated.Value(100 - clamped)).current;
@@ -67,7 +69,7 @@ export function BatteryGauge({ level, size = 'lg', onPress, style }: Props) {
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       accessibilityRole="button"
-      accessibilityLabel={`Batterie sociale : ${clamped} pourcent`}
+      accessibilityLabel={t('common.batteryAccessibilityLabel', { level: clamped })}
       style={style}
     >
       <Animated.View style={[outerStyle, styles.outer, { transform: [{ scale: pressAnim }] }]}>

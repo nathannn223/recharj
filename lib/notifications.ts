@@ -1,6 +1,8 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
+import i18n from '@/lib/i18n';
+
 const CHANNEL_ID = 'battery-reminder';
 
 const DAILY_REMINDER_ID = 'daily-reminder';
@@ -11,28 +13,28 @@ const CHECKIN_REMINDER_ID = 'checkin-reminder';
 // becomes urgent — 2 hours before it dies at midnight.
 const CHECKIN_REMINDER_HOUR = 22;
 
-// Matches lib/momentOfDay.ts's MOMENT_OPTIONS labels. An unrecognized label
-// (shouldn't happen — it's always one of these four) falls back to evening.
+// Matches lib/momentOfDay.ts's MOMENT_IDS. An unrecognized id (shouldn't
+// happen — it's always one of these four) falls back to evening.
 const MOMENT_HOURS: Record<string, number> = {
-  'Le matin': 8,
-  "L'après-midi": 14,
-  'Le soir': 19,
-  'La nuit': 22,
+  morning: 8,
+  afternoon: 14,
+  evening: 19,
+  night: 22,
 };
 
 async function ensureChannel(): Promise<void> {
   if (Platform.OS !== 'android') return;
   await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-    name: 'Rappel de batterie sociale',
+    name: i18n.t('notifications.channelName'),
     importance: Notifications.AndroidImportance.DEFAULT,
   });
 }
 
 export type ReminderCourse = { id: string; title: string };
-export type ReminderEvent = { title: string | null; type: string };
+export type ReminderEvent = { title: string | null; typeId: string };
 
 export type ReminderContext = {
-  momentLabel: string;
+  momentId: string;
   batteryLevel: number; // 0-100, today's real projected level
   // The next upcoming hard event and the course matched to it, if any —
   // takes priority over everything else when both are present.
@@ -46,27 +48,27 @@ export type ReminderContext = {
 
 function contentFor(ctx: ReminderContext): { title: string; body: string; courseId?: string } {
   if (ctx.upcomingEvent && ctx.matchedCourse) {
-    const label = ctx.upcomingEvent.title || ctx.upcomingEvent.type;
+    const label = ctx.upcomingEvent.title || i18n.t(`data.eventTypes.${ctx.upcomingEvent.typeId}`);
     return {
-      title: 'Un événement approche',
-      body: `Prépare "${label}" avec le cours "${ctx.matchedCourse.title}".`,
+      title: i18n.t('notifications.eventApproaching.title'),
+      body: i18n.t('notifications.eventApproaching.body', { event: label, course: ctx.matchedCourse.title }),
       courseId: ctx.matchedCourse.id,
     };
   }
   if (ctx.batteryLevel < 40) {
     return {
-      title: 'Grosse baisse en vue',
-      body: `Ta batterie sera basse ${ctx.momentLabel.toLowerCase()}. Découvre comment t'y préparer.`,
+      title: i18n.t('notifications.lowBattery.title'),
+      body: i18n.t('notifications.lowBattery.body', { moment: i18n.t(`data.moments.${ctx.momentId}`).toLowerCase() }),
     };
   }
   if (ctx.discoverCourse) {
     return {
-      title: "Un nouveau cours t'attend",
-      body: `Découvre "${ctx.discoverCourse.title}" en quelques minutes.`,
+      title: i18n.t('notifications.discoverCourse.title'),
+      body: i18n.t('notifications.discoverCourse.body', { course: ctx.discoverCourse.title }),
       courseId: ctx.discoverCourse.id,
     };
   }
-  return { title: 'Reste sur la bonne voie', body: 'Prends deux minutes pour toi aujourd’hui.' };
+  return { title: i18n.t('notifications.fallback.title'), body: i18n.t('notifications.fallback.body') };
 }
 
 // Reschedules the daily reminder with content reflecting the user's actual
@@ -85,7 +87,7 @@ export async function scheduleDailyReminder(ctx: ReminderContext): Promise<void>
   const { status } = await Notifications.getPermissionsAsync();
   if (status !== 'granted') return;
 
-  const hour = MOMENT_HOURS[ctx.momentLabel] ?? MOMENT_HOURS['Le soir'];
+  const hour = MOMENT_HOURS[ctx.momentId] ?? MOMENT_HOURS.evening;
   const { title, body, courseId } = contentFor(ctx);
 
   await ensureChannel();
@@ -121,8 +123,8 @@ export async function scheduleCheckInReminder(streak: number, checkedInToday: bo
 
   const { title, body } =
     streak > 0
-      ? { title: 'Ta série va s’éteindre', body: `Il te reste 2h pour protéger tes ${streak} jour${streak === 1 ? '' : 's'} d'affilée.` }
-      : { title: 'Comment s’est passée ta journée ?', body: 'Où en est ta batterie ?' };
+      ? { title: i18n.t('notifications.streakWarning.title'), body: i18n.t('notifications.streakWarning.body', { count: streak }) }
+      : { title: i18n.t('notifications.checkinPrompt.title'), body: i18n.t('notifications.checkinPrompt.body') };
 
   await ensureChannel();
   await Notifications.cancelScheduledNotificationAsync(CHECKIN_REMINDER_ID).catch(() => {});

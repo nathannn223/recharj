@@ -2,15 +2,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const KEY = 'recharj.pending_onboarding';
 
+// Every *_id/*Id field is a stable id from lib/painTypes.ts, lib/obstacles.ts,
+// lib/socialProfile.ts or lib/momentOfDay.ts — never the display label, so
+// what's persisted to `profiles` never changes when the app's language does.
 export type PendingOnboarding = {
   firstName: string;
   baselineScore: number;
-  painType: string;
-  obstacles: string[];
-  eventFrequency: string;
-  rechargeMethod: string;
-  anticipationStyle: string;
-  lowBatteryMoment: string;
+  painId: string;
+  obstacleIds: string[];
+  eventFrequencyId: string;
+  rechargeId: string;
+  anticipationId: string;
+  momentId: string;
 };
 
 // Bridges the pre-signup quiz (no session yet) to the moment a session

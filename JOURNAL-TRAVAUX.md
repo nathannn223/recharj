@@ -1336,3 +1336,137 @@ code, `app.json` déjà correctement configuré depuis un chantier précédent.
 
 **Fichiers touchés.** modifié (binaire) : `assets/images/icon.png`,
 `assets/images/adaptive-icon.png`, `assets/images/favicon.png`
+
+---
+
+### 2026-08-30 — Chantier 18 : app bilingue français/anglais, interface + contenu des cours
+
+**Contexte.** Demande explicite : traduire toute l'app en anglais, langue
+choisie automatiquement selon celle du téléphone (français si français,
+anglais sinon), avec possibilité de changer manuellement dans les
+paramètres. Question posée pour cadrer le périmètre — interface seule, ou
+interface + contenu des cours/sources (le plus gros morceau) : l'utilisateur
+a choisi **« Tout d'un coup, interface + cours »**, donc les deux d'un
+seul coup plutôt qu'en deux passes.
+
+**Décision d'architecture — ids stables décorrélés des libellés traduits.**
+Plusieurs "labels" affichés à l'écran (type de douleur, obstacles,
+fréquence d'événements, méthode de recharge, style d'anticipation, moment de
+batterie basse, type d'événement) servaient *aussi* de valeur persistée en
+base (`profiles.primary_pain_type`, `profiles.obstacles`,
+`profiles.event_frequency`, `profiles.recharge_method`,
+`profiles.anticipation_style`, `profiles.low_battery_moment`,
+`events.type`) ou de clé de correspondance (`tagsForEventType`). Avec une UI
+traduite, le texte affiché change selon la langue — il ne peut plus servir
+de valeur stockée ou de clé de lookup. Plutôt qu'ajouter une couche de
+mapping français↔anglais↔id après coup, tous les modules de données
+concernés (`lib/painTypes.ts`, `lib/obstacles.ts`, `lib/socialProfile.ts`,
+`lib/momentOfDay.ts`, `lib/eventTags.ts`) ont été réécrits en listes d'ids
+anglais stables, les libellés étant désormais entièrement dans
+`locales/*.json`. **Coupure nette sans script de migration** : pas
+d'utilisateurs réels en production à ce stade, migrer les anciennes valeurs
+françaises stockées n'aurait aucun sens.
+
+**Fait — infrastructure i18n.**
+- `lib/i18n.ts` (nouveau) : init `i18next` + `react-i18next`, détection de
+  la langue via `expo-localization` (`fr` si le téléphone est en français,
+  `en` sinon — ce sont les deux seules langues qui ont du contenu),
+  override manuel persisté dans AsyncStorage (`recharj.language`, `null` =
+  suit l'appareil), `setLanguage()`/`getLanguageOverride()`/
+  `loadLanguageOverride()`.
+- `app/_layout.tsx` : `loadLanguageOverride()` attendu avant le premier
+  rendu, exactement comme le chargement des polices — évite un flash dans
+  la mauvaise langue au cold start si un override est déjà enregistré.
+- `locales/fr.json` / `locales/en.json` (nouveaux, ~450 lignes chacun) :
+  toutes les chaînes d'interface, organisées par namespace par écran
+  (`common`, `data`, `dates`, `notifications`, `auth`, `onboarding`,
+  `carousel`, `checkin`, `dashboard`, `calendar`, `addEvent`, `library`,
+  `profile`, `paywall`, `course`, `source`, `engagement`, `checkInCard`,
+  `notFound`), avec interpolation (`{{name}}`) et pluriels
+  (`_one`/`_other`) via les mécanismes natifs d'i18next.
+- Sélecteur de langue ajouté dans `app/(tabs)/profile.tsx` (suit l'appareil
+  / français / anglais).
+
+**Fait — balayage complet de l'interface.** Toutes les chaînes françaises
+codées en dur remplacées par `t()`/`<Trans>` dans : les deux écrans
+d'auth, l'onboarding (y compris `FeatureCarousel.tsx`, dont les 3 slides et
+la carte d'exemple étaient hardcodées), le paywall, le dashboard, le
+check-in, le calendrier, l'ajout d'événement, la bibliothèque de cours, le
+profil, l'écran de cours et de source (chrome uniquement, le contenu venant
+de Supabase est traité séparément ci-dessous), tous les composants
+d'engagement (`GuidedResponse`, `PredictThenCompare`, `FreePlan`,
+`McqNuanced` — ce dernier et les deux `DiagnosticSlider*` n'avaient déjà
+aucun texte en dur, tout vient du contenu `format.*`), `FlipCard`,
+`CourseComplete`, `CheckInCard`, `StreakBadge`, `BatteryGauge` (label
+d'accessibilité), `SignaturePad`, `app/+not-found.tsx`. `lib/dates.ts`,
+`lib/plans.ts` et `lib/notifications.ts` réécrits pour être sensibles à la
+langue (`Intl.NumberFormat`/`Intl.DateTimeFormat` via `i18n.language`,
+copies de notification via `i18n.t()`). Vérifié par une recherche de tout
+texte JSX contenant un caractère accentué français dans `app/` et
+`components/` : aucun résultat après le balayage.
+
+**Fait — contenu bilingue des cours et sources (le plus gros morceau).**
+Décision de schéma : plutôt que de restructurer `courses.content`
+(jsonb) ou les colonnes texte de `sources` en objets imbriqués `{fr, en}`,
+migration **014** ajoute une colonne `_en` en parallèle de chaque champ
+traduisible — diff minimal, pas de changement de forme des données
+existantes :
+- `courses` : `title_en`, `content_en` (même structure que `content` :
+  hook, diagnostic, cards, exercise, personalization).
+- `sources` : `short_label_en`, `study_title_en`, `authors_en`,
+  `journal_or_publisher_en`, `summary_en`.
+
+Les 18 cours (hook, diagnostic, 4 à 6 cartes, exercice) et les 34 sources
+(résumé complet, et libellé/titre/auteur pour les ~10 sources "techniques
+pratiques" sans citation académique — les citations réelles gardent le
+même titre/auteurs/journal dans les deux langues, ces champs étant déjà en
+anglais). `lib/courses.ts` gagne `localizedCourseTitle()`,
+`localizedCourseContent()`, `localizedSource()` pour que chaque écran
+choisisse fr/en selon `i18n.language` sans dupliquer la logique de
+sélection. Consommateurs mis à jour : `app/course/[id].tsx`,
+`app/source/[id].tsx`, `app/(tabs)/library.tsx`, `app/(tabs)/index.tsx`
+(carte de cours recommandé + notification quotidienne), `app/paywall.tsx`
+(aperçu de cours verrouillé), `app/onboarding.tsx` (titre du cours offert).
+`supabase/seed/generate-courses-seed.mjs` et
+`supabase/seed/generate-sources-seed.mjs` (nouveau, remplace l'ancien
+`001_sources.sql` écrit à la main) régénèrent `002_courses.sql` et
+`001_sources.sql` avec les nouvelles colonnes.
+
+**Non fait / à faire côté utilisateur.** La migration `014_course_source_i18n.sql`
+et les seeds régénérés (`001_sources.sql`, `002_courses.sql`) doivent être
+exécutés manuellement dans l'éditeur SQL Supabase — comme pour toutes les
+migrations précédentes de ce projet, aucune n'est appliquée automatiquement
+depuis une session de travail.
+
+**Vérifié.** `npx tsc --noEmit` propre (plusieurs passes pendant le
+chantier). `npx jest --watchAll=false` : 28/28 tests toujours au vert
+(aucun rapport avec ce chantier, mais confirme l'absence de régression
+côté `lib/battery.ts`). `npx expo lint` : 0 erreur, 3 avertissements
+`exhaustive-deps` préexistants au même pattern que le reste du code
+(effets à usage unique qui ne re-suivent pas `i18n.language`/`t`,
+volontaire). Contenu fr/en des 18 cours et 34 sources validé
+programmatiquement : nombre de blocs JSON généré = attendu, nombre de
+cartes/diagnostic kind/exercise kind identiques entre `content` et
+`content_en` pour chaque cours, et recherche heuristique de mots français
+résiduels dans les champs `_en` (aucun résultat) — pas de vérification
+manuelle mot à mot de la traduction elle-même.
+
+**Fichiers touchés.** nouveaux : `lib/i18n.ts`, `locales/fr.json`,
+`locales/en.json`, `supabase/migrations/014_course_source_i18n.sql`,
+`supabase/seed/generate-sources-seed.mjs` ; modifiés : `app/_layout.tsx`,
+`app/(auth)/index.tsx`, `app/onboarding.tsx`, `app/paywall.tsx`,
+`app/(tabs)/index.tsx`, `app/checkin.tsx`, `app/(tabs)/calendar.tsx`,
+`app/add-event.tsx`, `app/(tabs)/library.tsx`, `app/(tabs)/profile.tsx`,
+`app/course/[id].tsx`, `app/source/[id].tsx`, `app/+not-found.tsx`,
+`components/course/FlipCard.tsx`, `components/course/CourseComplete.tsx`,
+`components/engagement/GuidedResponse.tsx`,
+`components/engagement/PredictThenCompare.tsx`,
+`components/engagement/FreePlan.tsx`,
+`components/onboarding/FeatureCarousel.tsx`,
+`components/onboarding/SignaturePad.tsx`, `components/CheckInCard.tsx`,
+`components/StreakBadge.tsx`, `components/BatteryGauge.tsx`,
+`lib/courses.ts`, `lib/painTypes.ts`, `lib/obstacles.ts`,
+`lib/socialProfile.ts`, `lib/momentOfDay.ts`, `lib/eventTags.ts`,
+`lib/pendingOnboarding.ts`, `lib/notifications.ts`, `lib/dates.ts`,
+`lib/plans.ts`, `supabase/seed/generate-courses-seed.mjs`,
+`supabase/seed/002_courses.sql`, `supabase/seed/001_sources.sql`.

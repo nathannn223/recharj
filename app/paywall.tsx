@@ -2,6 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -9,47 +10,49 @@ import { CheckIcon, CloseIcon, LockIcon } from '@/components/icons/Icon';
 import { chargeGradient, colors, fontFamily, radii, spacing } from '@/constants/theme';
 import { PRIVACY_URL, TERMS_URL } from '@/lib/legal';
 import { safeBack } from '@/lib/navigation';
-import { PLANS, TRIAL_DAYS, TRIAL_RENEWAL_TEXT, type Plan } from '@/lib/plans';
+import { localizedCourseContent, localizedCourseTitle } from '@/lib/courses';
+import { getPlanDisplay, getTrialRenewalText, PLANS, TRIAL_DAYS, type Plan } from '@/lib/plans';
 import { supabase } from '@/lib/supabase';
-
-const PERKS = ['Bibliothèque complète', 'Projection illimitée', 'Cours liés à tes événements'];
 
 type CoursePreview = { title: string; hook: string };
 
-// TODO: wire to RevenueCat's restorePurchases() once the App Store /
-// RevenueCat accounts exist and real in-app purchases are live — this is
-// currently a stub so the required button is present ahead of that work.
-function restorePurchases() {
-  Alert.alert('Restauration des achats', "Cette fonctionnalité sera disponible dès l'activation des abonnements.");
-}
-
 export default function PaywallScreen() {
+  const { t, i18n } = useTranslation();
   const { courseId } = useLocalSearchParams<{ courseId?: string }>();
   const [selected, setSelected] = useState<Plan['id']>('annual');
   const [preview, setPreview] = useState<CoursePreview | null>(null);
+
+  const PERKS = [t('paywall.perks.fullLibrary'), t('paywall.perks.unlimitedProjection'), t('paywall.perks.linkedCourses')];
+
+  // TODO: wire to RevenueCat's restorePurchases() once the App Store /
+  // RevenueCat accounts exist and real in-app purchases are live — this is
+  // currently a stub so the required button is present ahead of that work.
+  const restorePurchases = () => {
+    Alert.alert(t('paywall.restoreAlert.title'), t('paywall.restoreAlert.body'));
+  };
 
   useEffect(() => {
     if (!courseId) return;
     let cancelled = false;
     supabase
       .from('courses')
-      .select('title, content')
+      .select('title, title_en, content, content_en')
       .eq('id', courseId)
       .single()
       .then(({ data }) => {
         if (cancelled || !data) return;
-        setPreview({ title: data.title, hook: data.content.hook });
+        setPreview({ title: localizedCourseTitle(data, i18n.language), hook: localizedCourseContent(data, i18n.language).hook });
       });
     return () => {
       cancelled = true;
     };
-  }, [courseId]);
+  }, [courseId, i18n.language]);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.row}>
-          <Text style={styles.h1}>{preview ? 'Débloquer ce cours' : 'Passe en Premium'}</Text>
+          <Text style={styles.h1}>{preview ? t('paywall.titleCourse') : t('paywall.titleGeneric')}</Text>
           <Pressable onPress={() => safeBack()} hitSlop={10}>
             <CloseIcon color={colors.textDim} size={26} />
           </Pressable>
@@ -60,12 +63,12 @@ export default function PaywallScreen() {
             <View style={styles.previewBadge}>
               <LockIcon color={colors.surfaceScreen} size={18} />
             </View>
-            <Text style={styles.previewEyebrow}>Le cours qui t'attend</Text>
+            <Text style={styles.previewEyebrow}>{t('paywall.preview.eyebrow')}</Text>
             <Text style={styles.previewTitle}>{preview.title}</Text>
             <Text style={styles.previewHook} numberOfLines={5}>
               {preview.hook}
             </Text>
-            <Text style={styles.previewMore}>Débloque la suite, et tous les autres cours avec.</Text>
+            <Text style={styles.previewMore}>{t('paywall.preview.more')}</Text>
           </View>
         ) : (
           <View style={{ gap: 6 }}>
@@ -81,6 +84,7 @@ export default function PaywallScreen() {
         <View style={{ gap: spacing[3], marginTop: 'auto' }}>
           <View style={{ gap: spacing[3] }}>
             {PLANS.map((plan) => {
+              const display = getPlanDisplay(plan, t, i18n.language);
               const isSelected = plan.id === selected;
               return (
                 <Pressable
@@ -88,26 +92,26 @@ export default function PaywallScreen() {
                   onPress={() => setSelected(plan.id)}
                   style={[styles.planCard, isSelected && styles.planCardSelected]}
                 >
-                  {plan.badge && (
+                  {display.badge && (
                     <View style={styles.badge}>
-                      <Text style={styles.badgeText}>{plan.badge}</Text>
+                      <Text style={styles.badgeText}>{display.badge}</Text>
                     </View>
                   )}
                   <View style={styles.trialBadge}>
-                    <Text style={styles.trialBadgeText}>{TRIAL_DAYS} jours offerts</Text>
+                    <Text style={styles.trialBadgeText}>{t('paywall.badge.trial', { days: TRIAL_DAYS })}</Text>
                   </View>
                   <View style={styles.planRow}>
                     <View style={[styles.radio, isSelected && styles.radioSelected]} />
-                    <Text style={styles.planName}>{plan.name}</Text>
+                    <Text style={styles.planName}>{display.name}</Text>
                     <View style={{ flex: 1 }} />
                     <Text style={styles.planPrice}>
-                      {plan.perMonth}
-                      <Text style={styles.planPriceUnit}> / mois</Text>
+                      {display.perMonth}
+                      <Text style={styles.planPriceUnit}> {t('paywall.perMonth')}</Text>
                     </Text>
                   </View>
                   <Text style={[styles.planDetail, plan.id === 'monthly' && styles.planDetailWarning]}>
-                    {plan.strikeThrough && <Text style={styles.strikeThrough}>{plan.strikeThrough} </Text>}
-                    {plan.detail}
+                    {display.strikeThrough && <Text style={styles.strikeThrough}>{display.strikeThrough} </Text>}
+                    {display.detail}
                   </Text>
                 </Pressable>
               );
@@ -121,21 +125,23 @@ export default function PaywallScreen() {
               regular renewal text instead. */}
           <Pressable onPress={() => safeBack()}>
             <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.submitBtn}>
-              <Text style={styles.submitText}>{preview ? 'Débloquer ce cours' : "Commencer mon essai gratuit"}</Text>
+              <Text style={styles.submitText}>{preview ? t('paywall.submitCourse') : t('paywall.submitGeneric')}</Text>
             </LinearGradient>
           </Pressable>
-          <Text style={styles.footnote}>{TRIAL_RENEWAL_TEXT[selected]} Gérable dans les réglages de ton compte App Store.</Text>
+          <Text style={styles.footnote}>
+            {getTrialRenewalText(selected, t, i18n.language)} {t('paywall.manageNote')}
+          </Text>
           <View style={styles.legalRow}>
             <Pressable onPress={restorePurchases}>
-              <Text style={styles.legalLink}>Restaurer mes achats</Text>
+              <Text style={styles.legalLink}>{t('paywall.restore')}</Text>
             </Pressable>
             <Text style={styles.legalDot}>·</Text>
             <Pressable onPress={() => WebBrowser.openBrowserAsync(PRIVACY_URL)}>
-              <Text style={styles.legalLink}>Confidentialité</Text>
+              <Text style={styles.legalLink}>{t('paywall.privacy')}</Text>
             </Pressable>
             <Text style={styles.legalDot}>·</Text>
             <Pressable onPress={() => WebBrowser.openBrowserAsync(TERMS_URL)}>
-              <Text style={styles.legalLink}>CGU</Text>
+              <Text style={styles.legalLink}>{t('paywall.terms')}</Text>
             </Pressable>
           </View>
         </View>

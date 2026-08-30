@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { StarIcon } from '@/components/icons/Icon';
@@ -13,6 +14,7 @@ type Props = {
 // deliberately no form, no required step, so asking after every course
 // stays low-friction instead of causing rating fatigue.
 export function CourseComplete({ onRate, onDone }: Props) {
+  const { t } = useTranslation();
   const [rating, setRating] = useState<number | null>(null);
   const scale = useRef(new Animated.Value(0.5)).current;
 
@@ -30,8 +32,8 @@ export function CourseComplete({ onRate, onDone }: Props) {
       <Animated.View style={[styles.badge, { transform: [{ scale }] }]}>
         <StarIcon color={colors.surfaceScreen} size={30} />
       </Animated.View>
-      <Text style={styles.title}>Cours terminé !</Text>
-      <Text style={styles.subtitle}>Une compétence de plus dans ta boîte à outils.</Text>
+      <Text style={styles.title}>{t('course.completed.title')}</Text>
+      <Text style={styles.subtitle}>{t('course.completed.subtitle')}</Text>
 
       <View style={styles.stars}>
         {[1, 2, 3, 4, 5].map((n) => (
@@ -40,10 +42,10 @@ export function CourseComplete({ onRate, onDone }: Props) {
           </Pressable>
         ))}
       </View>
-      <Text style={styles.starLabel}>{rating ? 'Merci pour ton retour !' : 'Ce cours t\'a été utile ?'}</Text>
+      <Text style={styles.starLabel}>{rating ? t('course.completed.thanks') : t('course.completed.askRating')}</Text>
 
       <Pressable style={styles.doneBtn} onPress={onDone}>
-        <Text style={styles.doneBtnText}>{rating ? 'Terminer' : 'Passer et terminer'}</Text>
+        <Text style={styles.doneBtnText}>{rating ? t('course.completed.finishRated') : t('course.completed.finishSkip')}</Text>
       </Pressable>
     </View>
   );

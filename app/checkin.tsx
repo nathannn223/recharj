@@ -1,5 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,18 +9,15 @@ import { chargeGradient, colors, fontFamily, radii, spacing } from '@/constants/
 import { useAuth } from '@/lib/auth';
 import { startOfToday, toDateKey } from '@/lib/battery';
 import { submitCheckIn } from '@/lib/checkins';
+import { longLocalDate } from '@/lib/dates';
 import { safeBack } from '@/lib/navigation';
 import { supabase } from '@/lib/supabase';
-
-function formatFrenchDate(date: Date): string {
-  const formatted = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
-}
 
 // Upsert semantics make this screen double as both "note ta journée" and
 // "modifier la note d'aujourd'hui" — same form, prefilled if a check-in for
 // today already exists, submit always overwrites rather than erroring.
 export default function CheckInScreen() {
+  const { t } = useTranslation();
   const { session } = useAuth();
   const [score, setScore] = useState<number | null>(null);
   const [comment, setComment] = useState('');
@@ -67,8 +65,8 @@ export default function CheckInScreen() {
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.row}>
             <View>
-              <Text style={styles.sub}>{formatFrenchDate(startOfToday())}</Text>
-              <Text style={styles.h1}>Comment s'est passée ta journée ?</Text>
+              <Text style={styles.sub}>{longLocalDate(startOfToday())}</Text>
+              <Text style={styles.h1}>{t('checkin.title')}</Text>
             </View>
             <Pressable onPress={() => safeBack()} hitSlop={10}>
               <CloseIcon color={colors.textDim} size={26} />
@@ -84,18 +82,18 @@ export default function CheckInScreen() {
               ))}
             </View>
             <View style={styles.row}>
-              <Text style={styles.sliderLabel}>Épuisante</Text>
+              <Text style={styles.sliderLabel}>{t('checkin.low')}</Text>
               {score !== null && <Text style={styles.sliderValue}>{score}</Text>}
-              <Text style={styles.sliderLabel}>Ressourçante</Text>
+              <Text style={styles.sliderLabel}>{t('checkin.high')}</Text>
             </View>
           </View>
 
           <View>
-            <Text style={styles.sectionLabel}>Un mot sur ta journée (optionnel)</Text>
+            <Text style={styles.sectionLabel}>{t('checkin.commentLabel')}</Text>
             <TextInput
               value={comment}
               onChangeText={setComment}
-              placeholder="Ce qui t'a marqué aujourd'hui…"
+              placeholder={t('checkin.commentPlaceholder')}
               placeholderTextColor={colors.textFaint}
               multiline
               numberOfLines={4}
@@ -112,7 +110,7 @@ export default function CheckInScreen() {
               end={{ x: 1, y: 0 }}
               style={[styles.submitBtn, (submitting || score === null) && styles.btnDisabled]}
             >
-              <Text style={styles.submitText}>{submitting ? 'Enregistrement…' : 'Enregistrer ma journée'}</Text>
+              <Text style={styles.submitText}>{submitting ? t('checkin.submitting') : t('checkin.submit')}</Text>
             </LinearGradient>
           </Pressable>
         </ScrollView>

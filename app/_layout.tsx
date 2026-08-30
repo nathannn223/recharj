@@ -4,7 +4,7 @@ import { router, Stack } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import 'react-native-reanimated';
 
@@ -22,6 +22,7 @@ import {
 
 import { colors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { loadLanguageOverride } from '@/lib/i18n';
 import { OnboardingProvider, useOnboarding } from '@/lib/onboarding';
 
 export { ErrorBoundary } from 'expo-router';
@@ -64,8 +65,13 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
+  const [languageReady, setLanguageReady] = useState(false);
 
-  if (!fontsLoaded) {
+  useEffect(() => {
+    loadLanguageOverride().finally(() => setLanguageReady(true));
+  }, []);
+
+  if (!fontsLoaded || !languageReady) {
     return null;
   }
 

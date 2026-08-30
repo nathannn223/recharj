@@ -1,5 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { PencilIcon } from '@/components/icons/Icon';
@@ -24,6 +25,7 @@ const URGENT_HOUR = 22;
 // many hours a day, exhausting. It only leads with the streak once there's
 // a real deadline behind it.
 export function CheckInCard({ checkedIn, streak, onPress }: Props) {
+  const { t } = useTranslation();
   const pending = !checkedIn;
   const urgent = pending && streak > 0 && new Date().getHours() >= URGENT_HOUR;
   const calm = pending && !urgent;
@@ -34,17 +36,17 @@ export function CheckInCard({ checkedIn, streak, onPress }: Props) {
 
   const title = !pending
     ? streak > 1
-      ? `Série protégée · ${checkedIn.score}/10`
-      : `Journée notée · ${checkedIn.score}/10`
+      ? t('checkInCard.streakTitle', { score: checkedIn.score })
+      : t('checkInCard.doneTitle', { score: checkedIn.score })
     : urgent
-      ? 'Ne laisse pas ta série s\'éteindre.'
-      : 'Comment s\'est passée ta journée ?';
+      ? t('checkInCard.urgentTitle')
+      : t('checkInCard.calmTitle');
 
   const note = !pending
-    ? checkedIn.comment || 'Rendez-vous demain.'
+    ? checkedIn.comment || t('checkInCard.seeYouTomorrow')
     : urgent
-      ? 'Touche pour la protéger avant minuit.'
-      : 'Où en est ta batterie ?';
+      ? t('checkInCard.urgentNote')
+      : t('checkInCard.calmNote');
 
   const showStat = !pending || urgent;
 
@@ -71,7 +73,7 @@ export function CheckInCard({ checkedIn, streak, onPress }: Props) {
             {showStat && (
               <View style={styles.statRow}>
                 <Text style={styles.statNum}>{streak}</Text>
-                <Text style={styles.statUnit}>jour{streak === 1 ? '' : 's'} d'affilée</Text>
+                <Text style={styles.statUnit}>{t('checkInCard.dayUnit', { count: streak })}</Text>
               </View>
             )}
             {textBlock}
@@ -93,7 +95,7 @@ export function CheckInCard({ checkedIn, streak, onPress }: Props) {
             {showStat && (
               <View style={styles.statRow}>
                 <Text style={[styles.statNum, styles.statNumDone]}>{streak}</Text>
-                <Text style={styles.statUnit}>jour{streak === 1 ? '' : 's'} d'affilée</Text>
+                <Text style={styles.statUnit}>{t('checkInCard.dayUnit', { count: streak })}</Text>
               </View>
             )}
             {textBlock}

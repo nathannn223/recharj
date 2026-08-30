@@ -1,26 +1,27 @@
 import * as WebBrowser from 'expo-web-browser';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ChevronRightIcon, UserIcon } from '@/components/icons/Icon';
+import { CheckIcon, ChevronRightIcon, UserIcon } from '@/components/icons/Icon';
 import { colors, fontFamily, radii, spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import type { SubscriptionTier } from '@/lib/courses';
+import { getLanguageOverride, setLanguage, SUPPORTED_LANGUAGES, type SupportedLanguage } from '@/lib/i18n';
 import { PRIVACY_URL, SUPPORT_EMAIL, TERMS_URL } from '@/lib/legal';
 import { supabase } from '@/lib/supabase';
 
-const TIER_LABEL: Record<SubscriptionTier, string> = {
-  free: 'Gratuit',
-  premium: 'Premium',
-};
-
 export default function ProfileScreen() {
+  const { t } = useTranslation();
   const { session, signOut, deleteAccount } = useAuth();
   const [tier, setTier] = useState<SubscriptionTier | null>(null);
   const [completedCount, setCompletedCount] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [languageOverride, setLanguageOverride] = useState<SupportedLanguage | null>(null);
+
+  const TIER_LABEL: Record<SubscriptionTier, string> = { free: t('library.tier.free'), premium: t('library.tier.premium') };
 
   useEffect(() => {
     if (!session) return;
@@ -40,24 +41,29 @@ export default function ProfileScreen() {
     };
   }, [session]);
 
+  useEffect(() => {
+    getLanguageOverride().then(setLanguageOverride);
+  }, []);
+
+  const pickLanguage = async (lang: SupportedLanguage | null) => {
+    setLanguageOverride(lang);
+    await setLanguage(lang);
+  };
+
   const confirmDeleteAccount = () => {
-    Alert.alert(
-      'Supprimer ton compte ?',
-      'Toutes tes données (profil, événements, progression) seront effacées définitivement. Cette action est irréversible.',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: async () => {
-            setDeleting(true);
-            const { error } = await deleteAccount();
-            setDeleting(false);
-            if (error) Alert.alert('Erreur', error);
-          },
+    Alert.alert(t('profile.deleteConfirm.title'), t('profile.deleteConfirm.body'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.delete'),
+        style: 'destructive',
+        onPress: async () => {
+          setDeleting(true);
+          const { error } = await deleteAccount();
+          setDeleting(false);
+          if (error) Alert.alert(t('common.error'), error);
         },
-      ]
-    );
+      },
+    ]);
   };
 
   return (
@@ -67,56 +73,79 @@ export default function ProfileScreen() {
           <View style={styles.badge}>
             <UserIcon color={colors.violetSoft} size={32} />
           </View>
-          <Text style={styles.title}>Profil</Text>
+          <Text style={styles.title}>{t('profile.title')}</Text>
           <Text style={styles.email}>{session?.user.email}</Text>
         </View>
 
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{completedCount ?? '—'}</Text>
-            <Text style={styles.statLabel}>Cours terminés</Text>
+            <Text style={styles.statLabel}>{t('profile.stats.coursesCompleted')}</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{tier ? TIER_LABEL[tier] : '—'}</Text>
-            <Text style={styles.statLabel}>Palier actuel</Text>
+            <Text style={styles.statLabel}>{t('profile.stats.currentTier')}</Text>
           </View>
         </View>
 
         <Pressable style={styles.row} onPress={() => router.push('/paywall')}>
-          <Text style={styles.rowText}>Gérer mon abonnement</Text>
+          <Text style={styles.rowText}>{t('profile.manageSubscription')}</Text>
           <ChevronRightIcon color={colors.textDim} size={18} />
         </Pressable>
 
         <View style={styles.group}>
-          <Text style={styles.groupLabel}>Légal</Text>
+          <Text style={styles.groupLabel}>{t('profile.language')}</Text>
+          <LanguageOption
+            label={t('profile.languageAuto')}
+            selected={languageOverride === null}
+            onPress={() => pickLanguage(null)}
+          />
+          {SUPPORTED_LANGUAGES.map((lang) => (
+            <LanguageOption
+              key={lang}
+              label={lang === 'fr' ? t('profile.languageFrench') : t('profile.languageEnglish')}
+              selected={languageOverride === lang}
+              onPress={() => pickLanguage(lang)}
+            />
+          ))}
+        </View>
+
+        <View style={styles.group}>
+          <Text style={styles.groupLabel}>{t('profile.legal')}</Text>
           <Pressable style={styles.row} onPress={() => WebBrowser.openBrowserAsync(PRIVACY_URL)}>
-            <Text style={styles.rowText}>Politique de confidentialité</Text>
+            <Text style={styles.rowText}>{t('profile.privacyPolicy')}</Text>
             <ChevronRightIcon color={colors.textDim} size={18} />
           </Pressable>
           <Pressable style={styles.row} onPress={() => WebBrowser.openBrowserAsync(TERMS_URL)}>
-            <Text style={styles.rowText}>Conditions d'utilisation</Text>
+            <Text style={styles.rowText}>{t('profile.terms')}</Text>
             <ChevronRightIcon color={colors.textDim} size={18} />
           </Pressable>
           <Pressable style={styles.row} onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}`)}>
-            <Text style={styles.rowText}>Contacter le support</Text>
+            <Text style={styles.rowText}>{t('profile.contactSupport')}</Text>
             <ChevronRightIcon color={colors.textDim} size={18} />
           </Pressable>
         </View>
 
-        <Text style={styles.disclaimer}>
-          Recharj est un outil d'auto-amélioration sociale. Ça ne remplace pas un accompagnement médical ou psychologique
-          professionnel.
-        </Text>
+        <Text style={styles.disclaimer}>{t('profile.disclaimer')}</Text>
 
         <Pressable style={styles.signOutBtn} onPress={signOut}>
-          <Text style={styles.signOutText}>Se déconnecter</Text>
+          <Text style={styles.signOutText}>{t('profile.signOut')}</Text>
         </Pressable>
 
         <Pressable style={styles.deleteBtn} onPress={confirmDeleteAccount} disabled={deleting}>
-          <Text style={styles.deleteText}>{deleting ? 'Suppression…' : 'Supprimer mon compte'}</Text>
+          <Text style={styles.deleteText}>{deleting ? t('profile.deleting') : t('profile.deleteAccount')}</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function LanguageOption({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+  return (
+    <Pressable style={styles.row} onPress={onPress}>
+      <Text style={styles.rowText}>{label}</Text>
+      {selected && <CheckIcon color={colors.lime} size={18} />}
+    </Pressable>
   );
 }
 

@@ -1,27 +1,24 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BoltIcon, CheckIcon, ChevronRightIcon, LockIcon, SearchIcon, StarIcon } from '@/components/icons/Icon';
 import { chargeGradient, colors, fontFamily, radii, spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
-import { canAccessCourse, type CourseRow, type SubscriptionTier } from '@/lib/courses';
+import { canAccessCourse, localizedCourseTitle, type CourseRow, type SubscriptionTier } from '@/lib/courses';
+import { ANNUAL_PER_MONTH, formatPrice } from '@/lib/plans';
 import { supabase } from '@/lib/supabase';
 
-const FILTERS = ['Tous', 'Débuter', 'Travail', 'Famille'];
+const FILTER_IDS = ['all', 'starting', 'work', 'family'] as const;
 
-const FILTER_TAGS: Record<string, string | null> = {
-  Tous: null,
-  'Débuter': 'debuter',
-  Travail: 'travail',
-  Famille: 'famille',
-};
-
-const TIER_LABEL: Record<SubscriptionTier, string> = {
-  free: 'Gratuit',
-  premium: 'Premium',
+const FILTER_TAGS: Record<(typeof FILTER_IDS)[number], string | null> = {
+  all: null,
+  starting: 'debuter',
+  work: 'travail',
+  family: 'famille',
 };
 
 type ProgressStatus = 'not_started' | 'in_progress' | 'completed';
@@ -31,17 +28,20 @@ type ProgressStatus = 'not_started' | 'in_progress' | 'completed';
 // actually opened.
 type LibraryCourse = Pick<
   CourseRow,
-  'id' | 'title' | 'order_index' | 'tags' | 'free_tier_included' | 'level' | 'parent_course_id' | 'required_tier'
+  'id' | 'title' | 'title_en' | 'order_index' | 'tags' | 'free_tier_included' | 'level' | 'parent_course_id' | 'required_tier'
 >;
 
 export default function LibraryScreen() {
+  const { t, i18n } = useTranslation();
   const { session } = useAuth();
   const [tier, setTier] = useState<SubscriptionTier>('free');
   const [freeCourseId, setFreeCourseId] = useState<string | null>(null);
   const [courses, setCourses] = useState<LibraryCourse[]>([]);
   const [progress, setProgress] = useState<Map<string, ProgressStatus>>(new Map());
   const [loading, setLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState(FILTERS[0]);
+  const [activeFilter, setActiveFilter] = useState<(typeof FILTER_IDS)[number]>(FILTER_IDS[0]);
+
+  const TIER_LABEL: Record<SubscriptionTier, string> = { free: t('library.tier.free'), premium: t('library.tier.premium') };
 
   useEffect(() => {
     if (!session) return;
@@ -58,7 +58,7 @@ export default function LibraryScreen() {
         // fetches it itself once a course is actually opened.
         supabase
           .from('courses')
-          .select('id, title, order_index, tags, free_tier_included, level, parent_course_id, required_tier')
+          .select('id, title, title_en, order_index, tags, free_tier_included, level, parent_course_id, required_tier')
           .order('order_index', { ascending: true }),
         supabase.from('course_progress').select('course_id, status'),
       ]);
@@ -94,7 +94,7 @@ export default function LibraryScreen() {
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.row}>
-          <Text style={styles.h1}>Bibliothèque</Text>
+          <Text style={styles.h1}>{t('library.title')}</Text>
           <SearchIcon color={colors.textDim} size={24} />
         </View>
 
@@ -102,8 +102,8 @@ export default function LibraryScreen() {
           <Pressable onPress={() => router.push('/paywall')}>
             <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.upgradeBanner}>
               <View>
-                <Text style={styles.upgradeTitle}>Débloque tous les cours</Text>
-                <Text style={styles.upgradeSub}>À partir de 2,92€/mois</Text>
+                <Text style={styles.upgradeTitle}>{t('library.upgradeBanner.title')}</Text>
+                <Text style={styles.upgradeSub}>{t('library.upgradeBanner.sub', { price: formatPrice(ANNUAL_PER_MONTH, i18n.language) })}</Text>
               </View>
               <ChevronRightIcon color={colors.surfaceScreen} size={20} />
             </LinearGradient>
@@ -111,11 +111,11 @@ export default function LibraryScreen() {
         )}
 
         <View style={styles.chipRow}>
-          {FILTERS.map((f) => {
+          {FILTER_IDS.map((f) => {
             const selected = f === activeFilter;
             return (
               <Pressable key={f} onPress={() => setActiveFilter(f)} style={[styles.chip, selected && styles.chipSelected]}>
-                <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{f}</Text>
+                <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{t(`library.filters.${f}`)}</Text>
               </Pressable>
             );
           })}
@@ -124,7 +124,7 @@ export default function LibraryScreen() {
         {loading ? (
           <ActivityIndicator color={colors.violetSoft} style={{ marginTop: spacing[6] }} />
         ) : level1.length === 0 ? (
-          <Text style={styles.emptyText}>Aucun cours pour ce filtre.</Text>
+          <Text style={styles.emptyText}>{t('library.noCourses')}</Text>
         ) : (
           <View style={{ gap: spacing[3] }}>
             {level1.map((course) => {
@@ -132,12 +132,19 @@ export default function LibraryScreen() {
               const status = progress.get(course.id) ?? 'not_started';
               const level2 = level2ByParent.get(course.id);
               const level2Locked = level2 ? !canAccessCourse(level2, tier, freeCourseId) : false;
+              const meta = locked
+                ? TIER_LABEL[course.required_tier]
+                : status === 'completed'
+                  ? t('library.status.completed')
+                  : status === 'in_progress'
+                    ? t('library.status.inProgress')
+                    : t('library.status.duration');
 
               return (
                 <View key={course.id} style={{ gap: spacing[2] }}>
                   <CourseRowItem
-                    title={course.title}
-                    meta={locked ? TIER_LABEL[course.required_tier] : status === 'completed' ? 'Terminé' : status === 'in_progress' ? 'En cours' : '5-10 min'}
+                    title={localizedCourseTitle(course, i18n.language)}
+                    meta={meta}
                     locked={locked}
                     status={status}
                     onPress={() => openCourse(course)}
@@ -152,9 +159,9 @@ export default function LibraryScreen() {
                           <StarIcon color={colors.lime} size={13} />
                         </View>
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.level2Name}>{level2.title}</Text>
+                          <Text style={styles.level2Name}>{localizedCourseTitle(level2, i18n.language)}</Text>
                           <Text style={styles.level2Meta}>
-                            {level2Locked ? TIER_LABEL[level2.required_tier] : 'Approfondissement'}
+                            {level2Locked ? TIER_LABEL[level2.required_tier] : t('library.status.deepDive')}
                           </Text>
                         </View>
                         {level2Locked && <LockIcon color={colors.violetSoft} size={14} />}

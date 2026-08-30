@@ -2,6 +2,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -9,27 +10,16 @@ import { BoltIcon, CalendarIcon, CloseIcon } from '@/components/icons/Icon';
 import { chargeGradient, colors, fontFamily, radii, spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { fromDateKey, toDateKey } from '@/lib/battery';
-import { tagsForEventType } from '@/lib/eventTags';
+import { longLocalDate } from '@/lib/dates';
+import { EVENT_TYPE_IDS, tagsForEventType } from '@/lib/eventTags';
 import { safeBack } from '@/lib/navigation';
 import { supabase } from '@/lib/supabase';
 import { useEvents } from '@/hooks/useEvents';
 
-const EVENT_TYPES = ['Repas de famille', 'Travail', 'Soirée entre amis', 'Rendez-vous', 'Autre'];
-
 type Recommendation = { id: string; title: string };
 
-function submitLabel(isEditing: boolean, submitting: boolean, waiting: boolean): string {
-  if (waiting) return 'Chargement…';
-  if (isEditing) return submitting ? 'Enregistrement…' : 'Enregistrer les modifications';
-  return submitting ? 'Ajout en cours…' : 'Ajouter à mon calendrier';
-}
-
-function formatFrenchDate(date: Date): string {
-  const formatted = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
-}
-
 export default function AddEventScreen() {
+  const { t } = useTranslation();
   const { session } = useAuth();
   // Editing reuses this screen rather than duplicating a near-identical form:
   // the fields, the validation and the difficulty scale are the same, so a
@@ -39,7 +29,7 @@ export default function AddEventScreen() {
   const { events, addEvent, updateEvent } = useEvents();
 
   const [title, setTitle] = useState('');
-  const [selectedType, setSelectedType] = useState(EVENT_TYPES[0]);
+  const [selectedType, setSelectedType] = useState(EVENT_TYPE_IDS[0]);
   const [date, setDate] = useState(new Date());
   const [showPicker, setShowPicker] = useState(false);
   const [difficulty, setDifficulty] = useState(7);
@@ -58,7 +48,7 @@ export default function AddEventScreen() {
     const existing = events.find((e) => e.id === eventId);
     if (!existing) return;
     setTitle(existing.title ?? '');
-    setSelectedType(EVENT_TYPES.includes(existing.type) ? existing.type : EVENT_TYPES[EVENT_TYPES.length - 1]);
+    setSelectedType(EVENT_TYPE_IDS.includes(existing.type) ? existing.type : EVENT_TYPE_IDS[EVENT_TYPE_IDS.length - 1]);
     setDate(fromDateKey(existing.eventDate));
     setDifficulty(existing.difficulty);
     setDescription(existing.description ?? '');
@@ -68,9 +58,15 @@ export default function AddEventScreen() {
   const canPickType = title.trim().length > 0;
   const waitingForEvent = isEditing && !prefilled;
 
+  function submitLabel(): string {
+    if (waitingForEvent) return t('addEvent.loading');
+    if (isEditing) return submitting ? t('addEvent.submitSaving') : t('addEvent.submitEdit');
+    return submitting ? t('addEvent.submitAdding') : t('addEvent.submitAdd');
+  }
+
   const submit = async () => {
     if (!canPickType) {
-      setError('Donne un titre à ton événement avant de continuer.');
+      setError(t('addEvent.errorNoTitle'));
       return;
     }
     setError(null);
@@ -108,9 +104,9 @@ export default function AddEventScreen() {
       return;
     }
 
-    // On te propose un cours adapté quand l'évènement est marqué difficile
-    // (voir le texte d'aide sous le curseur), mais jamais un cours déjà
-    // terminé — inutile de recommander ce que l'utilisateur connaît déjà.
+    // A matching course is suggested when the event is marked difficult
+    // (see the helper text under the slider), but never one already
+    // finished — no point recommending what the user already knows.
     let match: Recommendation | null = null;
     const tags = difficulty >= 7 ? tagsForEventType(selectedType) : [];
     if (tags.length && session) {
@@ -139,16 +135,16 @@ export default function AddEventScreen() {
             <BoltIcon color={colors.surfaceScreen} size={22} />
           </View>
           <Text style={styles.recTitle}>{recommendation.title}</Text>
-          <Text style={styles.recNote}>Recommandé pour "{eventTypeForRec}"</Text>
+          <Text style={styles.recNote}>{t('addEvent.recommendation.note', { type: t(`data.eventTypes.${eventTypeForRec}`) })}</Text>
 
           <View style={{ gap: spacing[3], width: '100%', marginTop: spacing[6] }}>
             <Pressable onPress={() => router.replace(`/course/${recommendation.id}`)}>
               <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.submitBtn}>
-                <Text style={styles.submitText}>Voir le cours recommandé</Text>
+                <Text style={styles.submitText}>{t('addEvent.recommendation.viewCourse')}</Text>
               </LinearGradient>
             </Pressable>
             <Pressable onPress={() => safeBack()} style={styles.skipBtn}>
-              <Text style={styles.skipText}>Continuer</Text>
+              <Text style={styles.skipText}>{t('addEvent.recommendation.skip')}</Text>
             </Pressable>
           </View>
         </View>
@@ -160,42 +156,42 @@ export default function AddEventScreen() {
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.row}>
-          <Text style={styles.h1}>{isEditing ? "Modifier l'événement" : 'Nouvel événement'}</Text>
+          <Text style={styles.h1}>{isEditing ? t('addEvent.titleEdit') : t('addEvent.titleNew')}</Text>
           <Pressable onPress={() => safeBack()} hitSlop={10}>
             <CloseIcon color={colors.textDim} size={26} />
           </Pressable>
         </View>
 
         <View>
-          <Text style={styles.sectionLabel}>Titre</Text>
+          <Text style={styles.sectionLabel}>{t('addEvent.titleLabel')}</Text>
           <TextInput
             value={title}
             onChangeText={setTitle}
-            placeholder="Donne un titre à cet événement"
+            placeholder={t('addEvent.titlePlaceholder')}
             placeholderTextColor={colors.textFaint}
             style={styles.titleInput}
           />
         </View>
 
         <View pointerEvents={canPickType ? 'auto' : 'none'} style={!canPickType && { opacity: 0.4 }}>
-          <Text style={styles.sectionLabel}>Type</Text>
+          <Text style={styles.sectionLabel}>{t('addEvent.typeLabel')}</Text>
           <View style={styles.chipRow}>
-            {EVENT_TYPES.map((type) => {
-              const selected = type === selectedType;
+            {EVENT_TYPE_IDS.map((typeId) => {
+              const selected = typeId === selectedType;
               return (
-                <Pressable key={type} onPress={() => setSelectedType(type)} style={[styles.chip, selected && styles.chipSelected]}>
-                  <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{type}</Text>
+                <Pressable key={typeId} onPress={() => setSelectedType(typeId)} style={[styles.chip, selected && styles.chipSelected]}>
+                  <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{t(`data.eventTypes.${typeId}`)}</Text>
                 </Pressable>
               );
             })}
           </View>
-          {!canPickType && <Text style={styles.helper}>Ajoute d'abord un titre pour choisir le type.</Text>}
+          {!canPickType && <Text style={styles.helper}>{t('addEvent.typeHelper')}</Text>}
         </View>
 
         <View>
-          <Text style={styles.sectionLabel}>Date</Text>
+          <Text style={styles.sectionLabel}>{t('addEvent.dateLabel')}</Text>
           <Pressable style={styles.field} onPress={() => setShowPicker((v) => !v)}>
-            <Text style={styles.fieldText}>{formatFrenchDate(date)}</Text>
+            <Text style={styles.fieldText}>{longLocalDate(date)}</Text>
             <CalendarIcon color={colors.textDim} size={20} />
           </Pressable>
           {showPicker && (
@@ -215,11 +211,11 @@ export default function AddEventScreen() {
         </View>
 
         <View>
-          <Text style={styles.sectionLabel}>Description</Text>
+          <Text style={styles.sectionLabel}>{t('addEvent.descriptionLabel')}</Text>
           <TextInput
             value={description}
             onChangeText={setDescription}
-            placeholder="Un détail à te rappeler sur cet événement (optionnel)"
+            placeholder={t('addEvent.descriptionPlaceholder')}
             placeholderTextColor={colors.textFaint}
             multiline
             numberOfLines={3}
@@ -229,7 +225,7 @@ export default function AddEventScreen() {
 
         <View>
           <View style={styles.row}>
-            <Text style={styles.sectionLabel}>Niveau de difficulté ressentie</Text>
+            <Text style={styles.sectionLabel}>{t('addEvent.difficultyLabel')}</Text>
             <Text style={styles.diffValue}>{difficulty}/10</Text>
           </View>
           <View style={styles.sliderTrack}>
@@ -240,10 +236,10 @@ export default function AddEventScreen() {
             ))}
           </View>
           <View style={styles.row}>
-            <Text style={styles.sliderLabel}>Facile</Text>
-            <Text style={styles.sliderLabel}>Éprouvant</Text>
+            <Text style={styles.sliderLabel}>{t('addEvent.difficultyLow')}</Text>
+            <Text style={styles.sliderLabel}>{t('addEvent.difficultyHigh')}</Text>
           </View>
-          {!isEditing && <Text style={styles.helper}>On te proposera un cours adapté si le niveau dépasse 6.</Text>}
+          {!isEditing && <Text style={styles.helper}>{t('addEvent.difficultyHelper')}</Text>}
         </View>
 
         {error && <Text style={styles.error}>{error}</Text>}
@@ -255,7 +251,7 @@ export default function AddEventScreen() {
             end={{ x: 1, y: 0 }}
             style={[styles.submitBtn, (submitting || !canPickType || waitingForEvent) && { opacity: 0.6 }]}
           >
-            <Text style={styles.submitText}>{submitLabel(isEditing, submitting, waitingForEvent)}</Text>
+            <Text style={styles.submitText}>{submitLabel()}</Text>
           </LinearGradient>
         </Pressable>
       </ScrollView>

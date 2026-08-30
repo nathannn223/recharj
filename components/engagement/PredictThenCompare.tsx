@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { colors, fontFamily, radii, spacing } from '@/constants/theme';
@@ -14,6 +15,7 @@ type Props = {
 // not instead of. The typed answer itself isn't persisted anywhere; only
 // the act of comparing matters for course progress.
 export function PredictThenCompare({ format, onComplete }: Props) {
+  const { t } = useTranslation();
   const [answer, setAnswer] = useState('');
   const [revealed, setRevealed] = useState(false);
 
@@ -30,18 +32,18 @@ export function PredictThenCompare({ format, onComplete }: Props) {
       <TextInput
         value={answer}
         onChangeText={setAnswer}
-        placeholder="Écris ta réponse…"
+        placeholder={t('engagement.writeYourAnswer')}
         placeholderTextColor={colors.textFaint}
         multiline
         style={styles.input}
       />
       {!revealed ? (
         <Pressable disabled={!answer.trim()} onPress={reveal} style={[styles.compareBtn, !answer.trim() && styles.compareBtnDisabled]}>
-          <Text style={styles.compareBtnText}>Comparer avec des exemples</Text>
+          <Text style={styles.compareBtnText}>{t('engagement.compareWithExamples')}</Text>
         </Pressable>
       ) : (
         <View style={styles.examples}>
-          <Text style={styles.examplesLabel}>Quelques exemples</Text>
+          <Text style={styles.examplesLabel}>{t('engagement.examplesLabel')}</Text>
           {format.examples.map((ex, i) => (
             <View key={i} style={styles.exampleRow}>
               <Text style={styles.exampleText}>{ex}</Text>

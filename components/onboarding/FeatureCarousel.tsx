@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Dimensions, NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BatteryGauge } from '@/components/BatteryGauge';
@@ -16,17 +17,6 @@ const SLIDE_WIDTH = SCREEN_WIDTH - spacing[6] * 2;
 const CAROUSEL_HEIGHT = 380;
 
 type Slide = { title: string; body?: string; illustration: React.ReactNode };
-
-// A real card from the course content, tried hands-on right here instead of
-// described — the "aha moment" for the courses half of the app. Uses the
-// liking gap (Boothby, Cooney, Sandstrom & Epley, 2018) rather than the
-// more familiar mere exposure effect, for a stronger first impression.
-const SAMPLE_CARD: CourseCard = {
-  title: "L'écart de sympathie",
-  advice:
-    "Après une conversation, tu penses presque toujours avoir moins plu que la réalité. Des chercheurs ont mesuré cet écart en 2018. Ton interlocuteur t'a sans doute apprécié plus que tu ne le crois.",
-  sourceId: null,
-};
 
 // Illustrative mockup of a projected week, not real data. Bars trace a
 // battery level per day, a dot marks the two days with a hard event.
@@ -83,26 +73,37 @@ function CheckInPreview() {
   );
 }
 
-const SLIDES: Slide[] = [
-  { title: 'Ajoute tes événements sociaux.', body: 'On calcule leur impact.', illustration: <WeekPreview /> },
-  { title: 'Chaque soir, fais le point.', body: 'Ta note devient ta batterie.', illustration: <CheckInPreview /> },
-  {
-    title: 'Progresse avec de vrais cours.',
-    // FlipCard sizes its faces absolutely (see components/course/FlipCard),
-    // so it needs an ancestor with an explicit width to stretch into —
-    // this slide's own alignItems:'center' only hugs intrinsic-width
-    // content, which FlipCard's Pressable wrapper doesn't have on its own.
-    illustration: (
-      <View style={{ width: SLIDE_WIDTH - spacing[4] * 2 }}>
-        <FlipCard card={SAMPLE_CARD} index={0} total={1} />
-      </View>
-    ),
-  },
-];
-
 export function FeatureCarousel() {
+  const { t } = useTranslation();
   const [index, setIndex] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
+
+  // A real card from the course content, tried hands-on right here instead of
+  // described — the "aha moment" for the courses half of the app. Uses the
+  // liking gap (Boothby, Cooney, Sandstrom & Epley, 2018) rather than the
+  // more familiar mere exposure effect, for a stronger first impression.
+  const sampleCard: CourseCard = {
+    title: t('carousel.sampleCard.title'),
+    advice: t('carousel.sampleCard.advice'),
+    sourceId: null,
+  };
+
+  const SLIDES: Slide[] = [
+    { title: t('carousel.slide1.title'), body: t('carousel.slide1.body'), illustration: <WeekPreview /> },
+    { title: t('carousel.slide2.title'), body: t('carousel.slide2.body'), illustration: <CheckInPreview /> },
+    {
+      title: t('carousel.slide3.title'),
+      // FlipCard sizes its faces absolutely (see components/course/FlipCard),
+      // so it needs an ancestor with an explicit width to stretch into —
+      // this slide's own alignItems:'center' only hugs intrinsic-width
+      // content, which FlipCard's Pressable wrapper doesn't have on its own.
+      illustration: (
+        <View style={{ width: SLIDE_WIDTH - spacing[4] * 2 }}>
+          <FlipCard card={sampleCard} index={0} total={1} />
+        </View>
+      ),
+    },
+  ];
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const next = Math.round(e.nativeEvent.contentOffset.x / SLIDE_WIDTH);

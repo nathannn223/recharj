@@ -1,6 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,13 +16,21 @@ import { PredictThenCompare } from '@/components/engagement/PredictThenCompare';
 import { BoltIcon, ChevronLeftIcon } from '@/components/icons/Icon';
 import { chargeGradient, colors, fontFamily, radii, spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
-import { canAccessCourse, personalizeCardOrder, type CourseRow, type SourceRow } from '@/lib/courses';
+import {
+  canAccessCourse,
+  localizedCourseContent,
+  localizedCourseTitle,
+  personalizeCardOrder,
+  type CourseRow,
+  type SourceRow,
+} from '@/lib/courses';
 import { safeBack } from '@/lib/navigation';
 import { supabase } from '@/lib/supabase';
 
 const STEP_COUNT = 4; // hook, diagnostic, cards, exercise
 
 export default function CourseScreen() {
+  const { t, i18n } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
 
@@ -49,7 +58,7 @@ export default function CourseScreen() {
 
       if (cancelled) return;
       if (courseError || !courseRow) {
-        setError(courseError?.message ?? 'Cours introuvable.');
+        setError(courseError?.message ?? t('course.notFound'));
         setLoading(false);
         return;
       }
@@ -68,11 +77,15 @@ export default function CourseScreen() {
       }
 
       const sourceIds = Array.from(
-        new Set(typedCourse.content.cards.map((c) => c.sourceId).filter((v): v is string => v !== null))
+        new Set(
+          [...typedCourse.content.cards, ...typedCourse.content_en.cards]
+            .map((c) => c.sourceId)
+            .filter((v): v is string => v !== null)
+        )
       );
       const { data: sourceRows } = sourceIds.length
-        ? await supabase.from('sources').select('id, short_label').in('id', sourceIds)
-        : { data: [] as Pick<SourceRow, 'id' | 'short_label'>[] };
+        ? await supabase.from('sources').select('id, short_label, short_label_en').in('id', sourceIds)
+        : { data: [] as Pick<SourceRow, 'id' | 'short_label' | 'short_label_en'>[] };
 
       if (cancelled) return;
       setCourse(typedCourse);
@@ -100,13 +113,15 @@ export default function CourseScreen() {
     };
   }, [id, session]);
 
+  const content = useMemo(() => (course ? localizedCourseContent(course, i18n.language) : null), [course, i18n.language]);
+
   const orderedCards = useMemo(() => {
-    if (!course) return [];
-    return personalizeCardOrder(course.content, sliderValue);
-  }, [course, sliderValue]);
+    if (!content) return [];
+    return personalizeCardOrder(content, sliderValue);
+  }, [content, sliderValue]);
 
   const diagnosticAnswered =
-    course?.content.diagnostic.kind === 'slider-double'
+    content?.diagnostic.kind === 'slider-double'
       ? sliderDoubleValue[0] !== null && sliderDoubleValue[1] !== null
       : sliderValue !== null;
 
@@ -143,15 +158,13 @@ export default function CourseScreen() {
     );
   }
 
-  if (error || !course) {
+  if (error || !course || !content) {
     return (
       <View style={[styles.screen, styles.centered]}>
-        <Text style={styles.errorText}>{error ?? 'Cours introuvable.'}</Text>
+        <Text style={styles.errorText}>{error ?? t('course.notFound')}</Text>
       </View>
     );
   }
-
-  const { content } = course;
 
   if (finished) {
     return (
@@ -171,7 +184,7 @@ export default function CourseScreen() {
             <ChevronLeftIcon color={colors.textDim} size={24} />
           </Pressable>
           <Text style={styles.courseTitle} numberOfLines={1}>
-            {course.title}
+            {localizedCourseTitle(course, i18n.language)}
           </Text>
           <View style={styles.stepDots}>
             {Array.from({ length: STEP_COUNT }, (_, i) => (
@@ -186,7 +199,7 @@ export default function CourseScreen() {
               <View style={styles.accentBolt}>
                 <BoltIcon color={colors.surfaceScreen} size={20} />
               </View>
-              <Text style={styles.eyebrow}>Mise en situation</Text>
+              <Text style={styles.eyebrow}>{t('course.hook')}</Text>
               <Text style={styles.cardTitle}>{content.hook}</Text>
             </View>
           )}
@@ -203,10 +216,8 @@ export default function CourseScreen() {
               <View style={styles.accentBolt}>
                 <BoltIcon color={colors.surfaceScreen} size={20} />
               </View>
-              <Text style={styles.eyebrow}>Ce qui t'attend</Text>
-              <Text style={styles.cardTitle}>
-                Voici {orderedCards.length} clés qui vont te permettre d'appréhender plus facilement cette situation !
-              </Text>
+              <Text style={styles.eyebrow}>{t('course.cardsIntro')}</Text>
+              <Text style={styles.cardTitle}>{t('course.cardsIntroTitle', { count: orderedCards.length })}</Text>
             </View>
           )}
 
@@ -216,7 +227,11 @@ export default function CourseScreen() {
               card={orderedCards[cardIndex]}
               index={cardIndex}
               total={orderedCards.length}
-              sourceLabel={orderedCards[cardIndex].sourceId ? sources.get(orderedCards[cardIndex].sourceId!)?.short_label : undefined}
+              sourceLabel={
+                orderedCards[cardIndex].sourceId
+                  ? sources.get(orderedCards[cardIndex].sourceId!)?.[i18n.language === 'fr' ? 'short_label' : 'short_label_en']
+                  : undefined
+              }
               onSourcePress={() => router.push(`/source/${orderedCards[cardIndex].sourceId}`)}
             />
           )}
@@ -227,7 +242,7 @@ export default function CourseScreen() {
         <View style={styles.navRow}>
           {(step > 0 || cardIndex > -1) && (
             <Pressable style={styles.btnGhost} onPress={goBack}>
-              <Text style={styles.btnGhostText}>Précédent</Text>
+              <Text style={styles.btnGhostText}>{t('course.previous')}</Text>
             </Pressable>
           )}
           <Pressable
@@ -253,7 +268,7 @@ export default function CourseScreen() {
               ]}
             >
               <Text style={styles.btnPrimaryText}>
-                {step === 3 ? 'Terminer le cours' : step === 2 && cardIndex < orderedCards.length - 1 ? 'Suivant' : 'Continuer'}
+                {step === 3 ? t('course.finish') : step === 2 && cardIndex < orderedCards.length - 1 ? t('course.next') : t('course.continue')}
               </Text>
             </LinearGradient>
           </Pressable>

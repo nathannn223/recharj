@@ -2,6 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
 import * as WebBrowser from 'expo-web-browser';
 import { useRef, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { Animated, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Path, Rect, Stop } from 'react-native-svg';
@@ -27,14 +28,14 @@ import { SignaturePad } from '@/components/onboarding/SignaturePad';
 import { chargeGradient, colors, fontFamily, radii, spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { PRIVACY_URL, TERMS_URL } from '@/lib/legal';
-import { MOMENT_OPTIONS } from '@/lib/momentOfDay';
+import { MOMENT_IDS } from '@/lib/momentOfDay';
 import { scheduleDailyReminder } from '@/lib/notifications';
-import { OBSTACLES } from '@/lib/obstacles';
+import { OBSTACLE_IDS } from '@/lib/obstacles';
 import { useOnboarding } from '@/lib/onboarding';
 import { PAIN_TYPES } from '@/lib/painTypes';
 import { savePendingOnboarding } from '@/lib/pendingOnboarding';
-import { PLANS, TRIAL_DAYS, TRIAL_RENEWAL_TEXT, type Plan } from '@/lib/plans';
-import { ANTICIPATION_OPTIONS, EVENT_FREQUENCY_OPTIONS, RECHARGE_OPTIONS } from '@/lib/socialProfile';
+import { getPlanDisplay, getTrialRenewalText, PLANS, TRIAL_DAYS, type Plan } from '@/lib/plans';
+import { ANTICIPATION_IDS, EVENT_FREQUENCY_IDS, RECHARGE_IDS } from '@/lib/socialProfile';
 
 function LogoMark({ size = 56 }: { size?: number }) {
   return (
@@ -50,20 +51,6 @@ function LogoMark({ size = 56 }: { size?: number }) {
       </Defs>
     </Svg>
   );
-}
-
-const CONTRACT_COMMITMENTS = ['Je vais suivre ma batterie.', 'Je vais mieux me connaître.', 'Je vais avancer à mon rythme.'];
-
-const TIMELINE = [
-  { day: 'Aujourd’hui', text: 'Accès complet débloqué.', icon: 'bolt' as const },
-  { day: `Jour ${TRIAL_DAYS - 2}`, text: 'Rappel avant la fin.', icon: 'bell' as const },
-  { day: `Jour ${TRIAL_DAYS}`, text: 'Premier prélèvement, résiliable avant.', icon: 'check' as const },
-];
-
-function TimelineIcon({ kind }: { kind: 'bolt' | 'bell' | 'check' }) {
-  if (kind === 'bolt') return <BoltIcon color={colors.lime} size={22} />;
-  if (kind === 'bell') return <BellIcon color={colors.violetSoft} size={22} />;
-  return <CheckIcon color={colors.coral} size={22} />;
 }
 
 type Mode = 'quiz' | 'signin';
@@ -104,45 +91,46 @@ function batteryLevelForStep(step: number): number | undefined {
 
 // Each button teases what the next step reveals instead of repeating
 // "Continuer" at every screen.
-function nextButtonLabel(step: number, submitting: boolean, firstName: string): string {
-  if (step === STEP.SIGNUP) return submitting ? 'Un instant…' : 'Créer mon compte';
+function nextButtonLabel(step: number, submitting: boolean, firstName: string, t: (key: string) => string): string {
+  if (step === STEP.SIGNUP) return submitting ? t('auth.buttons.submitting') : t('auth.buttons.createAccount');
   switch (step) {
     case STEP.HOOK:
-      return 'Je me reconnais';
+      return t('auth.buttons.hook');
     case STEP.NAME:
-      return firstName.trim() ? 'Enchanté !' : 'Continuer';
+      return firstName.trim() ? t('auth.buttons.nameFilled') : t('auth.buttons.continue');
     case STEP.DIAGNOSTIC:
-      return 'Voir ce qui te vide le plus';
+      return t('auth.buttons.diagnostic');
     case STEP.PAIN:
-      return 'Voir ce qui te bloque';
+      return t('auth.buttons.pain');
     case STEP.OBSTACLE:
-      return 'Voir ce qui revient le plus';
+      return t('auth.buttons.obstacle');
     case STEP.FREQUENCY:
-      return 'Voir ce qui te recharge';
+      return t('auth.buttons.frequency');
     case STEP.RECHARGE:
-      return 'Un dernier point sur toi';
+      return t('auth.buttons.recharge');
     case STEP.ANTICIPATION:
-      return 'Une dernière question';
+      return t('auth.buttons.anticipation');
     case STEP.MOMENT:
-      return 'Voir pourquoi Recharj est différent';
+      return t('auth.buttons.moment');
     case STEP.AUTHORITY:
-      return "Voir comment Recharj t'aide";
+      return t('auth.buttons.authority');
     case STEP.FEATURES:
-      return 'Je veux que ça change';
+      return t('auth.buttons.features');
     case STEP.STREAK:
-      return 'Je ne veux pas la perdre';
+      return t('auth.buttons.streak');
     case STEP.UNIQUE:
-      return "Je m'engage";
+      return t('auth.buttons.unique');
     case STEP.CONTRACT:
-      return 'Confirmer mon engagement';
+      return t('auth.buttons.contract');
     case STEP.RECAP:
-      return 'Voir mon plan personnalisé';
+      return t('auth.buttons.recap');
     default:
-      return 'Continuer';
+      return t('auth.buttons.continue');
   }
 }
 
 export default function AuthScreen() {
+  const { t, i18n } = useTranslation();
   const { signIn, signUp } = useAuth();
   const { resetSeen } = useOnboarding();
   const [mode, setMode] = useState<Mode>('quiz');
@@ -164,7 +152,7 @@ export default function AuthScreen() {
   const [submitting, setSubmitting] = useState(false);
 
   const pain = painIndex !== null ? PAIN_TYPES[painIndex] : null;
-  const momentLabel = momentIndex !== null ? MOMENT_OPTIONS[momentIndex] : null;
+  const momentId = momentIndex !== null ? MOMENT_IDS[momentIndex] : null;
 
   const toggleObstacle = (i: number) => {
     setObstacleIndices((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]));
@@ -185,19 +173,19 @@ export default function AuthScreen() {
   const submitSignUp = async () => {
     setError(null);
     if (!email || !password) {
-      setError('Renseigne ton email et ton mot de passe.');
+      setError(t('auth.errors.missingCredentials'));
       return;
     }
     setSubmitting(true);
     await savePendingOnboarding({
       firstName: firstName.trim(),
       baselineScore: score ?? 5,
-      painType: pain?.label ?? '',
-      obstacles: obstacleIndices.map((i) => OBSTACLES[i]),
-      eventFrequency: frequencyIndex !== null ? EVENT_FREQUENCY_OPTIONS[frequencyIndex] : '',
-      rechargeMethod: rechargeIndex !== null ? RECHARGE_OPTIONS[rechargeIndex] : '',
-      anticipationStyle: anticipationIndex !== null ? ANTICIPATION_OPTIONS[anticipationIndex] : '',
-      lowBatteryMoment: momentLabel ?? '',
+      painId: pain?.id ?? '',
+      obstacleIds: obstacleIndices.map((i) => OBSTACLE_IDS[i]),
+      eventFrequencyId: frequencyIndex !== null ? EVENT_FREQUENCY_IDS[frequencyIndex] : '',
+      rechargeId: rechargeIndex !== null ? RECHARGE_IDS[rechargeIndex] : '',
+      anticipationId: anticipationIndex !== null ? ANTICIPATION_IDS[anticipationIndex] : '',
+      momentId: momentId ?? '',
     });
     const { error: signUpError, hasSession } = await signUp(email, password);
     setSubmitting(false);
@@ -230,12 +218,12 @@ export default function AuthScreen() {
     await savePendingOnboarding({
       firstName: 'Dev',
       baselineScore: 5,
-      painType: PAIN_TYPES[0].label,
-      obstacles: [],
-      eventFrequency: '',
-      rechargeMethod: '',
-      anticipationStyle: '',
-      lowBatteryMoment: MOMENT_OPTIONS[0],
+      painId: PAIN_TYPES[0].id,
+      obstacleIds: [],
+      eventFrequencyId: '',
+      rechargeId: '',
+      anticipationId: '',
+      momentId: MOMENT_IDS[0],
     });
     const { error: signUpError, hasSession } = await signUp(testEmail, testPassword);
     setSubmitting(false);
@@ -250,7 +238,7 @@ export default function AuthScreen() {
   const submitSignIn = async () => {
     setError(null);
     if (!email || !password) {
-      setError('Renseigne ton email et ton mot de passe.');
+      setError(t('auth.errors.missingCredentials'));
       return;
     }
     setSubmitting(true);
@@ -269,7 +257,7 @@ export default function AuthScreen() {
         // point, so scheduleCheckInReminder() isn't called here — the
         // Dashboard's own refresh (app/(tabs)/index.tsx) sets it up the
         // first time real streak data exists.
-        await scheduleDailyReminder({ momentLabel: momentLabel ?? 'Le soir', batteryLevel: 0 });
+        await scheduleDailyReminder({ momentId: momentId ?? 'evening', batteryLevel: 0 });
       }
     } catch {
       // Permission prompt or scheduling failing (simulator, already denied
@@ -285,21 +273,21 @@ export default function AuthScreen() {
           <View style={styles.content}>
             <View style={styles.hero}>
               <LogoMark />
-              <Text style={styles.title}>Recharj</Text>
-              <Text style={styles.tagline}>Ta batterie sociale, sous contrôle.</Text>
+              <Text style={styles.title}>{t('auth.signin.title')}</Text>
+              <Text style={styles.tagline}>{t('auth.signin.tagline')}</Text>
             </View>
 
             <View style={styles.form}>
-              <Field label="Email" value={email} onChangeText={setEmail} placeholder="toi@exemple.com" keyboardType="email-address" />
-              <Field label="Mot de passe" value={password} onChangeText={setPassword} placeholder="••••••••" secure />
+              <Field label={t('auth.fields.email')} value={email} onChangeText={setEmail} placeholder={t('auth.fields.emailPlaceholder')} keyboardType="email-address" />
+              <Field label={t('auth.fields.password')} value={password} onChangeText={setPassword} placeholder={t('auth.fields.passwordPlaceholder')} secure />
 
               {error && <Text style={styles.error}>{error}</Text>}
 
-              <PrimaryButton label={submitting ? 'Un instant…' : 'Se connecter'} onPress={submitSignIn} disabled={submitting} />
+              <PrimaryButton label={submitting ? t('auth.signin.submitting') : t('auth.signin.submit')} onPress={submitSignIn} disabled={submitting} />
 
               <Pressable onPress={() => setMode('quiz')} style={styles.switchMode}>
                 <Text style={styles.switchModeText}>
-                  Pas encore de compte ? <Text style={styles.switchModeLink}>Créer un compte</Text>
+                  {t('auth.signin.switchPrompt')} <Text style={styles.switchModeLink}>{t('auth.signin.switchLink')}</Text>
                 </Text>
               </Pressable>
             </View>
@@ -317,12 +305,10 @@ export default function AuthScreen() {
         <View style={styles.content}>
           <View style={styles.hero}>
             <LogoMark />
-            <Text style={styles.title}>Vérifie ta boîte mail</Text>
-            <Text style={styles.tagline}>
-              On a envoyé un lien de confirmation à {email}. Reviens ici et connecte-toi une fois ton compte confirmé.
-            </Text>
+            <Text style={styles.title}>{t('auth.checkEmail.title')}</Text>
+            <Text style={styles.tagline}>{t('auth.checkEmail.body', { email })}</Text>
           </View>
-          <PrimaryButton label="Se connecter" onPress={() => setMode('signin')} />
+          <PrimaryButton label={t('common.signIn')} onPress={() => setMode('signin')} />
         </View>
       </SafeAreaView>
     );
@@ -334,6 +320,13 @@ export default function AuthScreen() {
   // finally means something again.
   const batteryLevel = step === STEP.RECAP && score !== null ? score * 10 : batteryLevelForStep(step);
   const isCustomFooterStep = step === STEP.NOTIFICATIONS || step === STEP.TRIAL;
+
+  const painLabel = (id: string) => t(`data.painTypes.${id}`);
+  const obstacleLabel = (id: string) => t(`data.obstacles.${id}`);
+  const frequencyLabel = (id: string) => t(`data.eventFrequency.${id}`);
+  const rechargeLabel = (id: string) => t(`data.recharge.${id}`);
+  const anticipationLabel = (id: string) => t(`data.anticipation.${id}`);
+  const momentLabel = (id: string) => t(`data.moments.${id}`);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -349,20 +342,20 @@ export default function AuthScreen() {
           {step === STEP.HOOK && (
             <View style={styles.hero}>
               <LogoMark />
-              <Text style={styles.title}>Les sorties te vident vite ?</Text>
-              <Text style={styles.tagline}>Recharj anticipe ta fatigue sociale.</Text>
-              <Text style={styles.tagline}>Avant qu'elle arrive.</Text>
+              <Text style={styles.title}>{t('auth.hook.title')}</Text>
+              <Text style={styles.tagline}>{t('auth.hook.tagline1')}</Text>
+              <Text style={styles.tagline}>{t('auth.hook.tagline2')}</Text>
             </View>
           )}
 
           {step === STEP.NAME && (
             <View style={styles.question}>
               <IllustrationBadge icon={<UserIcon color={colors.violet} size={36} />} accent={colors.violet} />
-              <Text style={[styles.questionTitle, styles.withIllustration]}>Comment tu t'appelles ?</Text>
+              <Text style={[styles.questionTitle, styles.withIllustration]}>{t('auth.name.title')}</Text>
               <TextInput
                 value={firstName}
                 onChangeText={setFirstName}
-                placeholder="Ton prénom"
+                placeholder={t('auth.name.placeholder')}
                 placeholderTextColor={colors.textFaint}
                 style={[styles.input, { marginTop: spacing[5] }]}
                 autoFocus
@@ -373,7 +366,7 @@ export default function AuthScreen() {
           {step === STEP.DIAGNOSTIC && (
             <View style={styles.question}>
               <IllustrationBadge icon={<BoltIcon color={colors.coral} size={36} />} accent={colors.coral} />
-              <Text style={[styles.questionTitle, styles.withIllustration]}>{firstName}, ton aisance sociale aujourd'hui ?</Text>
+              <Text style={[styles.questionTitle, styles.withIllustration]}>{t('auth.diagnostic.title', { name: firstName })}</Text>
               <View style={styles.slider}>
                 {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
                   <Pressable key={n} onPress={() => setScore(n)} style={styles.sliderStep} hitSlop={4}>
@@ -382,9 +375,9 @@ export default function AuthScreen() {
                 ))}
               </View>
               <View style={styles.row}>
-                <Text style={styles.sliderLabel}>Pas à l'aise</Text>
+                <Text style={styles.sliderLabel}>{t('auth.diagnostic.low')}</Text>
                 {score !== null && <Text style={styles.sliderValue}>{score}</Text>}
-                <Text style={styles.sliderLabel}>Très à l'aise</Text>
+                <Text style={styles.sliderLabel}>{t('auth.diagnostic.high')}</Text>
               </View>
             </View>
           )}
@@ -392,26 +385,26 @@ export default function AuthScreen() {
           {step === STEP.PAIN && (
             <View style={styles.question}>
               <IllustrationBadge icon={<MoonIcon color={colors.violetSoft} size={36} />} accent={colors.violetSoft} />
-              <Text style={[styles.questionTitle, styles.withIllustration]}>{firstName}, qu'est-ce qui te vide le plus d'énergie ?</Text>
-              <ChoiceList options={PAIN_TYPES.map((p) => p.label)} selected={painIndex !== null ? [painIndex] : []} onToggle={setPainIndex} />
+              <Text style={[styles.questionTitle, styles.withIllustration]}>{t('auth.pain.title', { name: firstName })}</Text>
+              <ChoiceList options={PAIN_TYPES.map((p) => painLabel(p.id))} selected={painIndex !== null ? [painIndex] : []} onToggle={setPainIndex} />
             </View>
           )}
 
           {step === STEP.OBSTACLE && (
             <View style={styles.question}>
               <IllustrationBadge icon={<LockIcon color={colors.violet} size={36} />} accent={colors.violet} />
-              <Text style={[styles.questionTitle, styles.withIllustration]}>Qu'est-ce qui te bloque ?</Text>
-              <Text style={styles.questionSubtitle}>Choisis tout ce qui s'applique.</Text>
-              <ChoiceList options={OBSTACLES} selected={obstacleIndices} onToggle={toggleObstacle} multi square />
+              <Text style={[styles.questionTitle, styles.withIllustration]}>{t('auth.obstacle.title')}</Text>
+              <Text style={styles.questionSubtitle}>{t('auth.obstacle.subtitle')}</Text>
+              <ChoiceList options={OBSTACLE_IDS.map(obstacleLabel)} selected={obstacleIndices} onToggle={toggleObstacle} multi square />
             </View>
           )}
 
           {step === STEP.FREQUENCY && (
             <View style={styles.question}>
               <IllustrationBadge icon={<CalendarIcon color={colors.lime} size={36} />} accent={colors.lime} />
-              <Text style={[styles.questionTitle, styles.withIllustration]}>{firstName}, à quel rythme ça t'arrive ?</Text>
+              <Text style={[styles.questionTitle, styles.withIllustration]}>{t('auth.frequency.title', { name: firstName })}</Text>
               <ChoiceList
-                options={EVENT_FREQUENCY_OPTIONS}
+                options={EVENT_FREQUENCY_IDS.map(frequencyLabel)}
                 selected={frequencyIndex !== null ? [frequencyIndex] : []}
                 onToggle={setFrequencyIndex}
               />
@@ -421,18 +414,18 @@ export default function AuthScreen() {
           {step === STEP.RECHARGE && (
             <View style={styles.question}>
               <IllustrationBadge icon={<SunIcon color={colors.lime} size={36} />} accent={colors.lime} />
-              <Text style={[styles.questionTitle, styles.withIllustration]}>Qu'est-ce qui te recharge le mieux ?</Text>
-              <ChoiceList options={RECHARGE_OPTIONS} selected={rechargeIndex !== null ? [rechargeIndex] : []} onToggle={setRechargeIndex} />
+              <Text style={[styles.questionTitle, styles.withIllustration]}>{t('auth.recharge.title')}</Text>
+              <ChoiceList options={RECHARGE_IDS.map(rechargeLabel)} selected={rechargeIndex !== null ? [rechargeIndex] : []} onToggle={setRechargeIndex} />
             </View>
           )}
 
           {step === STEP.ANTICIPATION && (
             <View style={styles.question}>
               <IllustrationBadge icon={<ChevronRightIcon color={colors.coral} size={36} />} accent={colors.coral} />
-              <Text style={[styles.questionTitle, styles.withIllustration]}>Un événement difficile arrive.</Text>
-              <Text style={styles.questionTitle}>Tu réagis comment ?</Text>
+              <Text style={[styles.questionTitle, styles.withIllustration]}>{t('auth.anticipation.title1')}</Text>
+              <Text style={styles.questionTitle}>{t('auth.anticipation.title2')}</Text>
               <ChoiceList
-                options={ANTICIPATION_OPTIONS}
+                options={ANTICIPATION_IDS.map(anticipationLabel)}
                 selected={anticipationIndex !== null ? [anticipationIndex] : []}
                 onToggle={setAnticipationIndex}
               />
@@ -442,17 +435,17 @@ export default function AuthScreen() {
           {step === STEP.MOMENT && (
             <View style={styles.question}>
               <IllustrationBadge icon={<MoonIcon color={colors.violetSoft} size={36} />} accent={colors.violetSoft} />
-              <Text style={[styles.questionTitle, styles.withIllustration]}>À quel moment de la journée ta batterie est la plus basse ?</Text>
-              <ChoiceList options={MOMENT_OPTIONS} selected={momentIndex !== null ? [momentIndex] : []} onToggle={setMomentIndex} />
+              <Text style={[styles.questionTitle, styles.withIllustration]}>{t('auth.moment.title')}</Text>
+              <ChoiceList options={MOMENT_IDS.map(momentLabel)} selected={momentIndex !== null ? [momentIndex] : []} onToggle={setMomentIndex} />
             </View>
           )}
 
           {step === STEP.AUTHORITY && (
             <View style={styles.hero}>
-              <Text style={styles.brandWordBig}>RECHARJ</Text>
-              <Text style={styles.title}>N'est pas une app de plus.</Text>
-              <Text style={styles.tagline}>Conçu pour les introvertis.</Text>
-              <Text style={styles.tagline}>Basé sur de vraies études.</Text>
+              <Text style={styles.brandWordBig}>{t('auth.authority.brand')}</Text>
+              <Text style={styles.title}>{t('auth.authority.title')}</Text>
+              <Text style={styles.tagline}>{t('auth.authority.tagline1')}</Text>
+              <Text style={styles.tagline}>{t('auth.authority.tagline2')}</Text>
             </View>
           )}
 
@@ -470,37 +463,37 @@ export default function AuthScreen() {
 
           {step === STEP.NOTIFICATIONS && (
             <View style={styles.hero}>
-              <Text style={styles.notifHeroTitle}>Profite au maximum de Recharj</Text>
-              <Text style={styles.tagline}>Autorise les notifications pour rester régulier.</Text>
-              <NotificationMock momentLabel={momentLabel ?? 'ce soir'} />
+              <Text style={styles.notifHeroTitle}>{t('auth.notifications.title')}</Text>
+              <Text style={styles.tagline}>{t('auth.notifications.tagline')}</Text>
+              <NotificationMock momentId={momentId ?? 'evening'} />
             </View>
           )}
 
           {step === STEP.UNIQUE && (
             <View style={styles.hero}>
               <IllustrationBadge icon={<StarIcon color={colors.coral} size={34} />} accent={colors.coral} size={92} />
-              <Text style={styles.title}>{firstName ? `${firstName}, tu es unique.` : 'Tu es unique.'}</Text>
-              <Text style={styles.tagline}>Tu mérites d'être aidé.</Text>
+              <Text style={styles.title}>{firstName ? t('auth.unique.titleNamed', { name: firstName }) : t('auth.unique.titleGeneric')}</Text>
+              <Text style={styles.tagline}>{t('auth.unique.tagline')}</Text>
             </View>
           )}
 
           {step === STEP.CONTRACT && (
             <View style={styles.question}>
               <IllustrationBadge icon={<HeartIcon color={colors.coral} size={34} />} accent={colors.coral} />
-              <Text style={[styles.questionTitle, styles.withIllustration]}>Un engagement envers toi-même.</Text>
+              <Text style={[styles.questionTitle, styles.withIllustration]}>{t('auth.contract.title')}</Text>
               <View style={styles.commitments}>
-                {CONTRACT_COMMITMENTS.map((c) => (
+                {[t('auth.contract.commitment1'), t('auth.contract.commitment2'), t('auth.contract.commitment3')].map((c) => (
                   <Text key={c} style={styles.commitmentLine}>
                     · {c}
                   </Text>
                 ))}
               </View>
-              <Text style={styles.signLabel}>Signe avec ton doigt.</Text>
+              <Text style={styles.signLabel}>{t('auth.contract.signLabel')}</Text>
               <SignaturePad onChange={setSignatureGiven} />
               {signatureGiven && (
                 <View style={styles.signedRow}>
                   <CheckIcon color={colors.lime} size={16} />
-                  <Text style={styles.signedText}>Engagé</Text>
+                  <Text style={styles.signedText}>{t('auth.contract.signed')}</Text>
                 </View>
               )}
             </View>
@@ -508,18 +501,31 @@ export default function AuthScreen() {
 
           {step === STEP.RECAP && (
             <View style={[styles.hero, styles.recapHero]}>
-              <Text style={styles.recapHeading}>Voici ce que Recharj a identifié</Text>
+              <Text style={styles.recapHeading}>{t('auth.recap.heading')}</Text>
               <View style={styles.recapLines}>
                 <Text style={styles.recapBig}>
-                  Ton point faible : <Text style={styles.recapHlCoral}>{pain ? pain.label.toLowerCase() : 'ça'}</Text>.
+                  <Trans
+                    i18nKey="auth.recap.painLine"
+                    values={{ pain: pain ? painLabel(pain.id).toLowerCase() : '…' }}
+                    components={{ hl: <Text style={styles.recapHlCoral} /> }}
+                  />
                 </Text>
                 <Text style={styles.recapBig}>
-                  Ça revient <Text style={styles.recapHlViolet}>{frequencyIndex !== null ? EVENT_FREQUENCY_OPTIONS[frequencyIndex].toLowerCase() : 'souvent'}</Text>,
-                  surtout <Text style={styles.recapHlViolet}>{momentLabel?.toLowerCase()}</Text>.
+                  <Trans
+                    i18nKey="auth.recap.frequencyLine"
+                    values={{
+                      frequency: frequencyIndex !== null ? frequencyLabel(EVENT_FREQUENCY_IDS[frequencyIndex]).toLowerCase() : '…',
+                      moment: momentId ? momentLabel(momentId).toLowerCase() : '…',
+                    }}
+                    components={{ hl1: <Text style={styles.recapHlViolet} /> }}
+                  />
                 </Text>
                 <Text style={styles.recapBig}>
-                  Tu récupères mieux grâce à{' '}
-                  <Text style={styles.recapHlLime}>{rechargeIndex !== null ? RECHARGE_OPTIONS[rechargeIndex].toLowerCase() : 'ce qui te fait du bien'}</Text>.
+                  <Trans
+                    i18nKey="auth.recap.rechargeLine"
+                    values={{ recharge: rechargeIndex !== null ? rechargeLabel(RECHARGE_IDS[rechargeIndex]).toLowerCase() : '…' }}
+                    components={{ hl2: <Text style={styles.recapHlLime} /> }}
+                  />
                 </Text>
               </View>
             </View>
@@ -527,15 +533,19 @@ export default function AuthScreen() {
 
           {step === STEP.TRIAL && (
             <View style={styles.trial}>
-              <Text style={styles.eyebrow}>Comment marche ton essai gratuit</Text>
+              <Text style={styles.eyebrow}>{t('auth.trial.eyebrow')}</Text>
               <View style={styles.timeline}>
-                {TIMELINE.map((row, i) => (
+                {[
+                  { day: t('auth.trial.todayDay'), text: t('auth.trial.todayText'), icon: 'bolt' as const },
+                  { day: t('auth.trial.reminderDay', { day: TRIAL_DAYS - 2 }), text: t('auth.trial.reminderText'), icon: 'bell' as const },
+                  { day: t('auth.trial.chargeDay', { day: TRIAL_DAYS }), text: t('auth.trial.chargeText'), icon: 'check' as const },
+                ].map((row, i, arr) => (
                   <View key={row.day} style={styles.timelineRow}>
                     <View style={styles.timelineIconCol}>
                       <View style={styles.timelineIcon}>
                         <TimelineIcon kind={row.icon} />
                       </View>
-                      {i < TIMELINE.length - 1 && <View style={styles.timelineConnector} />}
+                      {i < arr.length - 1 && <View style={styles.timelineConnector} />}
                     </View>
                     <View style={{ flex: 1, paddingBottom: spacing[5] }}>
                       <Text style={styles.timelineDay}>{row.day}</Text>
@@ -547,19 +557,20 @@ export default function AuthScreen() {
 
               <View style={{ gap: spacing[3] }}>
                 {PLANS.map((plan) => {
+                  const display = getPlanDisplay(plan, t, i18n.language);
                   const isSelected = plan.id === selectedPlan;
                   return (
                     <Pressable key={plan.id} onPress={() => setSelectedPlan(plan.id)} style={[styles.planCard, isSelected && styles.planCardSelected]}>
                       <View style={styles.trialBadge}>
-                        <Text style={styles.trialBadgeText}>{TRIAL_DAYS} jours offerts</Text>
+                        <Text style={styles.trialBadgeText}>{t('auth.trial.offerBadge', { days: TRIAL_DAYS })}</Text>
                       </View>
                       <View style={styles.planRow}>
                         <View style={[styles.radio, isSelected && styles.radioSelected]} />
-                        <Text style={styles.planName}>{plan.name}</Text>
+                        <Text style={styles.planName}>{display.name}</Text>
                         <View style={{ flex: 1 }} />
                         <Text style={styles.planPrice}>
-                          {plan.perMonth}
-                          <Text style={styles.planPriceUnit}> / mois</Text>
+                          {display.perMonth}
+                          <Text style={styles.planPriceUnit}> {t('auth.trial.perMonth')}</Text>
                         </Text>
                       </View>
                     </Pressable>
@@ -567,26 +578,24 @@ export default function AuthScreen() {
                 })}
               </View>
 
-              <Text style={styles.footnote}>{TRIAL_RENEWAL_TEXT[selectedPlan]}</Text>
+              <Text style={styles.footnote}>{getTrialRenewalText(selectedPlan, t, i18n.language)}</Text>
             </View>
           )}
 
           {step === STEP.SIGNUP && (
             <View style={styles.form}>
-              <Text style={styles.questionTitle}>Crée ton compte pour commencer</Text>
-              <Field label="Email" value={email} onChangeText={setEmail} placeholder="toi@exemple.com" keyboardType="email-address" />
-              <Field label="Mot de passe" value={password} onChangeText={setPassword} placeholder="••••••••" secure />
+              <Text style={styles.questionTitle}>{t('auth.signup.title')}</Text>
+              <Field label={t('auth.fields.email')} value={email} onChangeText={setEmail} placeholder={t('auth.fields.emailPlaceholder')} keyboardType="email-address" />
+              <Field label={t('auth.fields.password')} value={password} onChangeText={setPassword} placeholder={t('auth.fields.passwordPlaceholder')} secure />
               {error && <Text style={styles.error}>{error}</Text>}
               <Text style={styles.consent}>
-                En créant un compte, tu acceptes les{' '}
-                <Text style={styles.consentLink} onPress={() => WebBrowser.openBrowserAsync(TERMS_URL)}>
-                  CGU
-                </Text>{' '}
-                et la{' '}
-                <Text style={styles.consentLink} onPress={() => WebBrowser.openBrowserAsync(PRIVACY_URL)}>
-                  politique de confidentialité
-                </Text>{' '}
-                de Recharj.
+                <Trans
+                  i18nKey="auth.signup.consent"
+                  components={{
+                    terms: <Text style={styles.consentLink} onPress={() => WebBrowser.openBrowserAsync(TERMS_URL)} />,
+                    privacy: <Text style={styles.consentLink} onPress={() => WebBrowser.openBrowserAsync(PRIVACY_URL)} />,
+                  }}
+                />
               </Text>
             </View>
           )}
@@ -594,7 +603,7 @@ export default function AuthScreen() {
 
         {__DEV__ && (
           <Pressable onPress={devQuickSignUp} disabled={submitting} style={styles.devBtn}>
-            <Text style={styles.devBtnText}>⚡ DEV : compte de test instantané</Text>
+            <Text style={styles.devBtnText}>{t('auth.dev.button')}</Text>
           </Pressable>
         )}
 
@@ -602,7 +611,7 @@ export default function AuthScreen() {
           <View style={styles.footer}>
             <Pressable style={{ flex: 1 }} onPress={requestNotifications}>
               <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.nextBtn}>
-                <Text style={styles.nextBtnText}>Autoriser les notifications</Text>
+                <Text style={styles.nextBtnText}>{t('auth.notifications.allow')}</Text>
               </LinearGradient>
             </Pressable>
           </View>
@@ -610,7 +619,7 @@ export default function AuthScreen() {
           <View style={styles.footer}>
             <Pressable style={{ flex: 1 }} onPress={() => setStep((s) => s + 1)}>
               <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.nextBtn}>
-                <Text style={styles.nextBtnText}>Commencer mon essai gratuit</Text>
+                <Text style={styles.nextBtnText}>{t('auth.trial.start')}</Text>
               </LinearGradient>
             </Pressable>
           </View>
@@ -618,12 +627,12 @@ export default function AuthScreen() {
           <View style={styles.footer}>
             {step === STEP.HOOK ? (
               <Pressable onPress={() => setMode('signin')} style={styles.skipBtn} hitSlop={10}>
-                <Text style={styles.skipText}>Se connecter</Text>
+                <Text style={styles.skipText}>{t('common.signIn')}</Text>
               </Pressable>
             ) : (
               step < STEP.SIGNUP && (
                 <Pressable onPress={() => setStep((s) => s - 1)} style={styles.skipBtn} hitSlop={10}>
-                  <Text style={styles.skipText}>Précédent</Text>
+                  <Text style={styles.skipText}>{t('common.previous')}</Text>
                 </Pressable>
               )
             )}
@@ -644,20 +653,26 @@ export default function AuthScreen() {
                 end={{ x: 1, y: 0 }}
                 style={[styles.nextBtn, blocked && styles.btnDisabled]}
               >
-                <Text style={styles.nextBtnText}>{nextButtonLabel(step, submitting, firstName)}</Text>
+                <Text style={styles.nextBtnText}>{nextButtonLabel(step, submitting, firstName, t)}</Text>
               </LinearGradient>
             </Pressable>
           </View>
         )}
         {isCustomFooterStep && (
           <Pressable onPress={() => setStep((s) => s + 1)} style={styles.notifSkip} hitSlop={10}>
-            <Text style={styles.skipText}>Plus tard</Text>
+            <Text style={styles.skipText}>{t('common.later')}</Text>
           </Pressable>
         )}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
+}
+
+function TimelineIcon({ kind }: { kind: 'bolt' | 'bell' | 'check' }) {
+  if (kind === 'bolt') return <BoltIcon color={colors.lime} size={22} />;
+  if (kind === 'bell') return <BellIcon color={colors.violetSoft} size={22} />;
+  return <CheckIcon color={colors.coral} size={22} />;
 }
 
 // Lets the user trigger the exact moment the app is trying to make into a
@@ -675,6 +690,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 // "effort → payoff" feeling a real nightly check-in does, and it's that
 // feeling this demo exists to give a preview of, not just the end state.
 function StreakDemo() {
+  const { t } = useTranslation();
   const [lit, setLit] = useState(false);
   const fill = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(1)).current;
@@ -730,8 +746,8 @@ function StreakDemo() {
           <FlameIcon color={lit ? colors.coral : colors.textFaint} size={56} />
         </Animated.View>
       </Pressable>
-      <Text style={styles.title}>{lit ? 'Ta série a commencé.' : 'Chaque soir, fais le point.'}</Text>
-      <Text style={styles.tagline}>{lit ? "Reviens chaque jour pour l'entretenir." : 'Reste appuyé pour remplir ta journée.'}</Text>
+      <Text style={styles.title}>{lit ? t('auth.streak.titleAfter') : t('auth.streak.titleBefore')}</Text>
+      <Text style={styles.tagline}>{lit ? t('auth.streak.taglineAfter') : t('auth.streak.taglineBefore')}</Text>
     </View>
   );
 }
@@ -741,18 +757,19 @@ function StreakDemo() {
 // notification looks like. The body uses the answer just given on the
 // MOMENT step so it reads as personalized, and is written to make tapping
 // it feel worth it rather than just informative.
-function NotificationMock({ momentLabel }: { momentLabel: string }) {
+function NotificationMock({ momentId }: { momentId: string }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.notifCard}>
       <View style={styles.notifCardHeader}>
         <View style={styles.notifCardIcon}>
           <LogoMark size={20} />
         </View>
-        <Text style={styles.notifCardApp}>RECHARJ</Text>
-        <Text style={styles.notifCardTime}>maintenant</Text>
+        <Text style={styles.notifCardApp}>{t('auth.notifications.mockApp')}</Text>
+        <Text style={styles.notifCardTime}>{t('auth.notifications.mockTime')}</Text>
       </View>
-      <Text style={styles.notifCardTitle}>Grosse baisse en vue</Text>
-      <Text style={styles.notifCardBody}>Ta batterie sera basse {momentLabel.toLowerCase()}. Découvre comment t'y préparer.</Text>
+      <Text style={styles.notifCardTitle}>{t('auth.notifications.mockTitle')}</Text>
+      <Text style={styles.notifCardBody}>{t('auth.notifications.mockBody', { moment: t(`data.moments.${momentId}`).toLowerCase() })}</Text>
     </View>
   );
 }

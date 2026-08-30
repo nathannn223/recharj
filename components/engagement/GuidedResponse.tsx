@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { colors, fontFamily, radii, spacing } from '@/constants/theme';
@@ -12,6 +13,7 @@ type Props = {
 // Two sequential free-text zones (thought -> reformulation, or facts vs.
 // interpretation) — no right/wrong answer, so no reveal/compare step.
 export function GuidedResponse({ format, onComplete }: Props) {
+  const { t } = useTranslation();
   const [first, setFirst] = useState('');
   const [stage, setStage] = useState<1 | 2>(1);
   const [second, setSecond] = useState('');
@@ -30,7 +32,7 @@ export function GuidedResponse({ format, onComplete }: Props) {
       <TextInput
         value={first}
         onChangeText={setFirst}
-        placeholder="Écris ici…"
+        placeholder={t('engagement.writeHere')}
         placeholderTextColor={colors.textFaint}
         multiline
         editable={stage === 1}
@@ -38,7 +40,7 @@ export function GuidedResponse({ format, onComplete }: Props) {
       />
       {stage === 1 ? (
         <Pressable disabled={!first.trim()} onPress={advance} style={[styles.nextBtn, !first.trim() && styles.nextBtnDisabled]}>
-          <Text style={styles.nextBtnText}>Continuer</Text>
+          <Text style={styles.nextBtnText}>{t('engagement.continue')}</Text>
         </Pressable>
       ) : (
         <>
@@ -48,7 +50,7 @@ export function GuidedResponse({ format, onComplete }: Props) {
           <TextInput
             value={second}
             onChangeText={onSecondChange}
-            placeholder="Écris ici…"
+            placeholder={t('engagement.writeHere')}
             placeholderTextColor={colors.textFaint}
             multiline
             style={styles.input}

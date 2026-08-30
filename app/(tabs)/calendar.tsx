@@ -1,6 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { Link, router } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,6 +11,7 @@ import { useBattery } from '@/hooks/useBattery';
 import { useEvents } from '@/hooks/useEvents';
 import {
   daysBetween,
+  fromDateKey,
   levelBand,
   projectBattery,
   startOfToday,
@@ -17,25 +19,13 @@ import {
   type ProjectedDay,
   type SocialEvent,
 } from '@/lib/battery';
-import { relativeDayLabel } from '@/lib/dates';
-
-const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+import { longLocalDate, monthYearLabel, relativeDayLabel, weekdayInitials } from '@/lib/dates';
 
 /**
  * Ceiling on how far ahead the projection runs, so paging far into the future
  * can't turn into a runaway simulation. Roughly two years of daily steps.
  */
 const MAX_PROJECTION_DAYS = 800;
-
-function formatDateKeyLabel(key: string): string {
-  const [y, m, d] = key.split('-').map(Number);
-  const formatted = new Date(y, m - 1, d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
-}
-
-function capitalize(value: string): string {
-  return value.charAt(0).toUpperCase() + value.slice(1);
-}
 
 const BAND_COLOR = {
   high: colors.lime,
@@ -58,6 +48,7 @@ function monthGrid(year: number, month: number): (Date | null)[][] {
 }
 
 export default function CalendarScreen() {
+  const { t } = useTranslation();
   const { events, loading, refresh, deleteEvent } = useEvents();
   const battery = useBattery(events, !loading);
 
@@ -95,7 +86,8 @@ export default function CalendarScreen() {
   };
 
   const weeks = monthGrid(viewMonth.getFullYear(), viewMonth.getMonth());
-  const monthTitle = capitalize(viewMonth.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }));
+  const monthTitle = monthYearLabel(viewMonth);
+  const weekdays = weekdayInitials();
 
   // Project far enough to cover every future day still visible in this
   // month's grid. A month entirely in the past needs no projection at all —
@@ -125,19 +117,19 @@ export default function CalendarScreen() {
 
   const confirmDelete = (event: SocialEvent) => {
     Alert.alert(
-      "Supprimer cet événement ?",
-      `« ${event.title || event.type} » sera retiré de ton calendrier. Cette action est irréversible.`,
+      t('calendar.deleteConfirm.title'),
+      t('calendar.deleteConfirm.body', { event: event.title || t(`data.eventTypes.${event.type}`) }),
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Supprimer',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             setDeletingId(event.id);
             const { error } = await deleteEvent(event.id);
             setDeletingId(null);
             if (error) {
-              Alert.alert('Erreur', error);
+              Alert.alert(t('common.error'), error);
               return;
             }
             // The projection is derived from the event list, so refreshing it
@@ -157,7 +149,7 @@ export default function CalendarScreen() {
         <View style={styles.row}>
           <View>
             <Text style={styles.sub}>{monthTitle}</Text>
-            <Text style={styles.h1}>Calendrier</Text>
+            <Text style={styles.h1}>{t('calendar.title')}</Text>
           </View>
           <Link href="/add-event" asChild>
             <Pressable style={styles.addBtn}>
@@ -175,7 +167,7 @@ export default function CalendarScreen() {
               <Text style={styles.monthNavLabel}>{monthTitle}</Text>
             ) : (
               <Pressable onPress={goToToday} hitSlop={8} style={styles.todayBtn}>
-                <Text style={styles.todayBtnText}>Aujourd'hui</Text>
+                <Text style={styles.todayBtnText}>{t('calendar.today')}</Text>
               </Pressable>
             )}
             <Pressable onPress={() => shiftMonth(1)} hitSlop={10} style={styles.monthNavBtn}>
@@ -184,7 +176,7 @@ export default function CalendarScreen() {
           </View>
 
           <View style={styles.weekdayRow}>
-            {WEEKDAYS.map((w, i) => (
+            {weekdays.map((w, i) => (
               <Text key={i} style={styles.weekday}>{w}</Text>
             ))}
           </View>
@@ -238,15 +230,15 @@ export default function CalendarScreen() {
           <View style={styles.legend}>
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: colors.lime }]} />
-              <Text style={styles.legendText}>Bonne énergie</Text>
+              <Text style={styles.legendText}>{t('calendar.legend.high')}</Text>
             </View>
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: colors.violetSoft }]} />
-              <Text style={styles.legendText}>Modéré</Text>
+              <Text style={styles.legendText}>{t('calendar.legend.mid')}</Text>
             </View>
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: colors.coral }]} />
-              <Text style={styles.legendText}>Exigeant</Text>
+              <Text style={styles.legendText}>{t('calendar.legend.low')}</Text>
             </View>
           </View>
         </View>
@@ -254,9 +246,9 @@ export default function CalendarScreen() {
         {selectedDateKey && (
           <View style={styles.dayDetail}>
             <View style={styles.row}>
-              <Text style={styles.dayDetailTitle}>{formatDateKeyLabel(selectedDateKey)}</Text>
+              <Text style={styles.dayDetailTitle}>{longLocalDate(fromDateKey(selectedDateKey))}</Text>
               <Pressable onPress={() => setSelectedDateKey(null)} hitSlop={10}>
-                <Text style={styles.dayDetailClose}>Fermer</Text>
+                <Text style={styles.dayDetailClose}>{t('common.close')}</Text>
               </Pressable>
             </View>
 
@@ -266,7 +258,7 @@ export default function CalendarScreen() {
                   <Text style={styles.checkinNoteScore}>{selectedCheckIn.score}/10</Text>
                   {selectedDateKey === todayKey && (
                     <Pressable onPress={() => router.push('/checkin')} hitSlop={8}>
-                      <Text style={styles.checkinNoteEdit}>Modifier</Text>
+                      <Text style={styles.checkinNoteEdit}>{t('calendar.editNote')}</Text>
                     </Pressable>
                   )}
                 </View>
@@ -275,23 +267,23 @@ export default function CalendarScreen() {
             ) : (
               selectedDateKey === todayKey && (
                 <Pressable onPress={() => router.push('/checkin')} style={styles.checkinNotePrompt}>
-                  <Text style={styles.checkinNotePromptText}>Noter cette journée</Text>
+                  <Text style={styles.checkinNotePromptText}>{t('calendar.noteThisDay')}</Text>
                 </Pressable>
               )
             )}
 
             {selectedEvents.length === 0 ? (
-              <Text style={styles.emptyText}>Aucun événement ce jour-là.</Text>
+              <Text style={styles.emptyText}>{t('calendar.noEventsThatDay')}</Text>
             ) : (
               <View style={{ gap: spacing[3] }}>
                 {selectedEvents.map((ev) => (
                   <View key={ev.id} style={[styles.eventRow, deletingId === ev.id && styles.eventRowBusy]}>
                     <View style={[styles.eventDot, { backgroundColor: difficultyColor(ev.difficulty) }]} />
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.eventName}>{ev.title || ev.type}</Text>
+                      <Text style={styles.eventName}>{ev.title || t(`data.eventTypes.${ev.type}`)}</Text>
                       {ev.description ? <Text style={styles.eventDesc}>{ev.description}</Text> : null}
                       <Text style={[styles.diffInline, { color: difficultyColor(ev.difficulty) }]}>
-                        {ev.type} · {ev.difficulty}/10
+                        {t(`data.eventTypes.${ev.type}`)} · {ev.difficulty}/10
                       </Text>
                     </View>
                     <View style={styles.eventActions}>
@@ -319,16 +311,14 @@ export default function CalendarScreen() {
         )}
 
         <View>
-          <Text style={styles.sectionLabel}>Prochains événements</Text>
-          {!loading && upcomingEvents.length === 0 && (
-            <Text style={styles.emptyText}>Aucun événement à venir pour l'instant.</Text>
-          )}
+          <Text style={styles.sectionLabel}>{t('calendar.upcomingEvents')}</Text>
+          {!loading && upcomingEvents.length === 0 && <Text style={styles.emptyText}>{t('calendar.noUpcomingEvents')}</Text>}
           <View style={{ gap: spacing[3] }}>
             {upcomingEvents.map((ev) => (
               <Pressable key={ev.id} style={styles.eventRow} onPress={() => selectEventDay(ev.eventDate)}>
                 <View style={[styles.eventDot, { backgroundColor: difficultyColor(ev.difficulty) }]} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.eventName}>{ev.title || ev.type}</Text>
+                  <Text style={styles.eventName}>{ev.title || t(`data.eventTypes.${ev.type}`)}</Text>
                   <Text style={styles.eventWhen}>{relativeDayLabel(ev.eventDate)}</Text>
                 </View>
                 <Text style={[styles.diffPill, { color: difficultyColor(ev.difficulty) }]}>{ev.difficulty}/10</Text>

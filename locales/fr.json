@@ -1,0 +1,473 @@
+{
+  "common": {
+    "previous": "Précédent",
+    "signIn": "Se connecter",
+    "later": "Plus tard",
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "delete": "Supprimer",
+    "close": "Fermer",
+    "save": "Enregistrer",
+    "error": "Erreur",
+    "loading": "Chargement…",
+    "clear": "Effacer",
+    "batteryAccessibilityLabel": "Batterie sociale : {{level}} pourcent",
+    "streakAccessibilityLabel_one": "Série de {{count}} jour noté",
+    "streakAccessibilityLabel_other": "Série de {{count}} jours notés"
+  },
+  "data": {
+    "painTypes": {
+      "family_meals": "Les repas et réunions de famille",
+      "group_speaking": "Prendre la parole en groupe",
+      "work_small_talk": "Le small talk au travail",
+      "meeting_new_people": "Rencontrer de nouvelles personnes"
+    },
+    "obstacles": {
+      "no_idea_where_to_start": "Je ne sais pas par où commencer",
+      "lack_of_time": "Je manque de temps",
+      "too_much_energy": "Ça me demande trop d'énergie",
+      "guilt_when_it_fails": "Je culpabilise quand j'essaie et que ça ne marche pas",
+      "forgets": "J'oublie"
+    },
+    "eventFrequency": {
+      "almost_daily": "Presque tous les jours",
+      "weekly": "Une ou deux fois par semaine",
+      "monthly": "Quelques fois par mois",
+      "rarely": "Rarement"
+    },
+    "recharge": {
+      "alone_time": "Du temps seul",
+      "sleep": "Dormir",
+      "physical_activity": "Une activité physique",
+      "talk_to_someone_close": "Parler à une personne proche"
+    },
+    "anticipation": {
+      "stress_in_advance": "Je stresse à l'avance",
+      "avoid_thinking_about_it": "Je repousse d'y penser",
+      "mentally_prepare": "Je me prépare mentalement",
+      "no_special_feeling": "Ça ne me fait rien de spécial"
+    },
+    "moments": {
+      "morning": "Le matin",
+      "afternoon": "L'après-midi",
+      "evening": "Le soir",
+      "night": "La nuit"
+    },
+    "eventTypes": {
+      "family_meal": "Repas de famille",
+      "work": "Travail",
+      "friends_evening": "Soirée entre amis",
+      "date": "Rendez-vous",
+      "other": "Autre"
+    }
+  },
+  "dates": {
+    "today": "Aujourd'hui",
+    "tomorrow": "Demain",
+    "inDays": "Dans {{count}} jours"
+  },
+  "notifications": {
+    "channelName": "Rappel de batterie sociale",
+    "eventApproaching": {
+      "title": "Un événement approche",
+      "body": "Prépare \"{{event}}\" avec le cours \"{{course}}\"."
+    },
+    "lowBattery": {
+      "title": "Grosse baisse en vue",
+      "body": "Ta batterie sera basse {{moment}}. Découvre comment t'y préparer."
+    },
+    "discoverCourse": {
+      "title": "Un nouveau cours t'attend",
+      "body": "Découvre \"{{course}}\" en quelques minutes."
+    },
+    "fallback": {
+      "title": "Reste sur la bonne voie",
+      "body": "Prends deux minutes pour toi aujourd'hui."
+    },
+    "streakWarning": {
+      "title": "Ta série va s'éteindre",
+      "body": "Il te reste 2h pour protéger tes {{count}} jours d'affilée."
+    },
+    "checkinPrompt": {
+      "title": "Comment s'est passée ta journée ?",
+      "body": "Où en est ta batterie ?"
+    }
+  },
+  "auth": {
+    "hook": {
+      "title": "Les sorties te vident vite ?",
+      "tagline1": "Recharj anticipe ta fatigue sociale.",
+      "tagline2": "Avant qu'elle arrive."
+    },
+    "name": {
+      "title": "Comment tu t'appelles ?",
+      "placeholder": "Ton prénom"
+    },
+    "diagnostic": {
+      "title": "{{name}}, ton aisance sociale aujourd'hui ?",
+      "low": "Pas à l'aise",
+      "high": "Très à l'aise"
+    },
+    "pain": {
+      "title": "{{name}}, qu'est-ce qui te vide le plus d'énergie ?"
+    },
+    "obstacle": {
+      "title": "Qu'est-ce qui te bloque ?",
+      "subtitle": "Choisis tout ce qui s'applique."
+    },
+    "frequency": {
+      "title": "{{name}}, à quel rythme ça t'arrive ?"
+    },
+    "recharge": {
+      "title": "Qu'est-ce qui te recharge le mieux ?"
+    },
+    "anticipation": {
+      "title1": "Un événement difficile arrive.",
+      "title2": "Tu réagis comment ?"
+    },
+    "moment": {
+      "title": "À quel moment de la journée ta batterie est la plus basse ?"
+    },
+    "authority": {
+      "brand": "RECHARJ",
+      "title": "N'est pas une app de plus.",
+      "tagline1": "Conçu pour les introvertis.",
+      "tagline2": "Basé sur de vraies études."
+    },
+    "streak": {
+      "titleBefore": "Chaque soir, fais le point.",
+      "titleAfter": "Ta série a commencé.",
+      "taglineBefore": "Reste appuyé pour remplir ta journée.",
+      "taglineAfter": "Reviens chaque jour pour l'entretenir."
+    },
+    "notifications": {
+      "title": "Profite au maximum de Recharj",
+      "tagline": "Autorise les notifications pour rester régulier.",
+      "allow": "Autoriser les notifications",
+      "mockApp": "RECHARJ",
+      "mockTime": "maintenant",
+      "mockTitle": "Grosse baisse en vue",
+      "mockBody": "Ta batterie sera basse {{moment}}. Découvre comment t'y préparer."
+    },
+    "unique": {
+      "titleNamed": "{{name}}, tu es unique.",
+      "titleGeneric": "Tu es unique.",
+      "tagline": "Tu mérites d'être aidé."
+    },
+    "contract": {
+      "title": "Un engagement envers toi-même.",
+      "commitment1": "Je vais suivre ma batterie.",
+      "commitment2": "Je vais mieux me connaître.",
+      "commitment3": "Je vais avancer à mon rythme.",
+      "signLabel": "Signe avec ton doigt.",
+      "signed": "Engagé"
+    },
+    "recap": {
+      "heading": "Voici ce que Recharj a identifié",
+      "painLine": "Ton point faible : <hl>{{pain}}</hl>.",
+      "frequencyLine": "Ça revient <hl1>{{frequency}}</hl1>, surtout <hl1>{{moment}}</hl1>.",
+      "rechargeLine": "Tu récupères mieux grâce à <hl2>{{recharge}}</hl2>."
+    },
+    "trial": {
+      "eyebrow": "Comment marche ton essai gratuit",
+      "todayDay": "Aujourd'hui",
+      "todayText": "Accès complet débloqué.",
+      "reminderDay": "Jour {{day}}",
+      "reminderText": "Rappel avant la fin.",
+      "chargeDay": "Jour {{day}}",
+      "chargeText": "Premier prélèvement, résiliable avant.",
+      "offerBadge": "{{days}} jours offerts",
+      "perMonth": "/ mois",
+      "start": "Commencer mon essai gratuit"
+    },
+    "signup": {
+      "title": "Crée ton compte pour commencer",
+      "consent": "En créant un compte, tu acceptes les <terms>CGU</terms> et la <privacy>politique de confidentialité</privacy> de Recharj."
+    },
+    "checkEmail": {
+      "title": "Vérifie ta boîte mail",
+      "body": "On a envoyé un lien de confirmation à {{email}}. Reviens ici et connecte-toi une fois ton compte confirmé."
+    },
+    "signin": {
+      "title": "Recharj",
+      "tagline": "Ta batterie sociale, sous contrôle.",
+      "submit": "Se connecter",
+      "submitting": "Un instant…",
+      "switchPrompt": "Pas encore de compte ?",
+      "switchLink": "Créer un compte"
+    },
+    "fields": {
+      "email": "Email",
+      "emailPlaceholder": "toi@exemple.com",
+      "password": "Mot de passe",
+      "passwordPlaceholder": "••••••••"
+    },
+    "errors": {
+      "missingCredentials": "Renseigne ton email et ton mot de passe."
+    },
+    "dev": {
+      "button": "⚡ DEV : compte de test instantané"
+    },
+    "buttons": {
+      "hook": "Je me reconnais",
+      "nameFilled": "Enchanté !",
+      "continue": "Continuer",
+      "diagnostic": "Voir ce qui te vide le plus",
+      "pain": "Voir ce qui te bloque",
+      "obstacle": "Voir ce qui revient le plus",
+      "frequency": "Voir ce qui te recharge",
+      "recharge": "Un dernier point sur toi",
+      "anticipation": "Une dernière question",
+      "moment": "Voir pourquoi Recharj est différent",
+      "authority": "Voir comment Recharj t'aide",
+      "features": "Je veux que ça change",
+      "streak": "Je ne veux pas la perdre",
+      "unique": "Je m'engage",
+      "contract": "Confirmer mon engagement",
+      "recap": "Voir mon plan personnalisé",
+      "createAccount": "Créer mon compte",
+      "submitting": "Un instant…"
+    }
+  },
+  "onboarding": {
+    "thanks": {
+      "title": "Merci de nous faire confiance.",
+      "tagline": "Tu peux découvrir ton premier cours dès maintenant.",
+      "start": "C'est parti !",
+      "dashboard": "Aller sur le dashboard"
+    },
+    "course": {
+      "eyebrow": "Ton premier cours",
+      "fallbackEyebrow": "Prêt à explorer",
+      "fallbackTitle": "Découvre la bibliothèque de cours.",
+      "start": "C'est parti"
+    }
+  },
+  "carousel": {
+    "slide1": { "title": "Ajoute tes événements sociaux.", "body": "On calcule leur impact." },
+    "slide2": { "title": "Chaque soir, fais le point.", "body": "Ta note devient ta batterie." },
+    "slide3": { "title": "Progresse avec de vrais cours." },
+    "sampleCard": {
+      "title": "L'écart de sympathie",
+      "advice": "Après une conversation, tu penses presque toujours avoir moins plu que la réalité. Des chercheurs ont mesuré cet écart en 2018. Ton interlocuteur t'a sans doute apprécié plus que tu ne le crois."
+    }
+  },
+  "checkin": {
+    "title": "Comment s'est passée ta journée ?",
+    "low": "Épuisante",
+    "high": "Ressourçante",
+    "commentLabel": "Un mot sur ta journée (optionnel)",
+    "commentPlaceholder": "Ce qui t'a marqué aujourd'hui…",
+    "submit": "Enregistrer ma journée",
+    "submitting": "Enregistrement…"
+  },
+  "checkInCard": {
+    "streakTitle": "Série protégée · {{score}}/10",
+    "doneTitle": "Journée notée · {{score}}/10",
+    "urgentTitle": "Ne laisse pas ta série s'éteindre.",
+    "calmTitle": "Comment s'est passée ta journée ?",
+    "seeYouTomorrow": "Rendez-vous demain.",
+    "urgentNote": "Touche pour la protéger avant minuit.",
+    "calmNote": "Où en est ta batterie ?",
+    "dayUnit_one": "jour d'affilée",
+    "dayUnit_other": "jours d'affilée"
+  },
+  "dashboard": {
+    "greeting": "Bonjour{{name}}",
+    "batteryLabel": "Batterie sociale",
+    "checkin": {
+      "streakTitle": "Journée notée · {{score}}/10",
+      "streakNote": "Touche pour modifier",
+      "promptTitle": "Comment s'est passée ta journée ?",
+      "promptNote": "Note-la pour garder un historique réel."
+    },
+    "projection": "Projection 7 jours",
+    "event_one": "{{count}} événement",
+    "event_other": "{{count}} événements",
+    "upcomingEvents": "Événements à venir",
+    "seeAll": "Voir tout",
+    "noUpcomingEvents": "Aucun événement à venir. Ajoute-en un depuis le calendrier.",
+    "recommended": {
+      "fallbackTitle": "Un cours pour t'y préparer",
+      "note": "Recommandé pour \"{{type}}\""
+    }
+  },
+  "calendar": {
+    "title": "Calendrier",
+    "today": "Aujourd'hui",
+    "legend": {
+      "high": "Bonne énergie",
+      "mid": "Modéré",
+      "low": "Exigeant"
+    },
+    "noteThisDay": "Noter cette journée",
+    "editNote": "Modifier",
+    "noEventsThatDay": "Aucun événement ce jour-là.",
+    "upcomingEvents": "Prochains événements",
+    "noUpcomingEvents": "Aucun événement à venir pour l'instant.",
+    "deleteConfirm": {
+      "title": "Supprimer cet événement ?",
+      "body": "« {{event}} » sera retiré de ton calendrier. Cette action est irréversible."
+    }
+  },
+  "addEvent": {
+    "titleNew": "Nouvel événement",
+    "titleEdit": "Modifier l'événement",
+    "titleLabel": "Titre",
+    "titlePlaceholder": "Donne un titre à cet événement",
+    "typeLabel": "Type",
+    "typeHelper": "Ajoute d'abord un titre pour choisir le type.",
+    "dateLabel": "Date",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Un détail à te rappeler sur cet événement (optionnel)",
+    "difficultyLabel": "Niveau de difficulté ressentie",
+    "difficultyLow": "Facile",
+    "difficultyHigh": "Éprouvant",
+    "difficultyHelper": "On te proposera un cours adapté si le niveau dépasse 6.",
+    "errorNoTitle": "Donne un titre à ton événement avant de continuer.",
+    "submitAdd": "Ajouter à mon calendrier",
+    "submitAdding": "Ajout en cours…",
+    "submitEdit": "Enregistrer les modifications",
+    "submitSaving": "Enregistrement…",
+    "loading": "Chargement…",
+    "recommendation": {
+      "note": "Recommandé pour \"{{type}}\"",
+      "viewCourse": "Voir le cours recommandé",
+      "skip": "Continuer"
+    }
+  },
+  "library": {
+    "title": "Bibliothèque",
+    "filters": {
+      "all": "Tous",
+      "starting": "Débuter",
+      "work": "Travail",
+      "family": "Famille"
+    },
+    "upgradeBanner": {
+      "title": "Débloque tous les cours",
+      "sub": "À partir de {{price}}/mois"
+    },
+    "noCourses": "Aucun cours pour ce filtre.",
+    "status": {
+      "completed": "Terminé",
+      "inProgress": "En cours",
+      "duration": "5-10 min",
+      "deepDive": "Approfondissement"
+    },
+    "tier": {
+      "free": "Gratuit",
+      "premium": "Premium"
+    }
+  },
+  "profile": {
+    "title": "Profil",
+    "stats": {
+      "coursesCompleted": "Cours terminés",
+      "currentTier": "Palier actuel"
+    },
+    "manageSubscription": "Gérer mon abonnement",
+    "legal": "Légal",
+    "privacyPolicy": "Politique de confidentialité",
+    "terms": "Conditions d'utilisation",
+    "contactSupport": "Contacter le support",
+    "language": "Langue",
+    "languageAuto": "Automatique (langue du téléphone)",
+    "languageFrench": "Français",
+    "languageEnglish": "English",
+    "disclaimer": "Recharj est un outil d'auto-amélioration sociale. Ça ne remplace pas un accompagnement médical ou psychologique professionnel.",
+    "signOut": "Se déconnecter",
+    "deleteAccount": "Supprimer mon compte",
+    "deleting": "Suppression…",
+    "deleteConfirm": {
+      "title": "Supprimer ton compte ?",
+      "body": "Toutes tes données (profil, événements, progression) seront effacées définitivement. Cette action est irréversible."
+    }
+  },
+  "paywall": {
+    "titleCourse": "Débloquer ce cours",
+    "titleGeneric": "Passe en Premium",
+    "perks": {
+      "fullLibrary": "Bibliothèque complète",
+      "unlimitedProjection": "Projection illimitée",
+      "linkedCourses": "Cours liés à tes événements"
+    },
+    "preview": {
+      "eyebrow": "Le cours qui t'attend",
+      "more": "Débloque la suite, et tous les autres cours avec."
+    },
+    "badge": {
+      "popular": "Le plus populaire",
+      "trial": "{{days}} jours offerts"
+    },
+    "plans": {
+      "annual": "Annuel",
+      "monthly": "Mensuel"
+    },
+    "perMonth": "/ mois",
+    "annualDetail": "{{price}} / an",
+    "monthlyWarning": "{{price}} / an si payé au mois",
+    "submitCourse": "Débloquer ce cours",
+    "submitGeneric": "Commencer mon essai gratuit",
+    "manageNote": "Gérable dans les réglages de ton compte App Store.",
+    "restore": "Restaurer mes achats",
+    "restoreAlert": {
+      "title": "Restauration des achats",
+      "body": "Cette fonctionnalité sera disponible dès l'activation des abonnements."
+    },
+    "privacy": "Confidentialité",
+    "terms": "CGU",
+    "renewal": {
+      "annual": "Renouvellement automatique tous les ans à {{price}}, sauf annulation.",
+      "monthly": "Renouvellement automatique tous les mois à {{price}}, sauf annulation."
+    },
+    "trialRenewal": {
+      "annual": "{{days}} jours offerts, puis {{price}} / an sauf annulation.",
+      "monthly": "{{days}} jours offerts, puis {{price}} / mois sauf annulation."
+    }
+  },
+  "course": {
+    "hook": "Mise en situation",
+    "cardsIntro": "Ce qui t'attend",
+    "cardsIntroTitle": "Voici {{count}} clés qui vont te permettre d'appréhender plus facilement cette situation !",
+    "cardLabel": "Carte {{index}}/{{total}}",
+    "flipHint": "Touche la carte pour voir le conseil",
+    "sourceLabel": "Source : {{label}}",
+    "previous": "Précédent",
+    "next": "Suivant",
+    "continue": "Continuer",
+    "finish": "Terminer le cours",
+    "notFound": "Cours introuvable.",
+    "completed": {
+      "title": "Cours terminé !",
+      "subtitle": "Une compétence de plus dans ta boîte à outils.",
+      "thanks": "Merci pour ton retour !",
+      "askRating": "Ce cours t'a été utile ?",
+      "finishRated": "Terminer",
+      "finishSkip": "Passer et terminer"
+    }
+  },
+  "source": {
+    "title": "Approfondir ce sujet",
+    "scientific": "Scientifique",
+    "notScientific": "Non scientifique",
+    "expertDisclaimer": "Recommandation d'expert reconnu — ne s'appuie pas sur une étude académique publiée.",
+    "notFound": "Source introuvable.",
+    "readStudy": "Lire l'étude"
+  },
+  "engagement": {
+    "writeHere": "Écris ici…",
+    "writeYourAnswer": "Écris ta réponse…",
+    "continue": "Continuer",
+    "compareWithExamples": "Comparer avec des exemples",
+    "seeExamples": "Voir des exemples",
+    "examplesLabel": "Quelques exemples",
+    "ideasLabel": "Quelques pistes",
+    "planNote": "Une bonne intention se tient mieux quand elle est planifiée — pense à la caler dans ton calendrier."
+  },
+  "notFound": {
+    "headerTitle": "Oups",
+    "title": "Cette page n'existe pas.",
+    "link": "Retourner à l'accueil !"
+  }
+}
