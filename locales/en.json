@@ -136,9 +136,9 @@
     },
     "streak": {
       "titleBefore": "Every night, check in.",
-      "titleAfter": "Your streak has started.",
+      "titleAfter": "This is the every-night move.",
       "taglineBefore": "Hold to fill in your day.",
-      "taglineAfter": "Come back every day to keep it going."
+      "taglineAfter": "Come back every day to build your streak."
     },
     "notifications": {
       "title": "Get the most out of Recharj",

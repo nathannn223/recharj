@@ -70,19 +70,37 @@ export default function OnboardingWelcomeScreen() {
         // Every *_id/*Id field here is a stable id (lib/painTypes.ts etc.),
         // never a translated display label — so what's stored survives the
         // user later switching the app's language.
+        //
+        // Split by the migration each column first appeared in (004: name/
+        // score/pain, 005: obstacles, 006: the three follow-up answers, 007:
+        // free_course_id) rather than one combined update — a single call
+        // fails ENTIRELY if PostgREST doesn't recognize even one column,
+        // which previously took free_course_id down together with
+        // low_battery_moment (see the split below) and, before that fix,
+        // was silently taking first_name down with it too on any project
+        // that hadn't yet run every later migration. Splitting means a
+        // project missing a later migration only loses that migration's
+        // own fields, never the earlier ones.
         await supabase
           .from('profiles')
           .update({
             first_name: pending.firstName || null,
             baseline_comfort_score: pending.baselineScore,
             primary_pain_type: pending.painId || null,
-            obstacles: pending.obstacleIds.length > 0 ? pending.obstacleIds : null,
+          })
+          .eq('id', session!.user.id);
+        if (pending.obstacleIds.length > 0) {
+          await supabase.from('profiles').update({ obstacles: pending.obstacleIds }).eq('id', session!.user.id);
+        }
+        await supabase
+          .from('profiles')
+          .update({
             event_frequency: pending.eventFrequencyId || null,
             recharge_method: pending.rechargeId || null,
             anticipation_style: pending.anticipationId || null,
-            free_course_id: matchedCourseId,
           })
           .eq('id', session!.user.id);
+        await supabase.from('profiles').update({ free_course_id: matchedCourseId }).eq('id', session!.user.id);
 
         // Best-effort and deliberately separate from the update above:
         // low_battery_moment (migration 012) is a recent column that may
