@@ -1707,3 +1707,26 @@ lancés — hors de portée sans les comptes listés ci-dessus.
 export compliance), `eas.json` (bloc `submit`), `assets/images/splash-icon.png`
 (binaire, remplacé) ; nouveaux : `lib/courses.test.ts`,
 `.github/workflows/ci.yml`.
+
+---
+
+### 2026-09-04 — Chantier 21 : secrets EAS déclarés pour les builds de prod
+
+**Contexte.** Flagué au Chantier 20 comme non fait : les 4 variables
+`EXPO_PUBLIC_*` (Supabase URL/anon key, PostHog key/host) n'existaient
+qu'en `.env` local (gitignored). Un `eas build` tourne sur les serveurs
+EAS, pas sur cette machine — sans les déclarer côté EAS, un build de
+production serait parti avec des clés vides ou aurait échoué. Ne nécessite
+que le compte Expo déjà lié (`nathans-team`), aucun rapport avec le compte
+Apple.
+
+**Fait.** `eas env:create` (scope `project`, visibilité `plaintext` — ce
+sont des clés `EXPO_PUBLIC_*`, déjà prévues pour finir compilées en clair
+dans le bundle client, pas de raison de les marquer `secret`) pour les 4
+variables, sur les trois environnements `production`/`preview`/
+`development` (les profils `eas.json` existants). Vérifié via `eas
+env:list --environment production` : les 4 valeurs présentes et
+correctes.
+
+**Fichiers touchés.** aucun — action côté compte EAS uniquement, rien à
+committer dans le repo.
