@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/react-native';
 import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { router, Stack } from 'expo-router';
@@ -9,6 +10,11 @@ import { useEffect, useState } from 'react';
 import { PostHogProvider } from 'posthog-react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import 'react-native-reanimated';
+
+// Side-effect import: calls Sentry.init() at module load, before anything
+// else can crash. No-ops safely without EXPO_PUBLIC_SENTRY_DSN set — see
+// lib/sentry.ts.
+import '@/lib/sentry';
 
 import {
   SpaceGrotesk_500Medium,
@@ -59,7 +65,7 @@ const navTheme = {
   },
 };
 
-export default function RootLayout() {
+function RootLayout() {
   const [fontsLoaded] = useFonts({
     SpaceGrotesk_500Medium,
     SpaceGrotesk_600SemiBold,
@@ -195,3 +201,5 @@ function RootNavigator() {
     </Stack>
   );
 }
+
+export default Sentry.wrap(RootLayout);

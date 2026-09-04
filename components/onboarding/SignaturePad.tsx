@@ -12,7 +12,7 @@ type Point = { x: number; y: number };
 // simple enough not to need one. Only the gesture matters here, not what the
 // signature actually looks like: nothing is persisted or sent anywhere, this
 // is a commitment ritual, not a legal signature.
-export function SignaturePad({ onChange }: { onChange?: (hasSignature: boolean) => void }) {
+export function SignaturePad({ onChange, accessibilityLabel }: { onChange?: (hasSignature: boolean) => void; accessibilityLabel?: string }) {
   const { t } = useTranslation();
   const [strokes, setStrokes] = useState<Point[][]>([]);
   const currentStroke = useRef<Point[]>([]);
@@ -64,7 +64,16 @@ export function SignaturePad({ onChange }: { onChange?: (hasSignature: boolean) 
 
   return (
     <View>
-      <View style={styles.pad} {...panResponder.panHandlers}>
+      <View
+        style={styles.pad}
+        {...panResponder.panHandlers}
+        // A freehand gesture has no meaningful screen-reader equivalent —
+        // this at least announces what the area is and whether a signature
+        // has already been captured, instead of staying silent.
+        accessible
+        accessibilityLabel={accessibilityLabel}
+        accessibilityState={{ selected: strokes.length > 0 }}
+      >
         <Svg style={StyleSheet.absoluteFill}>
           {allStrokes.map((stroke, i) => (
             <Path key={i} d={pathFromPoints(stroke)} stroke={colors.text} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" fill="none" />
@@ -73,7 +82,7 @@ export function SignaturePad({ onChange }: { onChange?: (hasSignature: boolean) 
       </View>
       {strokes.length > 0 && (
         <View style={styles.clearRow}>
-          <Pressable onPress={clear} hitSlop={8}>
+          <Pressable onPress={clear} hitSlop={8} accessibilityRole="button">
             <Text style={styles.clearText}>{t('common.clear')}</Text>
           </Pressable>
         </View>

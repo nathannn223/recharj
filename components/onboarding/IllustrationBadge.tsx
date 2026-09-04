@@ -27,6 +27,10 @@ export function IllustrationBadge({
           borderColor: `${accent}55`,
         },
       ]}
+      // Purely decorative — the heading right below it already carries the
+      // meaning, so a screen reader shouldn't stop on a description-less icon.
+      importantForAccessibility="no-hide-descendants"
+      accessibilityElementsHidden
     >
       {icon}
     </View>

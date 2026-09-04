@@ -10,7 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AnalyticsEvent } from '@/lib/analytics';
 import { CheckIcon, CloseIcon, LockIcon } from '@/components/icons/Icon';
 import { chargeGradient, colors, fontFamily, radii, spacing } from '@/constants/theme';
-import { PRIVACY_URL, TERMS_URL } from '@/lib/legal';
+import { privacyUrl, termsUrl } from '@/lib/legal';
 import { safeBack } from '@/lib/navigation';
 import { localizedCourseContent, localizedCourseTitle } from '@/lib/courses';
 import { getPlanDisplay, getTrialRenewalText, PLANS, TRIAL_DAYS, type Plan } from '@/lib/plans';
@@ -156,11 +156,11 @@ export default function PaywallScreen() {
               <Text style={styles.legalLink}>{t('paywall.restore')}</Text>
             </Pressable>
             <Text style={styles.legalDot}>·</Text>
-            <Pressable onPress={() => WebBrowser.openBrowserAsync(PRIVACY_URL)}>
+            <Pressable onPress={() => WebBrowser.openBrowserAsync(privacyUrl(i18n.language))}>
               <Text style={styles.legalLink}>{t('paywall.privacy')}</Text>
             </Pressable>
             <Text style={styles.legalDot}>·</Text>
-            <Pressable onPress={() => WebBrowser.openBrowserAsync(TERMS_URL)}>
+            <Pressable onPress={() => WebBrowser.openBrowserAsync(termsUrl(i18n.language))}>
               <Text style={styles.legalLink}>{t('paywall.terms')}</Text>
             </Pressable>
           </View>

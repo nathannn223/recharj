@@ -12,7 +12,7 @@ import { colors, fontFamily, radii, spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import type { SubscriptionTier } from '@/lib/courses';
 import { getLanguageOverride, setLanguage, SUPPORTED_LANGUAGES, type SupportedLanguage } from '@/lib/i18n';
-import { PRIVACY_URL, SUPPORT_EMAIL, TERMS_URL } from '@/lib/legal';
+import { privacyUrl, SUPPORT_EMAIL, termsUrl } from '@/lib/legal';
 import { supabase } from '@/lib/supabase';
 
 export default function ProfileScreen() {
@@ -117,11 +117,11 @@ export default function ProfileScreen() {
 
         <View style={styles.group}>
           <Text style={styles.groupLabel}>{t('profile.legal')}</Text>
-          <Pressable style={styles.row} onPress={() => WebBrowser.openBrowserAsync(PRIVACY_URL)}>
+          <Pressable style={styles.row} onPress={() => WebBrowser.openBrowserAsync(privacyUrl(i18n.language))}>
             <Text style={styles.rowText}>{t('profile.privacyPolicy')}</Text>
             <ChevronRightIcon color={colors.textDim} size={18} />
           </Pressable>
-          <Pressable style={styles.row} onPress={() => WebBrowser.openBrowserAsync(TERMS_URL)}>
+          <Pressable style={styles.row} onPress={() => WebBrowser.openBrowserAsync(termsUrl(i18n.language))}>
             <Text style={styles.rowText}>{t('profile.terms')}</Text>
             <ChevronRightIcon color={colors.textDim} size={18} />
           </Pressable>

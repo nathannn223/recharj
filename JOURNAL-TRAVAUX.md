@@ -1730,3 +1730,119 @@ correctes.
 
 **Fichiers touchés.** aucun — action côté compte EAS uniquement, rien à
 committer dans le repo.
+
+---
+
+### 2026-09-04 — Chantier 22 : pages légales sur recharj.org, crash reporting, accessibilité du quiz
+
+**Contexte.** Suite directe de l'audit du Chantier précédent : l'utilisateur
+a confirmé son domaine (`recharj.org`) et demandé d'avancer sur les trois
+points suggérés qui ne nécessitent pas le compte Apple.
+
+**Fait — pages légales, contenu récupéré et rendu autonome.** L'ancien
+`lib/legal.ts` pointait vers un artefact `claude.ai`. Le contenu réel
+(politique de confidentialité + CGU, en français uniquement) a été relu
+intégralement depuis cet artefact, puis reconstruit en une page HTML
+autonome (`web/legal.html`, ~700 lignes, zéro dépendance de build) fidèle
+au design existant (mêmes tokens de couleur, même mise en page) —
+seul le script de sandboxing propre au runtime des artefacts Claude a été
+retiré, tout le reste (CSS, structure) est repris tel quel. **Ajout non
+demandé mais nécessaire** : traduction complète en anglais (l'app est
+bilingue depuis le Chantier 18, un utilisateur anglophone ou un reviewer
+Apple ne devrait pas tomber sur une politique de confidentialité
+uniquement en français) avec un sélecteur FR/EN en haut de page qui
+détecte la langue du téléphone puis retient le choix (`localStorage`).
+Ligne ajoutée à la section "qui traite tes données" pour PostHog (Chantier
+19), absente de la version originale — l'ancienne page ne le mentionnait
+pas encore.
+
+`lib/legal.ts` : `PRIVACY_URL`/`TERMS_URL` (constantes) remplacées par
+`privacyUrl(lang)`/`termsUrl(lang)` (fonctions), pointant vers
+`https://recharj.org/legal?lang=<fr|en>#<ancre>` — le paramètre `lang`
+force la page à ouvrir directement dans la langue active de l'app plutôt
+que de refaire sa propre détection. Les 3 points d'appel
+(`app/(auth)/index.tsx`, `app/paywall.tsx`, `app/(tabs)/profile.tsx`)
+mis à jour pour passer `i18n.language`.
+
+**Non fait — déploiement réel.** Je n'ai pas d'accès à l'hébergement du
+domaine (Vercel, Cloudflare Pages, autre — pas précisé). `web/legal.html`
+est prêt, autonome, déployable tel quel sur n'importe quel hébergeur
+statique, mais tant qu'il n'est pas mis en ligne sur `recharj.org/legal`,
+les liens vers la politique de confidentialité dans l'app pointent vers
+une page qui n'existe pas encore (régression par rapport à l'ancien lien
+`claude.ai` qui, lui, fonctionnait). **À traiter avant toute soumission
+App Store.**
+
+**Fait — crash reporting (Sentry), en attente d'un DSN.** `@sentry/react-native`
+installé (`npx expo install`, a aussi ajouté le plugin Expo config
+automatiquement, sans org/projet renseignés — pas d'upload de source maps
+tant que ça reste vide, mais n'empêche pas le SDK de fonctionner).
+`lib/sentry.ts` (nouveau) : `Sentry.init()` appelé au chargement du module,
+avant que quoi que ce soit d'autre puisse planter — **désactivé
+silencieusement sans `EXPO_PUBLIC_SENTRY_DSN`**, même logique que
+`lib/analytics.ts` pour PostHog. Délibérément **pas de session replay** :
+l'app manipule des réponses de quiz, des descriptions d'événements et des
+commentaires de check-in — enregistrer l'écran par défaut n'est pas un
+choix à prendre à la légère pour une app de bien-être mental.
+`app/_layout.tsx` : `export default Sentry.wrap(RootLayout)`.
+**Non fait** : aucun compte Sentry n'existe, je n'ai pas la capacité d'en
+créer un — il faut que l'utilisateur en crée un (gratuit) et fournisse le
+DSN pour que ça devienne actif.
+
+**Fait — accessibilité du quiz pré-inscription.** Zéro label
+d'accessibilité avant ce chantier sur les 18 écrans de
+`app/(auth)/index.tsx` (signalé au Chantier 20, jamais traité). Ajouté :
+- `ChoiceList` (PAIN/OBSTACLE/FREQUENCY/RECHARGE/ANTICIPATION/MOMENT) :
+  `accessibilityRole` radio/checkbox selon `multi`, label = le texte de
+  l'option, état sélectionné/coché.
+- `Field` et le `TextInput` du prénom : `accessibilityLabel` sur chaque
+  champ.
+- Slider diagnostic (piste de 10 zones tactiles minuscules) : transformé
+  en un seul élément `accessibilityRole="adjustable"` avec
+  `accessibilityValue`/`onAccessibilityAction` (incrément/décrément au
+  swipe haut/bas façon VoiceOver), les 10 `Pressable` individuels masqués
+  de l'arbre d'accessibilité plutôt que de forcer un lecteur d'écran à
+  explorer 10 cibles à la suite.
+- Boutons de navigation (continuer, précédent, plus tard, notifications,
+  trial) et cartes de plan d'abonnement : `accessibilityRole="button"`/
+  `"radio"` + états explicites.
+- `IllustrationBadge` (icône décorative avant chaque titre) : masqué de
+  l'arbre d'accessibilité — le titre juste en dessous porte déjà le sens,
+  un lecteur d'écran n'a pas besoin de s'arrêter sur une icône sans
+  description.
+- `SignaturePad` : le geste de dessin libre n'a pas d'équivalent lecteur
+  d'écran significatif, mais la zone annonce maintenant ce qu'elle est et
+  si une signature a déjà été capturée (`accessibilityLabel`/
+  `accessibilityState`), plutôt que de rester complètement silencieuse.
+- Démo streak (maintenir pour remplir la flamme) : un geste de maintien
+  n'a pas d'équivalent double-tap VoiceOver standard. Ajout d'une
+  `accessibilityAction` "activate" dédiée qui complète la démo directement
+  — **pas** un `onPress` classique, qui aurait cassé le mécanisme de
+  maintien pour les utilisateurs voyants.
+- Bouton dev (`__DEV__` uniquement, jamais en prod) : volontairement
+  laissé de côté.
+
+**Vérifié.** `npx tsc --noEmit` propre. `npx jest --watchAll=false` :
+50/50, aucune régression. `npx expo lint` : 0 erreur, mêmes 2
+avertissements préexistants. Pas de test réel avec VoiceOver/TalkBack sur
+device — vérifié uniquement au niveau du code (props/rôles/états corrects),
+pas au niveau de l'expérience effective.
+
+**Découverte pendant le staging du commit — travail en parallèle non
+touché.** `git status` a fait apparaître des changements non liés à ce
+chantier : `supabase/functions/delete-account/index.ts` modifié (envoi
+d'un email de confirmation de suppression via Brevo) et de nouveaux
+fichiers non trackés (`supabase/functions/_shared/`,
+`supabase/functions/send-reengagement-email/`,
+`supabase/functions/send-welcome-email/`,
+`supabase/migrations/015_lifecycle_emails.sql`) — visiblement la suite du
+travail "mail" mentionné par l'utilisateur, fait dans une autre
+conversation. Non inclus dans ce commit, non touché, laissé intact.
+
+**Fichiers touchés.** nouveaux : `web/legal.html`, `lib/sentry.ts` ;
+modifiés : `lib/legal.ts`, `app/(auth)/index.tsx`, `app/paywall.tsx`,
+`app/(tabs)/profile.tsx`, `app/_layout.tsx`,
+`components/onboarding/IllustrationBadge.tsx`,
+`components/onboarding/SignaturePad.tsx`, `app.json` (plugin Sentry),
+`.env.example`, `package.json`/`package-lock.json` (ajout de
+`@sentry/react-native`).

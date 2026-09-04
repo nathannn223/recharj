@@ -29,7 +29,7 @@ import { IllustrationBadge } from '@/components/onboarding/IllustrationBadge';
 import { SignaturePad } from '@/components/onboarding/SignaturePad';
 import { chargeGradient, colors, fontFamily, radii, spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
-import { PRIVACY_URL, TERMS_URL } from '@/lib/legal';
+import { privacyUrl, termsUrl } from '@/lib/legal';
 import { MOMENT_IDS } from '@/lib/momentOfDay';
 import { scheduleDailyReminder } from '@/lib/notifications';
 import { OBSTACLE_IDS } from '@/lib/obstacles';
@@ -380,6 +380,7 @@ export default function AuthScreen() {
                 placeholderTextColor={colors.textFaint}
                 style={[styles.input, { marginTop: spacing[5] }]}
                 autoFocus
+                accessibilityLabel={t('auth.name.title')}
               />
             </View>
           )}
@@ -388,9 +389,28 @@ export default function AuthScreen() {
             <View style={styles.question}>
               <IllustrationBadge icon={<BoltIcon color={colors.coral} size={36} />} accent={colors.coral} />
               <Text style={[styles.questionTitle, styles.withIllustration]}>{t('auth.diagnostic.title', { name: firstName })}</Text>
-              <View style={styles.slider}>
+              <View
+                style={styles.slider}
+                accessible
+                accessibilityRole="adjustable"
+                accessibilityLabel={t('auth.diagnostic.title', { name: firstName })}
+                accessibilityValue={{ min: 1, max: 10, now: score ?? 1 }}
+                onAccessibilityAction={(event) => {
+                  const current = score ?? 1;
+                  if (event.nativeEvent.actionName === 'increment') setScore(Math.min(10, current + 1));
+                  else if (event.nativeEvent.actionName === 'decrement') setScore(Math.max(1, current - 1));
+                }}
+                accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+              >
                 {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-                  <Pressable key={n} onPress={() => setScore(n)} style={styles.sliderStep} hitSlop={4}>
+                  <Pressable
+                    key={n}
+                    onPress={() => setScore(n)}
+                    style={styles.sliderStep}
+                    hitSlop={4}
+                    importantForAccessibility="no-hide-descendants"
+                    accessibilityElementsHidden
+                  >
                     <View style={[styles.sliderFill, score !== null && n > score && styles.sliderFillOff]} />
                   </Pressable>
                 ))}
@@ -510,7 +530,7 @@ export default function AuthScreen() {
                 ))}
               </View>
               <Text style={styles.signLabel}>{t('auth.contract.signLabel')}</Text>
-              <SignaturePad onChange={setSignatureGiven} />
+              <SignaturePad onChange={setSignatureGiven} accessibilityLabel={t('auth.contract.signLabel')} />
               {signatureGiven && (
                 <View style={styles.signedRow}>
                   <CheckIcon color={colors.lime} size={16} />
@@ -588,6 +608,9 @@ export default function AuthScreen() {
                         posthog.capture(AnalyticsEvent.PlanSelected, { plan_id: plan.id, source: 'onboarding' });
                       }}
                       style={[styles.planCard, isSelected && styles.planCardSelected]}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: isSelected }}
+                      accessibilityLabel={`${display.name}, ${display.perMonth} ${t('auth.trial.perMonth')}`}
                     >
                       <View style={styles.trialBadge}>
                         <Text style={styles.trialBadgeText}>{t('auth.trial.offerBadge', { days: TRIAL_DAYS })}</Text>
@@ -620,8 +643,8 @@ export default function AuthScreen() {
                 <Trans
                   i18nKey="auth.signup.consent"
                   components={{
-                    terms: <Text style={styles.consentLink} onPress={() => WebBrowser.openBrowserAsync(TERMS_URL)} />,
-                    privacy: <Text style={styles.consentLink} onPress={() => WebBrowser.openBrowserAsync(PRIVACY_URL)} />,
+                    terms: <Text style={styles.consentLink} onPress={() => WebBrowser.openBrowserAsync(termsUrl(i18n.language))} />,
+                    privacy: <Text style={styles.consentLink} onPress={() => WebBrowser.openBrowserAsync(privacyUrl(i18n.language))} />,
                   }}
                 />
               </Text>
@@ -637,7 +660,7 @@ export default function AuthScreen() {
 
         {step === STEP.NOTIFICATIONS ? (
           <View style={styles.footer}>
-            <Pressable style={{ flex: 1 }} onPress={requestNotifications}>
+            <Pressable style={{ flex: 1 }} onPress={requestNotifications} accessibilityRole="button">
               <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.nextBtn}>
                 <Text style={styles.nextBtnText}>{t('auth.notifications.allow')}</Text>
               </LinearGradient>
@@ -652,6 +675,7 @@ export default function AuthScreen() {
                 posthog.capture(AnalyticsEvent.OnboardingStepCompleted, { step_name: 'trial', step_index: STEP.TRIAL });
                 setStep((s) => s + 1);
               }}
+              accessibilityRole="button"
             >
               <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.nextBtn}>
                 <Text style={styles.nextBtnText}>{t('auth.trial.start')}</Text>
@@ -661,7 +685,7 @@ export default function AuthScreen() {
         ) : (
           <View style={styles.footer}>
             {step === STEP.HOOK ? (
-              <Pressable onPress={() => setMode('signin')} style={styles.skipBtn} hitSlop={10}>
+              <Pressable onPress={() => setMode('signin')} style={styles.skipBtn} hitSlop={10} accessibilityRole="button">
                 <Text style={styles.skipText}>{t('common.signIn')}</Text>
               </Pressable>
             ) : (
@@ -673,6 +697,7 @@ export default function AuthScreen() {
                   }}
                   style={styles.skipBtn}
                   hitSlop={10}
+                  accessibilityRole="button"
                 >
                   <Text style={styles.skipText}>{t('common.previous')}</Text>
                 </Pressable>
@@ -689,6 +714,8 @@ export default function AuthScreen() {
                   setStep((s) => s + 1);
                 }
               }}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: blocked }}
             >
               <LinearGradient
                 colors={chargeGradient}
@@ -709,6 +736,7 @@ export default function AuthScreen() {
             }}
             style={styles.notifSkip}
             hitSlop={10}
+            accessibilityRole="button"
           >
             <Text style={styles.skipText}>{t('common.later')}</Text>
           </Pressable>
@@ -747,19 +775,22 @@ function StreakDemo() {
   const glow = useRef(new Animated.Value(0)).current;
   const holdAnim = useRef<Animated.CompositeAnimation | null>(null);
 
+  const completeLit = () => {
+    setLit(true);
+    Animated.parallel([
+      Animated.sequence([
+        Animated.spring(scale, { toValue: 1.35, useNativeDriver: true, speed: 24, bounciness: 14 }),
+        Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 16, bounciness: 8 }),
+      ]),
+      Animated.timing(glow, { toValue: 1, duration: 450, useNativeDriver: true }),
+    ]).start();
+  };
+
   const startHold = () => {
     if (lit) return;
     holdAnim.current = Animated.timing(fill, { toValue: 1, duration: HOLD_DURATION, useNativeDriver: false });
     holdAnim.current.start(({ finished }) => {
-      if (!finished) return;
-      setLit(true);
-      Animated.parallel([
-        Animated.sequence([
-          Animated.spring(scale, { toValue: 1.35, useNativeDriver: true, speed: 24, bounciness: 14 }),
-          Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 16, bounciness: 8 }),
-        ]),
-        Animated.timing(glow, { toValue: 1, duration: 450, useNativeDriver: true }),
-      ]).start();
+      if (finished) completeLit();
     });
   };
 
@@ -769,12 +800,36 @@ function StreakDemo() {
     Animated.timing(fill, { toValue: 0, duration: 250, useNativeDriver: false }).start();
   };
 
+  // The hold-to-fill gesture (onPressIn/onPressOut timing) has no VoiceOver/
+  // TalkBack equivalent — a screen reader's double-tap fires onPress-style
+  // "activate", not a held press. accessibilityActions gives that same
+  // double-tap a way to complete the demo directly, without turning this
+  // into a plain single-tap for sighted users (regular onPress is
+  // deliberately not set here).
+  const activateForAccessibility = () => {
+    if (lit) return;
+    fill.setValue(1);
+    completeLit();
+  };
+
   const glowOpacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0, 0.35] });
   const strokeDashoffset = fill.interpolate({ inputRange: [0, 1], outputRange: [RING_CIRCUMFERENCE, 0] });
 
   return (
     <View style={{ alignItems: 'center' }}>
-      <Pressable onPressIn={startHold} onPressOut={cancelHold} hitSlop={16} disabled={lit}>
+      <Pressable
+        onPressIn={startHold}
+        onPressOut={cancelHold}
+        hitSlop={16}
+        disabled={lit}
+        accessible
+        accessibilityLabel={lit ? t('auth.streak.titleAfter') : t('auth.streak.titleBefore')}
+        accessibilityHint={lit ? undefined : t('auth.streak.taglineBefore')}
+        accessibilityActions={[{ name: 'activate' }]}
+        onAccessibilityAction={(event) => {
+          if (event.nativeEvent.actionName === 'activate') activateForAccessibility();
+        }}
+      >
         <Animated.View style={[styles.flameWrap, lit && styles.flameWrapLit, { transform: [{ scale }] }]}>
           {lit && <Animated.View pointerEvents="none" style={[styles.flameGlow, { opacity: glowOpacity }]} />}
           <Svg width={RING_SIZE} height={RING_SIZE} style={[StyleSheet.absoluteFill, { transform: [{ rotate: '-90deg' }] }]}>
@@ -842,7 +897,14 @@ function ChoiceList({
       {options.map((label, i) => {
         const isSelected = selected.includes(i);
         return (
-          <Pressable key={label} onPress={() => onToggle(i)} style={[styles.choice, isSelected && styles.choiceSelected]}>
+          <Pressable
+            key={label}
+            onPress={() => onToggle(i)}
+            style={[styles.choice, isSelected && styles.choiceSelected]}
+            accessibilityRole={multi ? 'checkbox' : 'radio'}
+            accessibilityLabel={label}
+            accessibilityState={multi ? { checked: isSelected } : { selected: isSelected }}
+          >
             <View style={[square ? styles.bulletSquare : styles.bullet, isSelected && styles.bulletSelected]} />
             <Text style={[styles.choiceText, isSelected && styles.choiceTextSelected]}>{label}</Text>
           </Pressable>
@@ -872,6 +934,7 @@ function Field(props: {
         secureTextEntry={props.secure}
         keyboardType={props.keyboardType}
         style={styles.input}
+        accessibilityLabel={props.label}
       />
     </View>
   );
@@ -879,7 +942,13 @@ function Field(props: {
 
 function PrimaryButton({ label, onPress, disabled }: { label: string; onPress: () => void; disabled?: boolean }) {
   return (
-    <Pressable onPress={onPress} disabled={disabled} style={{ marginTop: spacing[2] }}>
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={{ marginTop: spacing[2] }}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
+    >
       <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.nextBtn, disabled && styles.btnDisabled]}>
         <Text style={styles.nextBtnText}>{label}</Text>
       </LinearGradient>

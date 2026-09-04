@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Recharj — Confidentialité &amp; CGU</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0F0B1A;
+    --surface: #1A1428;
+    --surface-raised: #221A37;
+    --border: #31274C;
+    --border-soft: #241C3A;
+    --text: #F4F1FC;
+    --text-dim: #A79AC9;
+    --text-faint: #6E6191;
+    --violet: #6C4FE0;
+    --violet-soft: #8B72EE;
+    --coral: #FF7A6B;
+    --lime: #E8FF5E;
+    --display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+    --body: "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--text-dim);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  [hidden] { display: none !important; }
+
+  ::selection { background: var(--violet); color: var(--text); }
+
+  a { color: var(--violet-soft); text-decoration-color: rgba(139,114,238,0.4); text-underline-offset: 2px; }
+  a:hover { text-decoration-color: var(--violet-soft); }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; border-radius: 2px; }
+
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px max(20px, calc((100% - 720px) / 2));
+    background: rgba(15, 11, 26, 0.86);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border-soft);
+    flex-wrap: wrap;
+  }
+
+  .wordmark {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 17px;
+    color: var(--text);
+    text-decoration: none;
+  }
+  .wordmark svg { display: block; }
+
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+
+  .jumpnav { display: flex; gap: 6px; }
+  .jumpnav a {
+    font-family: var(--body);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-dim);
+    text-decoration: none;
+    padding: 7px 13px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+  }
+  .jumpnav a:hover { color: var(--text); border-color: var(--violet-soft); }
+
+  .langswitch { display: flex; gap: 2px; border: 1px solid var(--border); border-radius: 999px; padding: 2px; }
+  .langswitch button {
+    font-family: var(--body);
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    color: var(--text-dim);
+    background: transparent;
+    border: none;
+    padding: 6px 11px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .langswitch button[aria-pressed="true"] { background: var(--violet); color: var(--text); }
+
+  main {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 56px 20px 100px;
+  }
+
+  .masthead { margin-bottom: 64px; }
+  .masthead .kicker {
+    font-family: var(--body);
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--coral);
+    margin: 0 0 14px;
+  }
+  .masthead h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(30px, 5vw, 42px);
+    line-height: 1.12;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    margin: 0 0 16px;
+    text-wrap: balance;
+  }
+  .masthead p {
+    font-size: 16px;
+    color: var(--text-dim);
+    max-width: 58ch;
+    margin: 0;
+  }
+  .masthead .updated {
+    display: inline-block;
+    margin-top: 20px;
+    font-size: 13px;
+    color: var(--text-faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  section { margin-bottom: 72px; }
+  section > header.section-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin-bottom: 28px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  section > header.section-head .tag {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--violet-soft);
+    background: rgba(108,79,224,0.16);
+    border: 1px solid rgba(139,114,238,0.35);
+    padding: 4px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  section > header.section-head h2 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 26px;
+    color: var(--text);
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  article.clause { margin: 0 0 34px; }
+  article.clause:last-child { margin-bottom: 0; }
+  article.clause h3 {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 17px;
+    color: var(--text);
+    margin: 0 0 10px;
+  }
+  article.clause h3 .num {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 13px;
+    color: var(--text-faint);
+    font-variant-numeric: tabular-nums;
+  }
+  article.clause p { margin: 0 0 12px; color: var(--text-dim); }
+  article.clause p:last-child { margin-bottom: 0; }
+  article.clause ul { margin: 0 0 12px; padding-left: 20px; color: var(--text-dim); }
+  article.clause li { margin-bottom: 6px; }
+  article.clause li:last-child { margin-bottom: 0; }
+  article.clause strong { color: var(--text); font-weight: 600; }
+
+  .callout {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--coral);
+    border-radius: 14px;
+    padding: 20px 22px;
+    margin: 0 0 34px;
+  }
+  .callout .callout-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--body);
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--coral);
+    margin: 0 0 10px;
+  }
+  .callout p { margin: 0 0 10px; color: var(--text); font-size: 15px; }
+  .callout p:last-child { margin-bottom: 0; }
+
+  .data-table {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+    margin: 0 0 12px;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 480px; }
+  thead th {
+    text-align: left;
+    font-family: var(--body);
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    background: var(--surface);
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  tbody td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-soft);
+    color: var(--text-dim);
+    vertical-align: top;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody td:first-child { color: var(--text); font-weight: 600; white-space: nowrap; }
+
+  footer.page-foot {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 20px 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: var(--text-faint);
+    font-size: 13px;
+  }
+  footer.page-foot a { color: var(--text-dim); }
+
+  @media (max-width: 600px) {
+    .topbar { padding: 14px 16px; }
+    main { padding: 40px 16px 80px; }
+    section > header.section-head { flex-direction: column; align-items: flex-start; gap: 8px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { scroll-behavior: auto !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="wordmark" href="#top">
+    <svg width="22" height="22" viewBox="0 0 40 40" fill="none">
+      <rect x="1" y="1" width="38" height="38" rx="12" fill="url(#g)"/>
+      <path d="M22 9 12 22h7l-1 9 11-14h-8z" fill="#0F0B1A"/>
+      <defs><linearGradient id="g" x1="0" y1="0" x2="40" y2="40">
+        <stop offset="0" stop-color="#6C4FE0"/><stop offset="0.55" stop-color="#FF7A6B"/><stop offset="1" stop-color="#E8FF5E"/>
+      </linearGradient></defs>
+    </svg>
+    Recharj
+  </a>
+  <div class="topbar-right">
+    <nav class="jumpnav">
+      <a href="#confidentialite" data-lang="fr">Confidentialité</a>
+      <a href="#privacy" data-lang="en" hidden>Privacy</a>
+      <a href="#cgu" data-lang="fr">CGU</a>
+      <a href="#terms" data-lang="en" hidden>Terms</a>
+    </nav>
+    <div class="langswitch" role="group" aria-label="Language">
+      <button type="button" data-set-lang="fr" aria-pressed="true">FR</button>
+      <button type="button" data-set-lang="en" aria-pressed="false">EN</button>
+    </div>
+  </div>
+</div>
+
+<main id="top">
+
+  <!-- ============================= FRANÇAIS ============================= -->
+  <div data-lang="fr">
+    <div class="masthead">
+      <p class="kicker">Informations légales</p>
+      <h1>Confidentialité &amp; conditions d'utilisation</h1>
+      <p>Ce que Recharj fait de tes données, et les règles qui encadrent l'usage de l'app et de l'abonnement Premium.</p>
+      <span class="updated">Dernière mise à jour : 27 août 2026</span>
+    </div>
+
+    <section id="confidentialite">
+      <header class="section-head">
+        <span class="tag">01</span>
+        <h2>Politique de confidentialité</h2>
+      </header>
+
+      <article class="clause">
+        <h3><span class="num">1.1</span> Ce que Recharj collecte</h3>
+        <p>Pour fonctionner, Recharj enregistre les informations suivantes, associées à ton compte :</p>
+        <div class="data-table">
+          <table>
+            <thead><tr><th>Donnée</th><th>Pourquoi</th></tr></thead>
+            <tbody>
+              <tr><td>Email et mot de passe</td><td>Créer et sécuriser ton compte</td></tr>
+              <tr><td>Prénom</td><td>Personnaliser l'app</td></tr>
+              <tr><td>Réponses au quiz de départ</td><td>Niveau de confort social, ce qui te draine le plus, tes obstacles, la fréquence des situations difficiles, ce qui te recharge : ça détermine ton premier cours et les recommandations</td></tr>
+              <tr><td>Événements que tu ajoutes</td><td>Type, date, difficulté ressentie et description libre : ça alimente la projection de ta batterie sociale</td></tr>
+              <tr><td>Progression dans les cours</td><td>Cours commencés, terminés, notes que tu leur donnes</td></tr>
+              <tr><td>Palier d'abonnement</td><td>Savoir à quel contenu tu as accès</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Recharj ne demande jamais de données qui ne servent pas directement à une de ces fonctions.</p>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">1.2</span> Qui héberge et traite ces données</h3>
+        <p>Recharj s'appuie sur des prestataires pour fonctionner, chacun soumis à sa propre politique de confidentialité :</p>
+        <ul>
+          <li><strong>Supabase</strong> : hébergement de la base de données et authentification du compte.</li>
+          <li><strong>Apple (App Store) / Google (Play Store)</strong> : traitement du paiement de l'abonnement via achat intégré. Recharj ne voit et ne stocke jamais tes coordonnées bancaires.</li>
+          <li><strong>RevenueCat</strong> : gestion de l'état de l'abonnement (actif, expiré, renouvelé) entre l'App Store/Play Store et Recharj.</li>
+          <li><strong>PostHog</strong> : mesure d'usage de l'app (écrans consultés, actions effectuées) pour comprendre ce qui fonctionne, sans identifiant publicitaire ni revente de données.</li>
+        </ul>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">1.3</span> Ce que Recharj ne fait pas</h3>
+        <ul>
+          <li>Aucune vente de données à des tiers.</li>
+          <li>Aucun tracking publicitaire, aucun identifiant publicitaire utilisé.</li>
+          <li>Aucun partage de tes réponses ou de tes événements avec d'autres utilisateurs.</li>
+        </ul>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">1.4</span> Combien de temps tes données sont gardées</h3>
+        <p>Tant que ton compte existe. Tu peux le supprimer à tout moment depuis <strong>Profil → Supprimer mon compte</strong> : toutes tes données (profil, événements, progression) sont effacées immédiatement et définitivement, sans étape supplémentaire à demander.</p>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">1.5</span> Tes droits</h3>
+        <p>Si tu résides dans l'Union européenne, tu disposes d'un droit d'accès, de rectification, d'effacement, de portabilité et d'opposition sur tes données, au-delà de la suppression directe depuis l'app. Pour exercer ce droit, écris à <a href="mailto:support@recharj.app">support@recharj.app</a>.</p>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">1.6</span> Sécurité</h3>
+        <p>Les données transitent chiffrées entre l'app et les serveurs, et l'accès à la base de données est restreint par des règles qui limitent chaque compte à ses propres données.</p>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">1.7</span> Âge minimum</h3>
+        <p>Recharj ne s'adresse pas aux personnes de moins de 16 ans et ne collecte pas sciemment leurs données.</p>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">1.8</span> Modifications</h3>
+        <p>Si cette politique change de façon significative, la date de mise à jour en haut de cette page change, et tu en seras informé dans l'app à ta prochaine connexion.</p>
+      </article>
+    </section>
+
+    <section id="cgu">
+      <header class="section-head">
+        <span class="tag">02</span>
+        <h2>Conditions générales d'utilisation</h2>
+      </header>
+
+      <div class="callout">
+        <p class="callout-label">À lire avant de commencer</p>
+        <p>Recharj est un outil d'auto-amélioration sociale. <strong>Ce n'est pas un dispositif médical, ni un substitut à un accompagnement psychologique ou médical professionnel.</strong> Les conseils s'appuient sur des études réelles, mais restent d'ordre général.</p>
+        <p>Si tu traverses une détresse psychologique, parles-en à un professionnel de santé. En cas d'urgence, contacte le 15 (SAMU) ou le 3114 (numéro national de prévention du suicide, France).</p>
+      </div>
+
+      <article class="clause">
+        <h3><span class="num">2.1</span> Ce qu'est Recharj</h3>
+        <p>Recharj t'aide à suivre ta "batterie sociale", projeter l'impact de tes événements à venir, et progresser via de courts cours interactifs sourcés d'études en psychologie sociale.</p>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">2.2</span> Ton compte</h3>
+        <p>Un compte correspond à une seule personne. Tu es responsable de la confidentialité de ton mot de passe et de tout ce qui se passe depuis ton compte.</p>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">2.3</span> Abonnement Premium</h3>
+        <p>Recharj propose un abonnement Premium (mensuel ou annuel), au prix affiché dans l'app au moment de l'achat. L'abonnement se renouvelle automatiquement à la fin de chaque période, sauf annulation.</p>
+        <p>L'achat et le renouvellement sont gérés directement par l'App Store ou le Play Store. Pour annuler, gère ton abonnement depuis les réglages de ton compte Apple ou Google, pas depuis Recharj. L'annulation prend effet à la fin de la période déjà payée.</p>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">2.4</span> Contenu des cours</h3>
+        <p>Chaque conseil renvoie à une source (étude ou ouvrage) consultable dans l'app. Ce contenu est informatif : Recharj ne garantit pas de résultat particulier et n'est pas responsable de la façon dont tu appliques ces conseils dans ta vie.</p>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">2.5</span> Suppression de compte</h3>
+        <p>Tu peux supprimer ton compte à tout moment depuis l'app. La suppression est définitive et immédiate. Si tu as un abonnement actif, supprimer ton compte n'annule pas automatiquement l'abonnement auprès d'Apple ou Google : annule-le séparément pour éviter un renouvellement.</p>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">2.6</span> Propriété intellectuelle</h3>
+        <p>Les textes, la structure des cours et l'identité visuelle de Recharj appartiennent à Recharj. Les sources citées appartiennent à leurs auteurs respectifs.</p>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">2.7</span> Limitation de responsabilité</h3>
+        <p>Recharj est fourni "en l'état". Dans les limites permises par la loi, Recharj ne pourra être tenu responsable des conséquences indirectes de l'usage de l'app.</p>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">2.8</span> Droit applicable</h3>
+        <p>Ces conditions sont régies par le droit français.</p>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">2.9</span> Contact</h3>
+        <p>Une question sur ces conditions ? Écris à <a href="mailto:support@recharj.app">support@recharj.app</a>.</p>
+      </article>
+    </section>
+  </div>
+
+  <!-- =============================== ENGLISH =============================== -->
+  <div data-lang="en" hidden>
+    <div class="masthead">
+      <p class="kicker">Legal</p>
+      <h1>Privacy Policy &amp; Terms of Use</h1>
+      <p>What Recharj does with your data, and the rules governing use of the app and the Premium subscription.</p>
+      <span class="updated">Last updated: August 27, 2026</span>
+    </div>
+
+    <section id="privacy">
+      <header class="section-head">
+        <span class="tag">01</span>
+        <h2>Privacy Policy</h2>
+      </header>
+
+      <article class="clause">
+        <h3><span class="num">1.1</span> What Recharj collects</h3>
+        <p>To function, Recharj stores the following information, tied to your account:</p>
+        <div class="data-table">
+          <table>
+            <thead><tr><th>Data</th><th>Why</th></tr></thead>
+            <tbody>
+              <tr><td>Email and password</td><td>Create and secure your account</td></tr>
+              <tr><td>First name</td><td>Personalize the app</td></tr>
+              <tr><td>Onboarding quiz answers</td><td>Social comfort level, what drains you most, your obstacles, how often you face difficult situations, what recharges you — determines your first course and recommendations</td></tr>
+              <tr><td>Events you add</td><td>Type, date, felt difficulty, and free-text description — feeds your social battery projection</td></tr>
+              <tr><td>Course progress</td><td>Courses started, completed, ratings you give them</td></tr>
+              <tr><td>Subscription tier</td><td>Know which content you have access to</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Recharj never asks for data that doesn't directly serve one of these functions.</p>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">1.2</span> Who hosts and processes this data</h3>
+        <p>Recharj relies on service providers to function, each subject to its own privacy policy:</p>
+        <ul>
+          <li><strong>Supabase</strong>: database hosting and account authentication.</li>
+          <li><strong>Apple (App Store) / Google (Play Store)</strong>: subscription payment processing via in-app purchase. Recharj never sees or stores your banking details.</li>
+          <li><strong>RevenueCat</strong>: manages subscription status (active, expired, renewed) between the App/Play Store and Recharj.</li>
+          <li><strong>PostHog</strong>: measures app usage (screens viewed, actions taken) to understand what's working, with no advertising identifier and no data resale.</li>
+        </ul>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">1.3</span> What Recharj doesn't do</h3>
+        <ul>
+          <li>No selling data to third parties.</li>
+          <li>No advertising tracking, no advertising identifier used.</li>
+          <li>No sharing your answers or events with other users.</li>
+        </ul>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">1.4</span> How long your data is kept</h3>
+        <p>As long as your account exists. You can delete it at any time from <strong>Profile → Delete my account</strong>: all your data (profile, events, progress) is erased immediately and permanently, with no additional step required.</p>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">1.5</span> Your rights</h3>
+        <p>If you live in the European Union, you have the right to access, rectify, erase, port, and object to your data, beyond direct deletion from the app. To exercise this right, write to <a href="mailto:support@recharj.app">support@recharj.app</a>.</p>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">1.6</span> Security</h3>
+        <p>Data is encrypted in transit between the app and the servers, and database access is restricted by rules that limit each account to its own data.</p>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">1.7</span> Minimum age</h3>
+        <p>Recharj is not intended for people under 16 and does not knowingly collect their data.</p>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">1.8</span> Changes</h3>
+        <p>If this policy changes significantly, the update date at the top of this page changes, and you'll be informed in the app the next time you sign in.</p>
+      </article>
+    </section>
+
+    <section id="terms">
+      <header class="section-head">
+        <span class="tag">02</span>
+        <h2>Terms of Use</h2>
+      </header>
+
+      <div class="callout">
+        <p class="callout-label">Read before you start</p>
+        <p>Recharj is a social self-improvement tool. <strong>It is not a medical device, nor a substitute for professional psychological or medical care.</strong> The advice is based on real studies but remains general in nature.</p>
+        <p>If you're going through psychological distress, talk to a healthcare professional. In an emergency, contact your local emergency services or a suicide-prevention line (in France: 15 for SAMU, or 3114).</p>
+      </div>
+
+      <article class="clause">
+        <h3><span class="num">2.1</span> What Recharj is</h3>
+        <p>Recharj helps you track your "social battery," project the impact of your upcoming events, and grow through short interactive courses sourced from social psychology research.</p>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">2.2</span> Your account</h3>
+        <p>An account belongs to one person. You're responsible for keeping your password confidential and for everything that happens from your account.</p>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">2.3</span> Premium subscription</h3>
+        <p>Recharj offers a Premium subscription (monthly or annual), at the price shown in the app at the time of purchase. The subscription renews automatically at the end of each period unless cancelled.</p>
+        <p>Purchase and renewal are managed directly by the App Store or Play Store. To cancel, manage your subscription from your Apple or Google account settings, not from Recharj. Cancellation takes effect at the end of the period already paid for.</p>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">2.4</span> Course content</h3>
+        <p>Each piece of advice links to a source (study or book) you can view in the app. This content is informational: Recharj does not guarantee any particular outcome and is not responsible for how you apply this advice in your life.</p>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">2.5</span> Account deletion</h3>
+        <p>You can delete your account at any time from the app. Deletion is immediate and permanent. If you have an active subscription, deleting your account does not automatically cancel it with Apple or Google — cancel it separately to avoid renewal.</p>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">2.6</span> Intellectual property</h3>
+        <p>The text, course structure, and visual identity of Recharj belong to Recharj. Cited sources belong to their respective authors.</p>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">2.7</span> Limitation of liability</h3>
+        <p>Recharj is provided "as is." To the extent permitted by law, Recharj cannot be held liable for indirect consequences of using the app.</p>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">2.8</span> Governing law</h3>
+        <p>These terms are governed by French law.</p>
+      </article>
+
+      <article class="clause">
+        <h3><span class="num">2.9</span> Contact</h3>
+        <p>A question about these terms? Write to <a href="mailto:support@recharj.app">support@recharj.app</a>.</p>
+      </article>
+    </section>
+  </div>
+
+</main>
+
+<footer class="page-foot">
+  <span>Recharj</span>
+  <span><a href="mailto:support@recharj.app">support@recharj.app</a></span>
+</footer>
+
+<script>
+  (function () {
+    var STORAGE_KEY = 'recharj.legal.lang';
+    var buttons = document.querySelectorAll('[data-set-lang]');
+    var panes = document.querySelectorAll('[data-lang]');
+
+    function apply(lang) {
+      panes.forEach(function (el) {
+        el.hidden = el.getAttribute('data-lang') !== lang;
+      });
+      buttons.forEach(function (btn) {
+        btn.setAttribute('aria-pressed', String(btn.getAttribute('data-set-lang') === lang));
+      });
+      document.documentElement.lang = lang;
+      try { localStorage.setItem(STORAGE_KEY, lang); } catch (e) {}
+    }
+
+    function initialLang() {
+      var fromQuery = new URLSearchParams(location.search).get('lang');
+      if (fromQuery === 'fr' || fromQuery === 'en') return fromQuery;
+      try {
+        var stored = localStorage.getItem(STORAGE_KEY);
+        if (stored === 'fr' || stored === 'en') return stored;
+      } catch (e) {}
+      return (navigator.language || '').toLowerCase().indexOf('fr') === 0 ? 'fr' : 'en';
+    }
+
+    buttons.forEach(function (btn) {
+      btn.addEventListener('click', function () { apply(btn.getAttribute('data-set-lang')); });
+    });
+
+    apply(initialLang());
+  })();
+</script>
+
+</body>
+</html>
