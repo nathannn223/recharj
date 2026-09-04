@@ -1846,3 +1846,54 @@ modifiés : `lib/legal.ts`, `app/(auth)/index.tsx`, `app/paywall.tsx`,
 `components/onboarding/SignaturePad.tsx`, `app.json` (plugin Sentry),
 `.env.example`, `package.json`/`package-lock.json` (ajout de
 `@sentry/react-native`).
+
+---
+
+### 2026-09-04 — Chantier 23 : `web/legal.html` réellement déployé sur recharj.org
+
+**Contexte.** Suite directe du Chantier 22 : le domaine était confirmé
+(`recharj.org`, hébergé sur Cloudflare) mais la page n'était pas encore en
+ligne. Déploiement fait en session interactive avec l'utilisateur
+(dashboard Cloudflare + puis un token API scopé donné pour finir en ligne
+de commande), avec deux vrais bugs trouvés et corrigés en cours de route —
+documentés ici parce qu'ils se reproduiront pour n'importe quel futur
+déploiement sur ce compte Cloudflare.
+
+**Bug 1 — l'upload par glisser-déposer du dashboard ne préserve pas la
+structure de dossiers.** Deux tentatives d'upload manuel (dossier local
+`legal/index.html` glissé dans "Upload your static files") ont produit un
+`index.html` à la racine du bundle d'assets au lieu de `legal/index.html`
+— la route `recharj.org/legal*` cherchait un fichier qui n'existait pas au
+bon endroit, d'où des 404/522 en boucle. Résolu en déployant via
+**Wrangler CLI** à la place (`wrangler deploy` avec un `wrangler.toml`
+pointant `assets.directory` vers un dossier local construit à la main) :
+la structure est alors garantie, plus de dépendance au comportement du
+navigateur. Nécessite un token API Cloudflare (scopes `Account → Cloudflare
+Pages/Workers Scripts → Edit`, fourni temporairement par l'utilisateur,
+à révoquer maintenant que c'est fait).
+
+**Bug 2 — le motif de route `*.recharj.org/legal*` ne couvre pas
+`recharj.org` lui-même.** Un `*.` en préfixe d'un motif de route Cloudflare
+Workers matche uniquement les sous-domaines (`www.recharj.org`, etc.), pas
+le domaine racine sans sous-domaine — comportement documenté mais
+contre-intuitif (le dashboard ajoute ce préfixe automatiquement quand on
+tape juste `recharj.org/legal*`, sans prévenir que ça change la portée).
+Résultat : la route créée initialement ne s'est jamais déclenchée sur
+`recharj.org/legal`, la requête retombait sur le vrai enregistrement DNS
+(une IP placeholder `192.0.2.1` posée exprès pour que la route
+intercepte avant), d'où le 522 (Cloudflare timeout en essayant de
+contacter cette IP). Corrigé en ajoutant une **seconde route**,
+`recharj.org/legal*` (sans le `*.`), en plus de la première — les deux
+coexistent, l'une pour la racine, l'autre pour les sous-domaines futurs.
+
+**Vérifié.** `https://recharj.org/legal` répond 307 → redirige vers
+`/legal/` → 200, contenu confirmé (titre, sections FR+EN, sélecteur de
+langue, tout correspond à `web/legal.html`). Testé aussi avec les
+paramètres exacts que l'app envoie (`?lang=fr#confidentialite`,
+`?lang=en#privacy`) : passent bien à travers la route. `lib/legal.ts`
+(Chantier 22) pointait déjà vers ces URLs, aucun changement de code
+nécessaire côté app pour ce chantier.
+
+**Fichiers touchés.** aucun dans le repo — déploiement Cloudflare
+uniquement (fichiers temporaires locaux créés puis nettoyés en fin de
+session, hors du repo).
