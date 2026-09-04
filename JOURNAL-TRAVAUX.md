@@ -1470,3 +1470,130 @@ manuelle mot à mot de la traduction elle-même.
 `lib/pendingOnboarding.ts`, `lib/notifications.ts`, `lib/dates.ts`,
 `lib/plans.ts`, `supabase/seed/generate-courses-seed.mjs`,
 `supabase/seed/002_courses.sql`, `supabase/seed/001_sources.sql`.
+
+---
+
+### 2026-09-04 — Chantier 19 : deux bugs post-onboarding, confirmation email sans friction, analytics PostHog complet
+
+**Contexte.** Deux retours après test réel de l'onboarding : (1) la démo
+streak de l'onboarding affirme "Ta série a commencé" après un simple geste
+de démo (rien n'est écrit en base), donc le dashboard affiche ensuite une
+série à 0 — promesse non tenue ; (2) le prénom ne s'affichait toujours pas
+sur le dashboard malgré un fix précédent (Chantier 16). Un audit plus large
+a suivi (activation premier utilisateur + conformité Apple hors compte
+développeur), dont il ressort deux chantiers demandés explicitement par
+l'utilisateur : rendre la confirmation email indolore, et mettre en place
+un tracking d'activation complet.
+
+**Fait — streak demo.** Texte adouci (fr+en) : "Ta série a commencé" →
+"C'est le geste de chaque soir." / la tagline promet de construire une
+série dans le futur plutôt que d'affirmer qu'elle existe déjà. Pas de
+changement de comportement, uniquement la promesse du texte.
+
+**Fait — bug réel du prénom manquant, cette fois à la racine.**
+`app/onboarding.tsx` écrivait toutes les réponses du quiz (prénom, score,
+pain point, obstacles, fréquence, méthode de recharge, style
+d'anticipation, cours gratuit) en **un seul `update()`** sur des colonnes
+réparties sur 4 migrations différentes (004 à 007). Si une seule colonne
+manque côté Supabase, PostgREST fait échouer l'appel entier — y compris
+`first_name`, pourtant valide depuis la toute première migration. Exactement
+le même type de bug déjà rencontré deux fois sur ce projet
+(`free_course_id`, `low_battery_moment`), jamais corrigé à cet endroit
+précis. Update éclaté en 4 appels séparés, un par frontière de migration —
+une colonne manquante ne peut plus faire perdre les champs plus anciens.
+**Ne corrige que les futures inscriptions** : un compte de test déjà créé
+avant ce fix n'a jamais eu son `first_name` écrit en base, `prepare()` ne
+se relance pas pour un compte déjà onboardé.
+
+**Fait — confirmation email sans aller-retour manuel.** Demande explicite :
+garder la vérification (sécurité) mais supprimer le "va voir ta boîte mail
+puis reviens te connecter à la main". Passage en flux **PKCE**
+(`lib/supabase.ts`, `flowType: 'pkce'`) : le lien de confirmation porte un
+`?code=` propre au lieu d'un fragment `#access_token=...` difficile à
+parser depuis un deep link natif. `signUp()` (`lib/auth.tsx`) redirige vers
+`recharj://confirm` ; `app/_layout.tsx` écoute ce deep link (cold start +
+app déjà ouverte, même pattern que le handler de notifications existant)
+et échange le code contre une session via `exchangeCodeForSession()` —
+`onAuthStateChange` fait ensuite atterrir l'utilisateur directement dans
+l'onboarding, sans retaper son mot de passe. **Action manuelle requise côté
+Supabase** : ajouter `recharj://confirm` dans Authentication → URL
+Configuration → Redirect URLs, sinon Supabase retombe sur l'ancien
+comportement (pas cassé, juste pas amélioré). **Ne fonctionne pas dans
+Expo Go** (scheme `exp://` propre à Expo Go) — nécessite un dev client ou
+un build EAS pour être testé.
+
+**Fait — analytics PostHog, taxonomie complète.** Outil choisi après
+recommandation (PostHog : funnels visuels sans SQL, tier gratuit à 1M
+events/mois, pas de tracking IDFA donc pas de prompt App Tracking
+Transparency à ajouter). `lib/analytics.ts` (nouveau) : instance partagée
+`PostHog` (utilisable aussi bien via `usePostHog()` dans les composants que
+depuis du code hors-React comme `lib/auth.tsx`, via le prop `client` de
+`PostHogProvider`), désactivation silencieuse si les identifiants sont
+absents (contrairement à `lib/supabase.ts` qui bloque tout l'app — un échec
+d'analytics ne doit jamais faire planter le produit), et la liste de tous
+les noms d'event en constantes pour qu'un funnel construit dans PostHog ne
+puisse jamais dériver silencieusement d'une chaîne mal orthographiée.
+
+Instrumentation posée sur 12 fichiers : le quiz pré-inscription en entier
+(`onboarding_step_viewed`/`_completed`/`_back` par étape avec `step_name` +
+`step_index`, distinguant "a vu l'écran" de "a vraiment avancé" — y compris
+sur les boutons "Plus tard" et retour), signup/confirmation email, le
+funnel paywall (mêmes noms d'event depuis l'écran trial intégré au quiz et
+depuis `app/paywall.tsx`, distingués par `source`), le cycle de vie des
+cours (démarrage avec point d'entrée — onboarding / recommandation
+dashboard / bibliothèque / recommandation post-event —, étape vue, carte
+retournée via un nouveau prop `onFlip` sur `FlipCard`, complété, noté),
+l'ajout/mise à jour d'événements sociaux, le check-in quotidien, le tap sur
+le badge de série, le changement de langue, la suppression de compte.
+Identification (`posthog.identify`) et reset centralisés dans
+`lib/auth.tsx` sur les transitions de session, plutôt que dispersés — les
+events anonymes du quiz avant inscription se rattachent automatiquement à
+la bonne personne une fois identifiée. Super property `app_language`
+enregistrée une fois (`app/_layout.tsx`, mise à jour au changement dans le
+profil) plutôt que passée à chaque `capture()` — segmente gratuitement
+n'importe quel insight par langue, utile pour comparer les campagnes
+pub FR/EN plus tard.
+
+**Fait — dashboard PostHog créé via l'API.** 18 insights + 6 en-têtes de
+section, créés directement dans le projet PostHog de l'utilisateur via
+l'API REST (clé personnelle avec scopes `insight:write`/`dashboard:write`,
+fournie temporairement puis destinée à être révoquée) plutôt que de
+laisser tout reconstruire à la main : funnel complet de l'onboarding en 18
+étapes (même event `onboarding_step_completed`, filtré par `step_name` à
+chaque étape — affiche le taux de conversion réel à chaque écran), funnel
+signup→confirmation→onboarding terminé, vues et retours en arrière par
+étape (repère les écrans qui font hésiter), funnel paywall par source,
+funnel cours verrouillé→paywall→confirmation, funnel d'engagement cours,
+démarrages de cours par point d'entrée, cartes retournées, notes données,
+courbe de rétention post-onboarding, check-ins et événements quotidiens,
+utilisateurs actifs hebdo, total utilisateurs, signups par langue.
+Dashboard : `https://eu.posthog.com/project/265920/dashboard/933888`.
+Le schéma d'API utilisé (`query`/`InsightVizNode` avec `TrendsQuery`/
+`FunnelsQuery`/`RetentionQuery`) a été découvert par essais réels contre
+l'API (le format `filters` historique est désactivé pour ce compte) —
+documenté ici en cas de besoin de recréer/modifier des insights plus tard.
+
+**Non fait / limites connues.** `purchase_succeeded` n'existe pas encore
+(pas de RevenueCat branché) — les insights monétisation mesurent
+l'intention (vue paywall, plan choisi, plan confirmé), pas le paiement
+réel ; à ajouter une fois les vrais achats in-app câblés. Conformité Apple
+et compte invité : explicitement mis de côté par l'utilisateur pour plus
+tard.
+
+**Vérifié.** `npx tsc --noEmit` propre. `npx jest --watchAll=false` :
+28/28. `npx expo lint` : 0 erreur, 2 avertissements `exhaustive-deps`
+préexistants, aucun nouveau. Les 18 insights et 6 tiles texte confirmés
+créés côté API (compteur de tiles du dashboard = 24). Pas de test sur
+device réel de la confirmation email par deep link (nécessite un dev
+client, non disponible dans cette session) ni de vérification que les
+events remontent réellement dans PostHog une fois l'app utilisée pour de
+vrai.
+
+**Fichiers touchés.** nouveau : `lib/analytics.ts` ; modifiés :
+`app/_layout.tsx`, `app/(auth)/index.tsx`, `app/(tabs)/index.tsx`,
+`app/(tabs)/library.tsx`, `app/(tabs)/profile.tsx`, `app/add-event.tsx`,
+`app/checkin.tsx`, `app/course/[id].tsx`, `app/onboarding.tsx`,
+`app/paywall.tsx`, `components/course/FlipCard.tsx`, `lib/auth.tsx`,
+`lib/supabase.ts`, `locales/fr.json`, `locales/en.json`, `.env.example`,
+`package.json`/`package-lock.json` (ajout de `posthog-react-native`,
+`expo-file-system`, `expo-application`, `expo-device`).

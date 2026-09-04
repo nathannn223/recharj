@@ -1,10 +1,12 @@
 import * as WebBrowser from 'expo-web-browser';
 import { router } from 'expo-router';
+import { usePostHog } from 'posthog-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AnalyticsEvent } from '@/lib/analytics';
 import { CheckIcon, ChevronRightIcon, UserIcon } from '@/components/icons/Icon';
 import { colors, fontFamily, radii, spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
@@ -14,7 +16,8 @@ import { PRIVACY_URL, SUPPORT_EMAIL, TERMS_URL } from '@/lib/legal';
 import { supabase } from '@/lib/supabase';
 
 export default function ProfileScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const posthog = usePostHog();
   const { session, signOut, deleteAccount } = useAuth();
   const [tier, setTier] = useState<SubscriptionTier | null>(null);
   const [completedCount, setCompletedCount] = useState<number | null>(null);
@@ -46,8 +49,10 @@ export default function ProfileScreen() {
   }, []);
 
   const pickLanguage = async (lang: SupportedLanguage | null) => {
+    posthog.capture(AnalyticsEvent.LanguageChanged, { from: languageOverride ?? 'auto', to: lang ?? 'auto' });
     setLanguageOverride(lang);
     await setLanguage(lang);
+    posthog.register({ app_language: i18n.language });
   };
 
   const confirmDeleteAccount = () => {

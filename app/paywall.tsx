@@ -1,11 +1,13 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
+import { usePostHog } from 'posthog-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AnalyticsEvent } from '@/lib/analytics';
 import { CheckIcon, CloseIcon, LockIcon } from '@/components/icons/Icon';
 import { chargeGradient, colors, fontFamily, radii, spacing } from '@/constants/theme';
 import { PRIVACY_URL, TERMS_URL } from '@/lib/legal';
@@ -18,16 +20,26 @@ type CoursePreview = { title: string; hook: string };
 
 export default function PaywallScreen() {
   const { t, i18n } = useTranslation();
+  const posthog = usePostHog();
   const { courseId } = useLocalSearchParams<{ courseId?: string }>();
   const [selected, setSelected] = useState<Plan['id']>('annual');
   const [preview, setPreview] = useState<CoursePreview | null>(null);
 
   const PERKS = [t('paywall.perks.fullLibrary'), t('paywall.perks.unlimitedProjection'), t('paywall.perks.linkedCourses')];
 
+  useEffect(() => {
+    posthog.capture(AnalyticsEvent.PaywallViewed, { source: courseId ? 'course_gate' : 'library_banner', course_id: courseId ?? null });
+    // Fires once per mount only — re-firing on every courseId/i18n.language
+    // change (this effect's own deps further down already react to those
+    // for the preview fetch) would count one paywall visit as several views.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // TODO: wire to RevenueCat's restorePurchases() once the App Store /
   // RevenueCat accounts exist and real in-app purchases are live — this is
   // currently a stub so the required button is present ahead of that work.
   const restorePurchases = () => {
+    posthog.capture(AnalyticsEvent.RestorePurchasesTapped);
     Alert.alert(t('paywall.restoreAlert.title'), t('paywall.restoreAlert.body'));
   };
 
@@ -89,7 +101,10 @@ export default function PaywallScreen() {
               return (
                 <Pressable
                   key={plan.id}
-                  onPress={() => setSelected(plan.id)}
+                  onPress={() => {
+                    setSelected(plan.id);
+                    posthog.capture(AnalyticsEvent.PlanSelected, { plan_id: plan.id, source: 'paywall' });
+                  }}
                   style={[styles.planCard, isSelected && styles.planCardSelected]}
                 >
                   {display.badge && (
@@ -123,7 +138,12 @@ export default function PaywallScreen() {
               wired, gate this on trial eligibility so a user who already
               consumed their 7 days from the onboarding offer sees the
               regular renewal text instead. */}
-          <Pressable onPress={() => safeBack()}>
+          <Pressable
+            onPress={() => {
+              posthog.capture(AnalyticsEvent.PlanConfirmed, { plan_id: selected, source: 'paywall' });
+              safeBack();
+            }}
+          >
             <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.submitBtn}>
               <Text style={styles.submitText}>{preview ? t('paywall.submitCourse') : t('paywall.submitGeneric')}</Text>
             </LinearGradient>

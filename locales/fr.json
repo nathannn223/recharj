@@ -186,7 +186,7 @@
     },
     "checkEmail": {
       "title": "Vérifie ta boîte mail",
-      "body": "On a envoyé un lien de confirmation à {{email}}. Reviens ici et connecte-toi une fois ton compte confirmé."
+      "body": "On a envoyé un lien de confirmation à {{email}}. Touche-le, ça te ramène directement dans l'app."
     },
     "signin": {
       "title": "Recharj",

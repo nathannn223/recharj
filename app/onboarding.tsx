@@ -1,10 +1,12 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { usePostHog } from 'posthog-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AnalyticsEvent } from '@/lib/analytics';
 import { chargeGradient, colors, fontFamily, radii, spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { useOnboarding } from '@/lib/onboarding';
@@ -29,6 +31,7 @@ export default function OnboardingWelcomeScreen() {
   const { t, i18n } = useTranslation();
   const { session } = useAuth();
   const { markSeen } = useOnboarding();
+  const posthog = usePostHog();
 
   const [step, setStep] = useState<number>(STEP.THANKS);
   const [preparing, setPreparing] = useState(true);
@@ -186,11 +189,13 @@ export default function OnboardingWelcomeScreen() {
   const goNext = () => setStep(STEP.COURSE);
 
   const enterCourse = async () => {
+    posthog.capture(AnalyticsEvent.OnboardingCompleted, { entry: 'course' });
     await markSeen();
-    router.replace(freeCourseId ? `/course/${freeCourseId}` : '/(tabs)/library');
+    router.replace(freeCourseId ? `/course/${freeCourseId}?from=onboarding` : '/(tabs)/library');
   };
 
   const goToDashboard = async () => {
+    posthog.capture(AnalyticsEvent.OnboardingCompleted, { entry: 'dashboard' });
     await markSeen();
     router.replace('/(tabs)');
   };

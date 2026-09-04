@@ -186,7 +186,7 @@
     },
     "checkEmail": {
       "title": "Check your inbox",
-      "body": "We sent a confirmation link to {{email}}. Come back here and log in once your account is confirmed."
+      "body": "We sent a confirmation link to {{email}}. Tap it and you'll land straight back in the app."
     },
     "signin": {
       "title": "Recharj",

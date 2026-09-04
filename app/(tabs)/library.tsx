@@ -1,10 +1,12 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { usePostHog } from 'posthog-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AnalyticsEvent } from '@/lib/analytics';
 import { BoltIcon, CheckIcon, ChevronRightIcon, LockIcon, SearchIcon, StarIcon } from '@/components/icons/Icon';
 import { chargeGradient, colors, fontFamily, radii, spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
@@ -33,6 +35,7 @@ type LibraryCourse = Pick<
 
 export default function LibraryScreen() {
   const { t, i18n } = useTranslation();
+  const posthog = usePostHog();
   const { session } = useAuth();
   const [tier, setTier] = useState<SubscriptionTier>('free');
   const [freeCourseId, setFreeCourseId] = useState<string | null>(null);
@@ -82,9 +85,10 @@ export default function LibraryScreen() {
 
   const openCourse = (course: LibraryCourse) => {
     if (!canAccessCourse(course, tier, freeCourseId)) {
+      posthog.capture(AnalyticsEvent.CourseLockedHit, { course_id: course.id });
       router.push({ pathname: '/paywall', params: { courseId: course.id } });
     } else {
-      router.push(`/course/${course.id}`);
+      router.push(`/course/${course.id}?from=library`);
     }
   };
 

@@ -1,12 +1,14 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
 import * as WebBrowser from 'expo-web-browser';
-import { useRef, useState } from 'react';
+import { usePostHog } from 'posthog-react-native';
+import { useEffect, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { Animated, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
+import { AnalyticsEvent, ONBOARDING_STEPS } from '@/lib/analytics';
 import { BatteryGauge } from '@/components/BatteryGauge';
 import {
   BellIcon,
@@ -133,8 +135,21 @@ export default function AuthScreen() {
   const { t, i18n } = useTranslation();
   const { signIn, signUp } = useAuth();
   const { resetSeen } = useOnboarding();
+  const posthog = usePostHog();
   const [mode, setMode] = useState<Mode>('quiz');
   const [step, setStep] = useState<number>(STEP.HOOK);
+
+  // Fires on every quiz step render, forward or back — "viewed" this way
+  // covers the very first HOOK screen too (doubling as "onboarding
+  // started") and lets a funnel tell "nobody read this screen" apart from
+  // "people read it but bounced without continuing" (OnboardingStepCompleted,
+  // fired only on forward progress — see the button handlers below).
+  useEffect(() => {
+    if (mode !== 'quiz' || step > STEP.SIGNUP) return;
+    const step_name = ONBOARDING_STEPS[step];
+    posthog.capture(AnalyticsEvent.OnboardingStepViewed, { step_name, step_index: step });
+    if (step_name === 'trial') posthog.capture(AnalyticsEvent.PaywallViewed, { source: 'onboarding' });
+  }, [mode, step, posthog]);
 
   const [firstName, setFirstName] = useState('');
   const [score, setScore] = useState<number | null>(null);
@@ -177,6 +192,8 @@ export default function AuthScreen() {
       return;
     }
     setSubmitting(true);
+    posthog.capture(AnalyticsEvent.OnboardingStepCompleted, { step_name: 'signup_form', step_index: STEP.SIGNUP });
+    posthog.capture(AnalyticsEvent.SignupSubmitted);
     await savePendingOnboarding({
       firstName: firstName.trim(),
       baselineScore: score ?? 5,
@@ -190,10 +207,12 @@ export default function AuthScreen() {
     const { error: signUpError, hasSession } = await signUp(email, password);
     setSubmitting(false);
     if (signUpError) {
+      posthog.capture(AnalyticsEvent.SignupFailed, { error: signUpError });
       setError(signUpError);
     } else {
       resetSeen();
       if (!hasSession) {
+        posthog.capture(AnalyticsEvent.EmailConfirmationShown);
         setStep(STEP.CHECK_EMAIL);
       }
       // If a session came back immediately, RootNavigator picks it up and
@@ -250,6 +269,7 @@ export default function AuthScreen() {
   const requestNotifications = async () => {
     try {
       const { status } = await Notifications.requestPermissionsAsync();
+      posthog.capture(AnalyticsEvent.NotificationPermissionResult, { granted: status === 'granted' });
       if (status === 'granted') {
         // Forces the same low-battery message the mock on this screen just
         // showed. Real day-to-day content takes over the first time the
@@ -263,6 +283,7 @@ export default function AuthScreen() {
       // Permission prompt or scheduling failing (simulator, already denied
       // at OS level, etc.) should never block onboarding — just move on.
     }
+    posthog.capture(AnalyticsEvent.OnboardingStepCompleted, { step_name: 'notifications', step_index: STEP.NOTIFICATIONS });
     setStep((s) => s + 1);
   };
 
@@ -560,7 +581,14 @@ export default function AuthScreen() {
                   const display = getPlanDisplay(plan, t, i18n.language);
                   const isSelected = plan.id === selectedPlan;
                   return (
-                    <Pressable key={plan.id} onPress={() => setSelectedPlan(plan.id)} style={[styles.planCard, isSelected && styles.planCardSelected]}>
+                    <Pressable
+                      key={plan.id}
+                      onPress={() => {
+                        setSelectedPlan(plan.id);
+                        posthog.capture(AnalyticsEvent.PlanSelected, { plan_id: plan.id, source: 'onboarding' });
+                      }}
+                      style={[styles.planCard, isSelected && styles.planCardSelected]}
+                    >
                       <View style={styles.trialBadge}>
                         <Text style={styles.trialBadgeText}>{t('auth.trial.offerBadge', { days: TRIAL_DAYS })}</Text>
                       </View>
@@ -617,7 +645,14 @@ export default function AuthScreen() {
           </View>
         ) : step === STEP.TRIAL ? (
           <View style={styles.footer}>
-            <Pressable style={{ flex: 1 }} onPress={() => setStep((s) => s + 1)}>
+            <Pressable
+              style={{ flex: 1 }}
+              onPress={() => {
+                posthog.capture(AnalyticsEvent.PlanConfirmed, { plan_id: selectedPlan, source: 'onboarding' });
+                posthog.capture(AnalyticsEvent.OnboardingStepCompleted, { step_name: 'trial', step_index: STEP.TRIAL });
+                setStep((s) => s + 1);
+              }}
+            >
               <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.nextBtn}>
                 <Text style={styles.nextBtnText}>{t('auth.trial.start')}</Text>
               </LinearGradient>
@@ -631,7 +666,14 @@ export default function AuthScreen() {
               </Pressable>
             ) : (
               step < STEP.SIGNUP && (
-                <Pressable onPress={() => setStep((s) => s - 1)} style={styles.skipBtn} hitSlop={10}>
+                <Pressable
+                  onPress={() => {
+                    posthog.capture(AnalyticsEvent.OnboardingStepBack, { step_name: ONBOARDING_STEPS[step], step_index: step });
+                    setStep((s) => s - 1);
+                  }}
+                  style={styles.skipBtn}
+                  hitSlop={10}
+                >
                   <Text style={styles.skipText}>{t('common.previous')}</Text>
                 </Pressable>
               )
@@ -643,6 +685,7 @@ export default function AuthScreen() {
                 if (step === STEP.SIGNUP) {
                   submitSignUp();
                 } else {
+                  posthog.capture(AnalyticsEvent.OnboardingStepCompleted, { step_name: ONBOARDING_STEPS[step], step_index: step });
                   setStep((s) => s + 1);
                 }
               }}
@@ -659,7 +702,14 @@ export default function AuthScreen() {
           </View>
         )}
         {isCustomFooterStep && (
-          <Pressable onPress={() => setStep((s) => s + 1)} style={styles.notifSkip} hitSlop={10}>
+          <Pressable
+            onPress={() => {
+              posthog.capture(AnalyticsEvent.OnboardingStepCompleted, { step_name: ONBOARDING_STEPS[step], step_index: step, skipped: true });
+              setStep((s) => s + 1);
+            }}
+            style={styles.notifSkip}
+            hitSlop={10}
+          >
             <Text style={styles.skipText}>{t('common.later')}</Text>
           </Pressable>
         )}

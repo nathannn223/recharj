@@ -22,5 +22,12 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
+    // PKCE (rather than the implicit-flow default) puts the confirmation
+    // link's payload in a plain `?code=` query param instead of a
+    // `#access_token=...` URL fragment — the fragment form is awkward to
+    // parse out of a native deep link and briefly exposes the tokens
+    // themselves in the URL. exchangeCodeForSession() in app/_layout.tsx
+    // relies on this being 'pkce'.
+    flowType: 'pkce',
   },
 });

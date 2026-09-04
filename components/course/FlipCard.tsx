@@ -12,12 +12,13 @@ type Props = {
   total: number;
   sourceLabel?: string;
   onSourcePress?: () => void;
+  onFlip?: () => void;
 };
 
 // Front shows only the title (like a physical flashcard question side);
 // tapping flips it to reveal the advice on the back. Mounted fresh per
 // card (parent keys it by index) so it always starts front-side-up.
-export function FlipCard({ card, index, total, sourceLabel, onSourcePress }: Props) {
+export function FlipCard({ card, index, total, sourceLabel, onSourcePress, onFlip }: Props) {
   const { t } = useTranslation();
   const [flipped, setFlipped] = useState(false);
   const flip = useRef(new Animated.Value(0)).current;
@@ -29,6 +30,9 @@ export function FlipCard({ card, index, total, sourceLabel, onSourcePress }: Pro
       friction: 8,
       tension: 10,
     }).start();
+    // Only the front-to-back reveal is the meaningful "read the advice"
+    // moment — flipping back to the question side isn't worth a second event.
+    if (!flipped) onFlip?.();
     setFlipped(!flipped);
   };
 

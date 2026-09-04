@@ -1,9 +1,11 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { usePostHog } from 'posthog-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AnalyticsEvent } from '@/lib/analytics';
 import { CloseIcon } from '@/components/icons/Icon';
 import { chargeGradient, colors, fontFamily, radii, spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
@@ -18,6 +20,7 @@ import { supabase } from '@/lib/supabase';
 // today already exists, submit always overwrites rather than erroring.
 export default function CheckInScreen() {
   const { t } = useTranslation();
+  const posthog = usePostHog();
   const { session } = useAuth();
   const [score, setScore] = useState<number | null>(null);
   const [comment, setComment] = useState('');
@@ -56,6 +59,7 @@ export default function CheckInScreen() {
       setError(submitError);
       return;
     }
+    posthog.capture(AnalyticsEvent.CheckinCompleted, { score, has_comment: comment.trim().length > 0 });
     safeBack();
   };
 

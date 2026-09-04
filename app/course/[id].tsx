@@ -1,10 +1,12 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
+import { usePostHog } from 'posthog-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AnalyticsEvent } from '@/lib/analytics';
 import { CourseComplete } from '@/components/course/CourseComplete';
 import { FlipCard } from '@/components/course/FlipCard';
 import { DiagnosticSlider } from '@/components/engagement/DiagnosticSlider';
@@ -31,7 +33,8 @@ const STEP_COUNT = 4; // hook, diagnostic, cards, exercise
 
 export default function CourseScreen() {
   const { t, i18n } = useTranslation();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const posthog = usePostHog();
+  const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
   const { session } = useAuth();
 
   const [course, setCourse] = useState<CourseRow | null>(null);
@@ -72,6 +75,7 @@ export default function CourseScreen() {
       const { data: freeCourseRow } = await supabase.from('profiles').select('free_course_id').maybeSingle();
 
       if (!tierRow || !canAccessCourse(typedCourse, tierRow.subscription_tier, freeCourseRow?.free_course_id ?? null)) {
+        posthog.capture(AnalyticsEvent.CourseLockedHit, { course_id: id });
         router.replace({ pathname: '/paywall', params: { courseId: id } });
         return;
       }
@@ -91,6 +95,11 @@ export default function CourseScreen() {
       setCourse(typedCourse);
       setSources(new Map((sourceRows ?? []).map((s) => [s.id, s as SourceRow])));
       setLoading(false);
+      posthog.capture(AnalyticsEvent.CourseStarted, {
+        course_id: typedCourse.id,
+        course_slug: typedCourse.slug,
+        entry_point: from ?? 'unknown',
+      });
 
       // Mark the course as started, unless it's already been completed before.
       if (session) {
@@ -111,9 +120,20 @@ export default function CourseScreen() {
     return () => {
       cancelled = true;
     };
+    // `from` (the entry_point analytics property) and `posthog` are stable
+    // for the lifetime of this screen — not worth re-running the whole
+    // fetch over.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, session]);
 
   const content = useMemo(() => (course ? localizedCourseContent(course, i18n.language) : null), [course, i18n.language]);
+
+  const STEP_NAMES = ['hook', 'diagnostic', 'cards', 'exercise'] as const;
+  useEffect(() => {
+    if (!course) return;
+    posthog.capture(AnalyticsEvent.CourseStepViewed, { course_id: course.id, step: STEP_NAMES[step] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [course, step]);
 
   const orderedCards = useMemo(() => {
     if (!content) return [];
@@ -141,6 +161,7 @@ export default function CourseScreen() {
         .from('course_progress')
         .upsert({ user_id: session.user.id, course_id: course.id, status: 'completed', current_step: STEP_COUNT - 1 });
     }
+    if (course) posthog.capture(AnalyticsEvent.CourseCompleted, { course_id: course.id });
     setFinished(true);
   };
 
@@ -148,6 +169,7 @@ export default function CourseScreen() {
     if (session && course) {
       await supabase.from('course_progress').update({ rating }).eq('user_id', session.user.id).eq('course_id', course.id);
     }
+    if (course) posthog.capture(AnalyticsEvent.CourseRated, { course_id: course.id, rating });
   };
 
   if (loading) {
@@ -233,6 +255,7 @@ export default function CourseScreen() {
                   : undefined
               }
               onSourcePress={() => router.push(`/source/${orderedCards[cardIndex].sourceId}`)}
+              onFlip={() => posthog.capture(AnalyticsEvent.CourseCardFlipped, { course_id: course.id, card_index: cardIndex })}
             />
           )}
 

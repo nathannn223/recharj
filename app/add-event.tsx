@@ -1,11 +1,13 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
+import { usePostHog } from 'posthog-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AnalyticsEvent } from '@/lib/analytics';
 import { BoltIcon, CalendarIcon, CloseIcon } from '@/components/icons/Icon';
 import { chargeGradient, colors, fontFamily, radii, spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
@@ -20,6 +22,7 @@ type Recommendation = { id: string; title: string };
 
 export default function AddEventScreen() {
   const { t } = useTranslation();
+  const posthog = usePostHog();
   const { session } = useAuth();
   // Editing reuses this screen rather than duplicating a near-identical form:
   // the fields, the validation and the difficulty scale are the same, so a
@@ -90,6 +93,7 @@ export default function AddEventScreen() {
         setError(updateError);
         return;
       }
+      posthog.capture(AnalyticsEvent.EventUpdated, { difficulty, event_type: selectedType });
       // No course recommendation on edit: replaying that screen every time a
       // difficulty is corrected would be intrusive. Recommending stays a
       // moment of creation.
@@ -103,6 +107,7 @@ export default function AddEventScreen() {
       setError(submitError);
       return;
     }
+    posthog.capture(AnalyticsEvent.EventAdded, { difficulty, event_type: selectedType });
 
     // A matching course is suggested when the event is marked difficult
     // (see the helper text under the slider), but never one already
@@ -138,7 +143,7 @@ export default function AddEventScreen() {
           <Text style={styles.recNote}>{t('addEvent.recommendation.note', { type: t(`data.eventTypes.${eventTypeForRec}`) })}</Text>
 
           <View style={{ gap: spacing[3], width: '100%', marginTop: spacing[6] }}>
-            <Pressable onPress={() => router.replace(`/course/${recommendation.id}`)}>
+            <Pressable onPress={() => router.replace(`/course/${recommendation.id}?from=event_recommendation`)}>
               <LinearGradient colors={chargeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.submitBtn}>
                 <Text style={styles.submitText}>{t('addEvent.recommendation.viewCourse')}</Text>
               </LinearGradient>

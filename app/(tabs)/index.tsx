@@ -1,11 +1,13 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { Link, router } from 'expo-router';
+import { usePostHog } from 'posthog-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Path, Polyline, Stop } from 'react-native-svg';
 
+import { AnalyticsEvent } from '@/lib/analytics';
 import { BatteryGauge } from '@/components/BatteryGauge';
 import { CheckInCard } from '@/components/CheckInCard';
 import { StreakBadge } from '@/components/StreakBadge';
@@ -33,6 +35,7 @@ function levelToY(level: number) {
 
 export default function DashboardScreen() {
   const { t, i18n } = useTranslation();
+  const posthog = usePostHog();
   const { session } = useAuth();
   const { events, loading } = useEvents();
   const now = startOfToday();
@@ -164,7 +167,13 @@ export default function DashboardScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.row}>
           <Text style={styles.h1}>{t('dashboard.greeting', { name: firstName ? ` ${firstName}` : '' })}</Text>
-          <StreakBadge streak={checkInStreak} onPress={() => router.push('/checkin')} />
+          <StreakBadge
+            streak={checkInStreak}
+            onPress={() => {
+              posthog.capture(AnalyticsEvent.StreakBadgeTapped, { streak: checkInStreak });
+              router.push('/checkin');
+            }}
+          />
         </View>
 
         <View style={styles.batteryWrap}>
@@ -240,7 +249,7 @@ export default function DashboardScreen() {
         </View>
 
         {difficultEvent && (
-          <Link href={recommendedCourse ? `/course/${recommendedCourse.id}` : '/(tabs)/library'} asChild>
+          <Link href={recommendedCourse ? `/course/${recommendedCourse.id}?from=dashboard_recommended` : '/(tabs)/library'} asChild>
             <Pressable style={styles.recCard}>
               <View style={styles.recBadge}>
                 <BoltIcon color={colors.surfaceScreen} size={20} />
