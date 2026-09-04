@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      # expo lint loads .env via dotenv; it's gitignored (real secrets live in
+      # EAS env vars / the developer's machine), so these dummy values just
+      # keep that load from being empty in CI. Nothing here talks to a real
+      # backend during typecheck/lint/test.
+      EXPO_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
+      EXPO_PUBLIC_POSTHOG_KEY: phc_ci_placeholder
+      EXPO_PUBLIC_POSTHOG_HOST: https://eu.i.posthog.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx expo lint
+      - run: npx jest --watchAll=false

@@ -1597,3 +1597,113 @@ vrai.
 `lib/supabase.ts`, `locales/fr.json`, `locales/en.json`, `.env.example`,
 `package.json`/`package-lock.json` (ajout de `posthog-react-native`,
 `expo-file-system`, `expo-application`, `expo-device`).
+
+---
+
+### 2026-09-04 — Chantier 20 : audit de préparation App Store + corrections applicables sans compte Apple/RevenueCat
+
+**Contexte.** Demande explicite : analyser tout le code et les documents du
+projet, produire un retour complet sur les étapes de lancement côté Apple et
+les optimisations à faire, puis appliquer directement tout ce qui peut
+l'être sans attendre la mise en place des comptes externes (Apple Developer,
+RevenueCat, hébergement de la politique de confidentialité).
+
+**Fait — projet EAS créé et lié.** Aucun projet EAS n'existait
+(`extra.eas.projectId` absent). L'utilisateur est connecté en CLI
+(`ngoss223@gmail.com`) avec accès à deux comptes (`24nathan` personnel,
+`nathans-team` organisation) — question posée explicitement, l'utilisateur a
+choisi **`nathans-team`** (accès multi-personnes envisagé plus tard).
+`app.json` a reçu `"owner": "nathans-team"`, puis `eas init --non-interactive
+--force` a créé et lié le projet :
+`https://expo.dev/accounts/nathans-team/projects/Recharj`
+(id `72588ec5-03cc-4adf-bff8-81c098af5ebe`, écrit dans `extra.eas.projectId`).
+Sans ce projet, `eas build`/`eas submit` n'auraient tout simplement pas pu
+tourner.
+
+**Fait — `app.json`, trois corrections de conformité/config.**
+- `ios.supportsTablet` passé de `true` à `false` : aucun écran de l'app n'a
+  jamais été vérifié en layout tablette, et le laisser à `true` aurait
+  obligé à fournir des captures iPad 13" à la soumission pour une UI non
+  pensée pour ce format. Décision prise sans validation humaine — à
+  revenir en arrière si l'iPad devient un objectif produit, auquel cas il
+  faudra d'abord vérifier réellement les écrans à cette taille.
+- `ios.infoPlist.ITSAppUsesNonExemptEncryption: false` ajouté : l'app
+  n'utilise que TLS standard (aucune crypto custom), cette déclaration
+  évite la question de conformité export à chaque build/soumission.
+- Ces deux champs sont des cases à cocher factuelles sur l'état réel de
+  l'app, pas des choix produits — aucune ambiguïté à trancher.
+
+**Fait — `eas.json` : bloc `submit` ajouté.** `submit.production.ios: {}`
+— vide volontairement : Apple ID, App Store Connect App ID et Apple Team ID
+ne sont connus que de l'utilisateur. Un `eas submit -p ios --profile
+production` les demandera en interactif au premier lancement (et peut les
+sauvegarder à ce moment-là) ; ça n'a pas pu être pré-rempli ici.
+
+**Fait — écran de démarrage (splash) enfin cohérent avec l'icône.** Signalé
+comme non fait au Chantier 17 : `assets/images/splash-icon.png` était
+resté le placeholder Expo par défaut alors que l'icône réelle (éclair lime
+sur fond encre) existe depuis ce chantier. Plutôt que régénérer un nouveau
+rendu, `assets/images/adaptive-icon.png` (même éclair, fond transparent,
+déjà mis à l'échelle dans une zone de sécurité ~45 %) a été copié tel quel
+en `splash-icon.png` : la config `splash.resizeMode: "contain"` +
+`splash.backgroundColor: "#0F0B1A"` de `app.json` (inchangée) fait le reste
+— le résultat est visuellement identique à l'icône d'app, sans nouvel
+asset à maintenir.
+
+**Fait — tests unitaires sur la logique de verrouillage des cours.**
+`lib/courses.ts` (`canAccessCourse`, `evaluatePersonalizationCondition`,
+`personalizeCardOrder`) n'avait aucun test alors qu'il gouverne l'accès au
+contenu payant — seule `lib/battery.ts` était couvert jusqu'ici. Nouveau
+`lib/courses.test.ts` (22 cas) : cours gratuit vs payant, cours offert
+nommément (`free_course_id`), les deux bornes de l'ordre de palier
+free/premium, les cinq opérateurs de condition de personnalisation plus une
+chaîne invalide, et la réorganisation de cartes (règle non déclenchée, sans
+score de diagnostic encore, index hors bornes).
+
+**Fait — CI GitHub Actions.** Aucun `.github/workflows` n'existait ;
+`tsc`/`expo lint`/`jest` ne tournaient que manuellement, à la discipline de
+la session en cours. Nouveau `.github/workflows/ci.yml` : sur push/PR vers
+`master`, installe les dépendances puis lance les trois vérifications déjà
+utilisées en fin de chaque chantier de ce journal. Variables
+`EXPO_PUBLIC_*` factices fournies au job (uniquement pour que `expo lint`
+trouve un `.env` à charger) — aucun vrai secret n'entre dans la CI, aucun
+appel réseau réel n'est fait par ces trois commandes.
+
+**Non fait — nécessite un compte externe ou une décision produit, laissé
+volontairement de côté.**
+- [ ] RevenueCat + produits d'abonnement App Store Connect : le paiement
+  réel reste non branché (`app/paywall.tsx` n'affiche qu'une alerte sur
+  « Restaurer les achats »). C'est le chantier le plus long des bloquants
+  identifiés — nécessite de créer les deux produits StoreKit en premier.
+- [ ] Politique de confidentialité / CGU : `lib/legal.ts` pointe toujours
+  vers un artefact `claude.ai`, pas un domaine contrôlé par le projet.
+  Nécessaire pour la fiche App Store Connect avant toute soumission.
+- [ ] Renseigner `eas submit` avec les vraies identités Apple (Apple ID /
+  App Store Connect App ID / Apple Team ID) — nécessite le compte Apple
+  Developer Program actif.
+- [ ] Secrets d'environnement de build EAS : `EXPO_PUBLIC_SUPABASE_URL`,
+  `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_POSTHOG_KEY`,
+  `EXPO_PUBLIC_POSTHOG_HOST` n'existent qu'en `.env` local (gitignored) —
+  un `eas build --profile production` échouerait ou partirait avec des
+  clés vides tant qu'ils ne sont pas déclarés via `eas env:create` (ou le
+  bloc `env` d'un profil `eas.json`, moins indiqué pour des clés secrètes
+  même si celles-ci sont des `EXPO_PUBLIC_*` déjà côté client).
+- [ ] Fiche App Store Connect elle-même (description FR/EN, captures
+  d'écran, catégorie, âge, compte de démonstration pour la review).
+- [ ] Crash reporting (Sentry ou équivalent) et `expo-updates` : évoqués
+  comme optimisations dans l'audit, pas appliqués — le premier nécessite un
+  compte/DSN externe, le second nécessite un `runtimeVersion`/canal de
+  update réfléchi plutôt que posé à la hâte.
+
+**Vérifié.** `npx tsc --noEmit` propre. `npx jest --watchAll=false` :
+50/50 (28 préexistants + 22 nouveaux dans `lib/courses.test.ts`).
+`npx expo lint` : 0 erreur, les 2 mêmes avertissements `exhaustive-deps`
+préexistants, aucun nouveau. `app.json` et `eas.json` valides
+(`json.load` sans erreur). Projet EAS confirmé lié (`eas init` a renvoyé
+l'URL du projet et son id). Pas de build ni de soumission réellement
+lancés — hors de portée sans les comptes listés ci-dessus.
+
+**Fichiers touchés.** modifiés : `app.json` (owner, projectId, tablette,
+export compliance), `eas.json` (bloc `submit`), `assets/images/splash-icon.png`
+(binaire, remplacé) ; nouveaux : `lib/courses.test.ts`,
+`.github/workflows/ci.yml`.
