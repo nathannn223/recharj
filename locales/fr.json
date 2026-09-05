@@ -164,7 +164,7 @@
     },
     "recap": {
       "heading": "Voici ce que Recharj a identifié",
-      "painLine": "Ton point faible : <hl>{{pain}}</hl>.",
+      "painLine": "Ce qui te vide le plus : <hl>{{pain}}</hl>.",
       "frequencyLine": "Ça revient <hl1>{{frequency}}</hl1>, surtout <hl1>{{moment}}</hl1>.",
       "rechargeLine": "Tu récupères mieux grâce à <hl2>{{recharge}}</hl2>."
     },
@@ -203,7 +203,14 @@
       "passwordPlaceholder": "••••••••"
     },
     "errors": {
-      "missingCredentials": "Renseigne ton email et ton mot de passe."
+      "missingCredentials": "Renseigne ton email et ton mot de passe.",
+      "invalidCredentials": "Email ou mot de passe incorrect.",
+      "emailExists": "Un compte existe déjà avec cet email.",
+      "weakPassword": "Choisis un mot de passe plus long.",
+      "emailNotConfirmed": "Confirme ton email avant de te connecter.",
+      "invalidEmail": "Cet email n'a pas l'air valide.",
+      "rateLimited": "Trop de tentatives. Réessaie dans un instant.",
+      "generic": "Une erreur est survenue. Réessaie."
     },
     "dev": {
       "button": "⚡ DEV : compte de test instantané"
@@ -275,18 +282,12 @@
   "dashboard": {
     "greeting": "Bonjour{{name}}",
     "batteryLabel": "Batterie sociale",
-    "checkin": {
-      "streakTitle": "Journée notée · {{score}}/10",
-      "streakNote": "Touche pour modifier",
-      "promptTitle": "Comment s'est passée ta journée ?",
-      "promptNote": "Note-la pour garder un historique réel."
-    },
     "projection": "Projection 7 jours",
     "event_one": "{{count}} événement",
     "event_other": "{{count}} événements",
     "upcomingEvents": "Événements à venir",
     "seeAll": "Voir tout",
-    "noUpcomingEvents": "Aucun événement à venir. Ajoute-en un depuis le calendrier.",
+    "noUpcomingEvents": "Rien de prévu. Ajoute ton premier événement.",
     "recommended": {
       "fallbackTitle": "Un cours pour t'y préparer",
       "note": "Recommandé pour \"{{type}}\""
@@ -388,9 +389,9 @@
     "titleCourse": "Débloquer ce cours",
     "titleGeneric": "Passe en Premium",
     "perks": {
-      "fullLibrary": "Bibliothèque complète",
-      "unlimitedProjection": "Projection illimitée",
-      "linkedCourses": "Cours liés à tes événements"
+      "fullLibrary": "Tous les cours débloqués, pas juste un.",
+      "unlimitedProjection": "Anticipe toute ta semaine, pas juste demain.",
+      "linkedCourses": "Le bon cours avant chaque événement."
     },
     "preview": {
       "eyebrow": "Le cours qui t'attend",
@@ -413,7 +414,7 @@
     "restore": "Restaurer mes achats",
     "restoreAlert": {
       "title": "Restauration des achats",
-      "body": "Cette fonctionnalité sera disponible dès l'activation des abonnements."
+      "body": "Aucun achat à restaurer pour le moment."
     },
     "privacy": "Confidentialité",
     "terms": "CGU",

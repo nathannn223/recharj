@@ -1897,3 +1897,74 @@ nécessaire côté app pour ce chantier.
 **Fichiers touchés.** aucun dans le repo — déploiement Cloudflare
 uniquement (fichiers temporaires locaux créés puis nettoyés en fin de
 session, hors du repo).
+
+---
+
+### 2026-09-04 — Chantier 24 : passe copywriting (in-app + fiche App Store), bug de traduction des erreurs Supabase
+
+**Contexte.** Audit copywriting demandé sur le quiz, le paywall et le
+dashboard. Contrainte explicite de l'utilisateur après une première
+proposition jugée trop longue : les phrases d'interface doivent tourner
+autour de 7 mots.
+
+**Fait — 4 réécritures (fr + en), toutes raccourcies à ~7 mots.**
+- Récap onboarding : "Ton point faible : {{pain}}" → "Ce qui te vide le
+  plus : {{pain}}" — le mot "faible" (weakness) contredisait le ton
+  bienveillant du reste du parcours ("tu mérites d'être aidé"). Réutilise
+  le vocabulaire "vide/drain" déjà posé dès l'écran hook.
+- Paywall, les 3 arguments : reformulés de descriptions de feature
+  ("Bibliothèque complète") vers des bénéfices concrets ("Tous les cours
+  débloqués, pas juste un.").
+- Alerte "Restaurer mes achats" : ne révèle plus que les abonnements ne
+  sont pas encore actifs ("Aucun achat à restaurer pour le moment." au
+  lieu de "disponible dès l'activation des abonnements").
+- État vide du dashboard ("aucun événement à venir") : raccourci de 10 à 6
+  mots.
+
+**Tentative abandonnée — personnalisation de l'état vide par pain point.**
+L'idée initiale (référencer le point de douleur de l'utilisateur dans le
+message, ex. "Ajoute ton prochain repas de famille") casse la grammaire
+pour la moitié des options : les libellés de `data.painTypes.*` sont un
+mélange de groupes nominaux ("Les repas et réunions de famille") et de
+phrases verbales à l'infinitif ("Prendre la parole en groupe"), pas des
+noms substituables uniformément dans un gabarit de phrase. Code de
+prototype (fetch `primary_pain_type`, state, branchement JSX) écrit puis
+retiré plutôt que de livrer une phrase grammaticalement bancale pour 2 des
+4 pain points. Si cette personnalisation est reprise un jour, il faudra
+soit ajouter des libellés courts dédiés à cet usage, soit passer par
+`data.eventTypes.*` (déjà des noms simples : "Repas de famille", "Travail"
+…) via un mapping pain→eventType à construire.
+
+**Fait — vrai bug trouvé pendant l'audit : erreurs Supabase Auth non
+traduites.** `lib/auth.tsx` renvoyait `error.message` brut de
+`supabase.auth.signIn/signUp` — de l'anglais technique ("Invalid login
+credentials", "User already registered") affiché tel quel même quand
+l'app est en français. Corrigé via `error.code` (identifiant stable
+documenté par Supabase, contrairement au texte du message qui peut changer
+de formulation) mappé vers des clés `auth.errors.*` traduites : identifiants
+invalides, email déjà utilisé, mot de passe trop faible, email non
+confirmé, email invalide, trop de tentatives — avec repli sur un message
+générique traduit pour tout code non reconnu, plutôt que de risquer une
+autre fuite de texte anglais un jour.
+
+**Fait — nettoyage.** `dashboard.checkin.*` (streakTitle/streakNote/
+promptTitle/promptNote) supprimé des deux fichiers de locale — remplacé
+par `checkInCard.*` lors d'un chantier précédent, plus référencé nulle
+part dans le code depuis.
+
+**Fait — fiche App Store Connect rédigée pour plus tard.** Nouveau
+`app-store-listing.md` : nom, sous-titre, texte promotionnel, description
+complète et mots-clés, en français (langue principale) et anglais, tous
+déjà dans les limites de caractères d'Apple. Contrairement à la copie
+in-app, pas de contrainte de longueur ici — la description suit le format
+scannable habituel d'une fiche App Store (accroche, sections, liste à
+puces), pas des phrases de 7 mots. Notes ajoutées en fin de fichier sur la
+catégorie/l'âge à choisir et l'ordre de priorité des captures d'écran,
+aucune décision prise à la place de l'utilisateur sur ces points-là.
+
+**Vérifié.** `npx tsc --noEmit` propre. `npx jest --watchAll=false` :
+50/50. `npx expo lint` : 0 erreur, mêmes 2 avertissements préexistants.
+JSON des deux fichiers de locale validé (`JSON.parse` sans erreur).
+
+**Fichiers touchés.** nouveau : `app-store-listing.md` ; modifiés :
+`locales/fr.json`, `locales/en.json`, `lib/auth.tsx`.

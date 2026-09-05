@@ -164,7 +164,7 @@
     },
     "recap": {
       "heading": "Here's what Recharj found",
-      "painLine": "Your weak spot: <hl>{{pain}}</hl>.",
+      "painLine": "What drains you most: <hl>{{pain}}</hl>.",
       "frequencyLine": "It comes back <hl1>{{frequency}}</hl1>, especially <hl1>{{moment}}</hl1>.",
       "rechargeLine": "You recover best with <hl2>{{recharge}}</hl2>."
     },
@@ -203,7 +203,14 @@
       "passwordPlaceholder": "••••••••"
     },
     "errors": {
-      "missingCredentials": "Enter your email and password."
+      "missingCredentials": "Enter your email and password.",
+      "invalidCredentials": "Wrong email or password.",
+      "emailExists": "An account already exists for that email.",
+      "weakPassword": "Choose a longer password.",
+      "emailNotConfirmed": "Confirm your email before signing in.",
+      "invalidEmail": "That email doesn't look right.",
+      "rateLimited": "Too many attempts. Try again shortly.",
+      "generic": "Something went wrong. Please try again."
     },
     "dev": {
       "button": "⚡ DEV: instant test account"
@@ -275,18 +282,12 @@
   "dashboard": {
     "greeting": "Hi{{name}}",
     "batteryLabel": "Social battery",
-    "checkin": {
-      "streakTitle": "Day logged · {{score}}/10",
-      "streakNote": "Tap to edit",
-      "promptTitle": "How was your day?",
-      "promptNote": "Log it to keep a real history."
-    },
     "projection": "7-day projection",
     "event_one": "{{count}} event",
     "event_other": "{{count}} events",
     "upcomingEvents": "Upcoming events",
     "seeAll": "See all",
-    "noUpcomingEvents": "No upcoming events. Add one from the calendar.",
+    "noUpcomingEvents": "Nothing planned. Add your first event.",
     "recommended": {
       "fallbackTitle": "A course to help you prepare",
       "note": "Recommended for \"{{type}}\""
@@ -388,9 +389,9 @@
     "titleCourse": "Unlock this course",
     "titleGeneric": "Go Premium",
     "perks": {
-      "fullLibrary": "Full library",
-      "unlimitedProjection": "Unlimited projection",
-      "linkedCourses": "Courses linked to your events"
+      "fullLibrary": "Every course unlocked, not just one.",
+      "unlimitedProjection": "Plan your whole week, not just tomorrow.",
+      "linkedCourses": "The right course before every event."
     },
     "preview": {
       "eyebrow": "The course waiting for you",
@@ -413,7 +414,7 @@
     "restore": "Restore purchases",
     "restoreAlert": {
       "title": "Restoring purchases",
-      "body": "This will be available once subscriptions go live."
+      "body": "Nothing to restore right now."
     },
     "privacy": "Privacy",
     "terms": "Terms",

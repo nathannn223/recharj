@@ -2,7 +2,29 @@ import type { Session } from '@supabase/supabase-js';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { AnalyticsEvent, posthog } from '@/lib/analytics';
+import i18n from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
+
+// Supabase's own error.message is always English and often too technical
+// to show as-is ("User already registered") — mapped to a localized,
+// friendlier string by error.code (a stable identifier Supabase documents,
+// unlike the message text). Anything not in this list — a code Supabase
+// adds later, a network failure with no code at all — falls back to one
+// generic localized message rather than ever leaking raw English text.
+const AUTH_ERROR_KEYS: Record<string, string> = {
+  invalid_credentials: 'auth.errors.invalidCredentials',
+  email_exists: 'auth.errors.emailExists',
+  user_already_exists: 'auth.errors.emailExists',
+  weak_password: 'auth.errors.weakPassword',
+  email_not_confirmed: 'auth.errors.emailNotConfirmed',
+  email_address_invalid: 'auth.errors.invalidEmail',
+  over_email_send_rate_limit: 'auth.errors.rateLimited',
+};
+
+function localizeAuthError(error: { code?: string } | null | undefined): string {
+  const key = (error?.code && AUTH_ERROR_KEYS[error.code]) || 'auth.errors.generic';
+  return i18n.t(key);
+}
 
 type AuthContextValue = {
   session: Session | null;
@@ -52,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn: AuthContextValue['signIn'] = async (email, password) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error ? error.message : null };
+    return { error: error ? localizeAuthError(error) : null };
   };
 
   const signUp: AuthContextValue['signUp'] = async (email, password) => {
@@ -62,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // and manually type their password again — the deep link finishes
     // signing them in on its own.
     const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: 'recharj://confirm' } });
-    return { error: error ? error.message : null, hasSession: !!data.session };
+    return { error: error ? localizeAuthError(error) : null, hasSession: !!data.session };
   };
 
   const signOut = async () => {
